@@ -2,6 +2,8 @@ package hcmute.edu.vn.tickticktodo.model;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.ForeignKey;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 /**
@@ -14,7 +16,16 @@ import androidx.room.PrimaryKey;
  *   2 = Medium
  *   3 = High
  */
-@Entity(tableName = "tasks")
+@Entity(
+    tableName = "tasks",
+    foreignKeys = @ForeignKey(
+        entity = TodoList.class,
+        parentColumns = "id",
+        childColumns = "list_id",
+        onDelete = ForeignKey.SET_NULL
+    ),
+    indices = @Index(value = "list_id")
+)
 public class Task {
 
     @PrimaryKey(autoGenerate = true)
@@ -35,6 +46,9 @@ public class Task {
     @ColumnInfo(name = "priority")
     private int priority; // 0 = None, 1 = Low, 2 = Medium, 3 = High
 
+    @ColumnInfo(name = "list_id")
+    private Long listId; // khóa ngoại tới TodoList (null = Inbox / không thuộc list nào)
+
     // Constructor
     public Task(String title, String description, Long dueDate, boolean isCompleted, int priority) {
         this.title = title;
@@ -42,6 +56,7 @@ public class Task {
         this.dueDate = dueDate;
         this.isCompleted = isCompleted;
         this.priority = priority;
+        this.listId = null;
     }
 
     // Getters & Setters
@@ -92,5 +107,13 @@ public class Task {
 
     public void setPriority(int priority) {
         this.priority = priority;
+    }
+
+    public Long getListId() {
+        return listId;
+    }
+
+    public void setListId(Long listId) {
+        this.listId = listId;
     }
 }

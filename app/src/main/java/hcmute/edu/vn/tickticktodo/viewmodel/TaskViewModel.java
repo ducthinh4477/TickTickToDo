@@ -10,6 +10,7 @@ import java.util.Calendar;
 import java.util.List;
 
 import hcmute.edu.vn.tickticktodo.model.Task;
+import hcmute.edu.vn.tickticktodo.model.TodoList;
 import hcmute.edu.vn.tickticktodo.repository.TaskRepository;
 
 /**
@@ -87,5 +88,27 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void deleteAllCompleted() {
         repository.deleteAllCompleted();
+    }
+
+    // ─── TodoList ────────────────────────────────────────────────────────────────
+
+    public LiveData<List<TodoList>> getAllLists() {
+        return repository.getAllLists();
+    }
+
+    public LiveData<TodoList> getListById(long listId) {
+        return repository.getListById(listId);
+    }
+
+    public void insertList(TodoList todoList) {
+        repository.insertList(todoList);
+    }
+
+    public void updateList(TodoList todoList) {
+        repository.updateList(todoList);
+    }
+
+    public void deleteList(TodoList todoList) {
+        repository.deleteList(todoList);
     }
 }

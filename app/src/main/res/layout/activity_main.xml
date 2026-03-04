@@ -7,30 +7,28 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context=".MainActivity"
-    tools:openDrawer="start">
+    tools:context=".MainActivity">
 
-    <!-- ══════ Main Content ══════ -->
+    <!-- ══════ Main Content: Nav Rail (trái) + Content (phải) ══════ -->
     <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/white"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
-        <!-- ══════ Header: Hamburger + Today + Date ══════ -->
+        <!-- ══════ Fixed Navigation Rail (sát mép trái) ══════ -->
         <LinearLayout
-            android:id="@+id/header"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="8dp"
-            android:paddingTop="16dp"
-            android:paddingEnd="20dp"
+            android:id="@+id/nav_rail"
+            android:layout_width="56dp"
+            android:layout_height="match_parent"
+            android:background="#F5F5F5"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingTop="12dp"
             android:paddingBottom="12dp">
 
-            <!-- Hamburger menu button -->
+            <!-- Hamburger: mở danh sách Lists panel -->
             <ImageButton
                 android:id="@+id/btn_hamburger"
                 android:layout_width="40dp"
@@ -40,179 +38,440 @@
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_menu" />
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tv_header_today"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/header_today"
-                    android:textColor="@color/text_primary"
-                    android:textSize="28sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_header_date"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp"
-                    tools:text="Wed, Mar 4" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-    <!-- ══════ Content area: RecyclerView + Empty state ══════ -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_tasks"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="8dp"
-            tools:listitem="@layout/item_task" />
-
-        <!-- Empty state (hiện khi không có task) -->
-        <LinearLayout
-            android:id="@+id/layout_empty"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🎯"
-                android:textSize="48sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/empty_state_message"
-                android:textColor="@color/text_secondary"
-                android:textSize="15sp" />
-
-        </LinearLayout>
-
-    </FrameLayout>
-
-    <!-- ══════ Bottom bar: Quick Add + FAB ══════ -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <!-- Quick Add bar -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_quick_add"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="68dp"
-            android:layout_marginBottom="12dp"
-            android:layout_gravity="center_vertical"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:strokeWidth="0dp">
-
-            <LinearLayout
+            <View
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:gravity="center_vertical"
+                android:layout_height="12dp" />
+
+            <!-- Avatar User: mở PopupMenu -->
+            <ImageView
+                android:id="@+id/nav_avatar"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_avatar_circle"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="@string/nav_avatar_desc"
+                android:padding="8dp"
+                android:src="@drawable/ic_user" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="16dp" />
+
+            <!-- Task (today) -->
+            <ImageButton
+                android:id="@+id/nav_task"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/nav_task_desc"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_today"
+                app:tint="@color/priority_low" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="8dp" />
+
+            <!-- Calendar -->
+            <ImageButton
+                android:id="@+id/nav_calendar"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/nav_calendar_desc"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_calendar"
+                app:tint="@color/text_secondary" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="8dp" />
+
+            <!-- Search -->
+            <ImageButton
+                android:id="@+id/nav_search"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/nav_search_desc"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_search"
+                app:tint="@color/text_secondary" />
+
+        </LinearLayout>
+
+        <!-- ══════ Right: Header + Content + Bottom Bar ══════ -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- ══════ Header: Today + Date + Sort + More ══════ -->
+            <LinearLayout
+                android:id="@+id/header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingStart="14dp"
-                android:paddingEnd="8dp">
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="12dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@string/add_task_desc"
-                    android:src="@drawable/ic_add"
-                    app:tint="@color/priority_low" />
-
-                <EditText
-                    android:id="@+id/et_quick_add"
+                <!-- Title + Date -->
+                <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="10dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@android:color/transparent"
-                    android:hint="@string/quick_add_hint"
-                    android:imeOptions="actionDone"
-                    android:inputType="text"
-                    android:maxLines="1"
-                    android:textColor="@color/text_primary"
-                    android:textColorHint="@color/text_secondary"
-                    android:textSize="15sp" />
+                    android:orientation="vertical">
 
+                    <TextView
+                        android:id="@+id/tv_header_today"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/header_today"
+                        android:textColor="@color/text_primary"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_header_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        tools:text="Wed, Mar 4" />
+
+                </LinearLayout>
+
+                <!-- Sort button -->
                 <ImageButton
-                    android:id="@+id/btn_send_task"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:id="@+id/btn_sort"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/send_task_desc"
-                    android:src="@drawable/ic_send"
-                    android:visibility="gone"
-                    app:tint="@color/priority_low"
-                    tools:visibility="visible" />
+                    android:contentDescription="@string/btn_sort_desc"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_sort" />
+
+                <!-- More button (3 chấm dọc) -->
+                <ImageButton
+                    android:id="@+id/btn_more"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/btn_more_desc"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_more_vert" />
 
             </LinearLayout>
 
-        </com.google.android.material.card.MaterialCardView>
+            <!-- ══════ Content area: RecyclerView + Empty state ══════ -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
 
-        <!-- FAB: mở BottomSheet chi tiết -->
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fab_add_task"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end|center_vertical"
-            android:layout_marginEnd="16dp"
-            android:contentDescription="@string/fab_add_desc"
-            android:src="@drawable/ic_add"
-            app:backgroundTint="@color/priority_low"
-            app:fabSize="mini"
-            app:tint="@color/white" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_tasks"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:paddingBottom="8dp"
+                    tools:listitem="@layout/item_task" />
 
-    </FrameLayout>
+                <!-- Empty state -->
+                <LinearLayout
+                    android:id="@+id/layout_empty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🎯"
+                        android:textSize="48sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/empty_state_message"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="15sp" />
+
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <!-- ══════ Bottom bar: Quick Add + FAB ══════ -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Quick Add bar -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_quick_add"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="68dp"
+                    android:layout_marginBottom="12dp"
+                    android:layout_gravity="center_vertical"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp"
+                    app:strokeWidth="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="@string/add_task_desc"
+                            android:src="@drawable/ic_add"
+                            app:tint="@color/priority_low" />
+
+                        <EditText
+                            android:id="@+id/et_quick_add"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:background="@android:color/transparent"
+                            android:hint="@string/quick_add_hint"
+                            android:imeOptions="actionDone"
+                            android:inputType="text"
+                            android:maxLines="1"
+                            android:textColor="@color/text_primary"
+                            android:textColorHint="@color/text_secondary"
+                            android:textSize="15sp" />
+
+                        <ImageButton
+                            android:id="@+id/btn_send_task"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/send_task_desc"
+                            android:src="@drawable/ic_send"
+                            android:visibility="gone"
+                            app:tint="@color/priority_low"
+                            tools:visibility="visible" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- FAB: mở BottomSheet chi tiết -->
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/fab_add_task"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="16dp"
+                    android:contentDescription="@string/fab_add_desc"
+                    android:src="@drawable/ic_add"
+                    app:backgroundTint="@color/priority_low"
+                    app:fabSize="mini"
+                    app:tint="@color/white" />
+
+            </FrameLayout>
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- ══════ Navigation Drawer ══════ -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nav_view"
-        android:layout_width="300dp"
+    <!-- ══════ Lists Panel Drawer ══════ -->
+    <LinearLayout
+        android:id="@+id/lists_panel"
+        android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:background="@color/white"
         android:fitsSystemWindows="true"
-        app:headerLayout="@layout/nav_header"
-        app:menu="@menu/nav_menu">
+        android:orientation="vertical">
 
-        <!-- ── Bottom-pinned items: Notifications + Help & More ── -->
+        <!-- Panel Header -->
         <LinearLayout
-            android:id="@+id/nav_bottom_items"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:background="@color/white"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="20dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="12dp">
+
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_avatar_circle"
+                android:contentDescription="@string/nav_avatar_desc"
+                android:padding="8dp"
+                android:src="@drawable/ic_user" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/nav_guest_user"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Phân cách -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0" />
+
+        <!-- Built-in items -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <!-- Inbox -->
+            <LinearLayout
+                android:id="@+id/panel_item_inbox"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_all_tasks"
+                    app:tint="@color/priority_low" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="@string/panel_inbox"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+            </LinearLayout>
+
+            <!-- Today -->
+            <LinearLayout
+                android:id="@+id/panel_item_today"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@color/panel_selected"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_today"
+                    app:tint="@color/priority_low" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="@string/header_today"
+                    android:textColor="@color/priority_low"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <!-- Calendar -->
+            <LinearLayout
+                android:id="@+id/panel_item_calendar"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_calendar"
+                    app:tint="@color/text_secondary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="@string/nav_calendar_desc"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Phân cách -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0" />
+
+        <!-- Lists section header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="6dp"
+            android:text="@string/nav_lists_title"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <!-- Dynamic TodoLists: RecyclerView hoặc LinearLayout để chứa danh sách -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_lists_panel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false" />
+
+        <!-- Bottom: Notifications + Help -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingBottom="12dp">
 
-            <!-- Đường kẻ phân cách -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -221,9 +480,9 @@
 
             <!-- Notifications -->
             <LinearLayout
-                android:id="@+id/nav_item_notifications"
+                android:id="@+id/panel_item_notifications"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="44dp"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
@@ -233,27 +492,26 @@
                 android:paddingEnd="16dp">
 
                 <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/nav_notifications"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:src="@drawable/ic_notifications"
                     app:tint="@color/text_secondary" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
+                    android:layout_marginStart="16dp"
                     android:text="@string/nav_notifications"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp" />
 
             </LinearLayout>
 
-            <!-- Help & More -->
+            <!-- Help -->
             <LinearLayout
-                android:id="@+id/nav_item_help"
+                android:id="@+id/panel_item_help"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="44dp"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
@@ -263,16 +521,15 @@
                 android:paddingEnd="16dp">
 
                 <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/nav_help"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:src="@drawable/ic_help"
                     app:tint="@color/text_secondary" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="32dp"
+                    android:layout_marginStart="16dp"
                     android:text="@string/nav_help"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp" />
@@ -281,6 +538,6 @@
 
         </LinearLayout>
 
-    </com.google.android.material.navigation.NavigationView>
+    </LinearLayout>
 
 </androidx.drawerlayout.widget.DrawerLayout>

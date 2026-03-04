@@ -9,7 +9,9 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,12 +25,12 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.text.SimpleDateFormat;
@@ -38,31 +40,50 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import hcmute.edu.vn.tickticktodo.adapter.HeaderAdapter;
+import hcmute.edu.vn.tickticktodo.adapter.ListPanelAdapter;
 import hcmute.edu.vn.tickticktodo.adapter.TaskAdapter;
 import hcmute.edu.vn.tickticktodo.helper.SwipeToDeleteCallback;
 import hcmute.edu.vn.tickticktodo.model.Task;
+import hcmute.edu.vn.tickticktodo.model.TodoList;
 import hcmute.edu.vn.tickticktodo.ui.AddTaskBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.TaskDetailActivity;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
-public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener {
+public class MainActivity extends AppCompatActivity {
 
     private TaskViewModel taskViewModel;
 
-    // UI components
+    // UI components — Drawer
     private DrawerLayout drawerLayout;
-    private NavigationView navView;
+    private LinearLayout listsPanel;
+    private RecyclerView rvListsPanel;
+    private ListPanelAdapter listPanelAdapter;
+
+    // UI components — Nav Rail
     private ImageButton btnHamburger;
+    private ImageView navAvatar;
+    private ImageButton navTask;
+    private ImageButton navCalendar;
+    private ImageButton navSearch;
+
+    // UI components — Header
     private TextView tvHeaderDate;
+    private ImageButton btnSort;
+    private ImageButton btnMore;
+
+    // UI components — Content
     private RecyclerView rvTasks;
     private LinearLayout layoutEmpty;
     private EditText etQuickAdd;
     private ImageButton btnSendTask;
     private FloatingActionButton fabAddTask;
 
-    // Adapters
+    // Task Adapters (ConcatAdapter)
     private TaskAdapter incompleteAdapter;
+    private HeaderAdapter headerAdapter;
     private TaskAdapter completedAdapter;
+    private ConcatAdapter concatAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +100,8 @@ public class MainActivity extends AppCompatActivity
 
         initViews();
         setupHeader();
-        setupDrawer();
+        setupNavRail();
+        setupListsPanel();
         setupRecyclerView();
         setupQuickAdd();
         setupFab();
@@ -89,10 +111,24 @@ public class MainActivity extends AppCompatActivity
     // ─── Khởi tạo view references ────────────────────────────────────────────────
 
     private void initViews() {
+        // Drawer + Lists Panel
         drawerLayout = findViewById(R.id.drawer_layout);
-        navView = findViewById(R.id.nav_view);
+        listsPanel = findViewById(R.id.lists_panel);
+        rvListsPanel = findViewById(R.id.rv_lists_panel);
+
+        // Nav Rail
         btnHamburger = findViewById(R.id.btn_hamburger);
+        navAvatar = findViewById(R.id.nav_avatar);
+        navTask = findViewById(R.id.nav_task);
+        navCalendar = findViewById(R.id.nav_calendar);
+        navSearch = findViewById(R.id.nav_search);
+
+        // Header
         tvHeaderDate = findViewById(R.id.tv_header_date);
+        btnSort = findViewById(R.id.btn_sort);
+        btnMore = findViewById(R.id.btn_more);
+
+        // Content
         rvTasks = findViewById(R.id.rv_tasks);
         layoutEmpty = findViewById(R.id.layout_empty);
         etQuickAdd = findViewById(R.id.et_quick_add);
@@ -100,17 +136,27 @@ public class MainActivity extends AppCompatActivity
         fabAddTask = findViewById(R.id.fab_add_task);
     }
 
-    // ─── Header: hiển thị ngày hiện tại giống TickTick ───────────────────────────
+    // ─── Header: ngày hiện tại + Sort + More ─────────────────────────────────────
 
     private void setupHeader() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
         tvHeaderDate.setText(dateFormat.format(new Date()));
+
+        // Sort button
+        btnSort.setOnClickListener(v ->
+                Toast.makeText(this, "Tính năng Sắp xếp đang phát triển",
+                        Toast.LENGTH_SHORT).show());
+
+        // More button
+        btnMore.setOnClickListener(v ->
+                Toast.makeText(this, "Tính năng Thêm tùy chọn đang phát triển",
+                        Toast.LENGTH_SHORT).show());
     }
 
-    // ─── Navigation Drawer setup ─────────────────────────────────────────────────
+    // ─── Navigation Rail setup ───────────────────────────────────────────────────
 
-    private void setupDrawer() {
-        // ── 1. Hamburger button: mở/đóng drawer ──
+    private void setupNavRail() {
+        // Hamburger → mở/đóng Lists Panel (Drawer)
         btnHamburger.setOnClickListener(v -> {
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 drawerLayout.closeDrawer(GravityCompat.START);
@@ -119,27 +165,24 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
-        // ── 2. Menu item listener (Settings) ──
-        navView.setNavigationItemSelectedListener(this);
+        // Avatar → PopupMenu (Settings, Statistics, Sign Out)
+        navAvatar.setOnClickListener(this::showUserPopupMenu);
 
-        // ── 3. Bottom-pinned items: Notifications + Help & More ──
-        LinearLayout navItemNotifications = navView.findViewById(R.id.nav_item_notifications);
-        LinearLayout navItemHelp = navView.findViewById(R.id.nav_item_help);
+        // Task (Today) — đã ở màn hình này
+        navTask.setOnClickListener(v ->
+                Toast.makeText(this, "Đang ở trang Today", Toast.LENGTH_SHORT).show());
 
-        navItemNotifications.setOnClickListener(v -> {
-            Toast.makeText(this, "Tính năng Thông báo đang phát triển",
-                    Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+        // Calendar
+        navCalendar.setOnClickListener(v ->
+                Toast.makeText(this, "Tính năng Lịch đang phát triển",
+                        Toast.LENGTH_SHORT).show());
 
-        navItemHelp.setOnClickListener(v -> {
-            Toast.makeText(this, "Tính năng Trợ giúp đang phát triển",
-                    Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+        // Search
+        navSearch.setOnClickListener(v ->
+                Toast.makeText(this, "Tính năng Tìm kiếm đang phát triển",
+                        Toast.LENGTH_SHORT).show());
 
-        // ── 4. Back press: đóng drawer nếu đang mở ──
-        // Sử dụng OnBackPressedDispatcher (thay thế onBackPressed() đã deprecated)
+        // Back press: đóng drawer nếu đang mở
         OnBackPressedCallback drawerBackCallback = new OnBackPressedCallback(false) {
             @Override
             public void handleOnBackPressed() {
@@ -148,7 +191,6 @@ public class MainActivity extends AppCompatActivity
         };
         getOnBackPressedDispatcher().addCallback(this, drawerBackCallback);
 
-        // Bật/tắt callback theo trạng thái drawer
         drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerOpened(@NonNull View drawerView) {
@@ -162,69 +204,123 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
-    // ─── NavigationView menu item click ──────────────────────────────────────────
+    // ─── User PopupMenu (Avatar) ─────────────────────────────────────────────────
 
-    @Override
-    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
+    private void showUserPopupMenu(View anchor) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        popup.getMenuInflater().inflate(R.menu.popup_user_menu, popup.getMenu());
 
-        if (id == R.id.nav_settings) {
-            Toast.makeText(this, "Tính năng Cài đặt đang phát triển",
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.menu_settings) {
+                Toast.makeText(this, "Tính năng Cài đặt đang phát triển",
+                        Toast.LENGTH_SHORT).show();
+            } else if (id == R.id.menu_statistics) {
+                Toast.makeText(this, "Tính năng Thống kê đang phát triển",
+                        Toast.LENGTH_SHORT).show();
+            } else if (id == R.id.menu_sign_out) {
+                Toast.makeText(this, "Tính năng Đăng xuất đang phát triển",
+                        Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        });
+
+        popup.show();
+    }
+
+    // ─── Lists Panel (Drawer) setup ──────────────────────────────────────────────
+
+    private void setupListsPanel() {
+        // Adapter cho dynamic TodoList items
+        listPanelAdapter = new ListPanelAdapter(todoList -> {
+            Toast.makeText(this, "List: " + todoList.getName(),
                     Toast.LENGTH_SHORT).show();
-        }
+            drawerLayout.closeDrawer(GravityCompat.START);
+            // TODO: filter tasks by todoList.getId()
+        });
+        rvListsPanel.setLayoutManager(new LinearLayoutManager(this));
+        rvListsPanel.setAdapter(listPanelAdapter);
 
-        drawerLayout.closeDrawer(GravityCompat.START);
-        return true;
+        // Built-in panel items
+        LinearLayout panelInbox = listsPanel.findViewById(R.id.panel_item_inbox);
+        LinearLayout panelToday = listsPanel.findViewById(R.id.panel_item_today);
+        LinearLayout panelCalendar = listsPanel.findViewById(R.id.panel_item_calendar);
+        LinearLayout panelNotifications = listsPanel.findViewById(R.id.panel_item_notifications);
+        LinearLayout panelHelp = listsPanel.findViewById(R.id.panel_item_help);
+
+        panelInbox.setOnClickListener(v -> {
+            Toast.makeText(this, "Inbox", Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        panelToday.setOnClickListener(v -> {
+            Toast.makeText(this, "Đang ở trang Today", Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        panelCalendar.setOnClickListener(v -> {
+            Toast.makeText(this, "Tính năng Lịch đang phát triển",
+                    Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        panelNotifications.setOnClickListener(v -> {
+            Toast.makeText(this, "Tính năng Thông báo đang phát triển",
+                    Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        panelHelp.setOnClickListener(v -> {
+            Toast.makeText(this, "Tính năng Trợ giúp đang phát triển",
+                    Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
     }
 
     // ─── RecyclerView setup ──────────────────────────────────────────────────────
 
     private void setupRecyclerView() {
-        // Adapter cho task chưa hoàn thành
         incompleteAdapter = new TaskAdapter(
-                // Checkbox toggle → đánh dấu hoàn thành
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                // Item click → hiện Toast (sau này mở màn hình chi tiết)
-                task -> Toast.makeText(this,
-                        "Task: " + task.getTitle(), Toast.LENGTH_SHORT).show()
+                task -> openTaskDetail(task.getId())
         );
 
-        // Adapter cho task đã hoàn thành
+        headerAdapter = new HeaderAdapter();
+
         completedAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                task -> Toast.makeText(this,
-                        "Task: " + task.getTitle(), Toast.LENGTH_SHORT).show()
+                task -> openTaskDetail(task.getId())
         );
 
-        // Sử dụng ConcatAdapter để ghép: [incomplete] + [section header] + [completed]
-        // Tạm thời dùng single adapter merged list cho đơn giản
-        rvTasks.setLayoutManager(new LinearLayoutManager(this));
-        rvTasks.setAdapter(incompleteAdapter);
+        concatAdapter = new ConcatAdapter(incompleteAdapter, headerAdapter, completedAdapter);
 
-        // Swipe-to-delete: vuốt trái để xóa task
+        rvTasks.setLayoutManager(new LinearLayoutManager(this));
+        rvTasks.setAdapter(concatAdapter);
+
         SwipeToDeleteCallback swipeCallback = new SwipeToDeleteCallback(this, this::handleSwipeDelete);
         new ItemTouchHelper(swipeCallback).attachToRecyclerView(rvTasks);
     }
 
     // ─── Swipe to delete + Undo ───────────────────────────────────────────────
 
-    /**
-     * Xử lý khi item bị vuốt xóa:
-     * 1. Lấy Task tại vị trí đó
-     * 2. Xóa khỏi DB qua ViewModel
-     * 3. Hiện Snackbar với nút Undo — nếu nhấn Undo thì insert lại
-     */
     private void handleSwipeDelete(int position) {
-        Task deletedTask = incompleteAdapter.getCurrentList().get(position);
+        int incompleteCount = incompleteAdapter.getItemCount();
+        int headerCount = headerAdapter.getItemCount();
 
-        // Xóa task khỏi database
+        Task deletedTask;
+        if (position < incompleteCount) {
+            deletedTask = incompleteAdapter.getCurrentList().get(position);
+        } else if (position < incompleteCount + headerCount) {
+            return;
+        } else {
+            int localPos = position - incompleteCount - headerCount;
+            deletedTask = completedAdapter.getCurrentList().get(localPos);
+        }
+
         taskViewModel.delete(deletedTask);
 
-        // Hiện Snackbar với Undo
         Snackbar.make(rvTasks, "Đã xóa: " + deletedTask.getTitle(), Snackbar.LENGTH_LONG)
                 .setAction("Undo", v -> {
-                    // Khôi phục task: insert lại với cùng dữ liệu
-                    // Reset id = 0 để Room tự sinh id mới (tránh conflict)
                     Task restoredTask = new Task(
                             deletedTask.getTitle(),
                             deletedTask.getDescription(),
@@ -241,7 +337,6 @@ public class MainActivity extends AppCompatActivity
     // ─── Quick Add bar ───────────────────────────────────────────────────────────
 
     private void setupQuickAdd() {
-        // Hiện/ẩn nút gửi khi có text
         etQuickAdd.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -256,10 +351,8 @@ public class MainActivity extends AppCompatActivity
             public void afterTextChanged(Editable s) { }
         });
 
-        // Click nút gửi → thêm task
         btnSendTask.setOnClickListener(v -> submitQuickAdd());
 
-        // Nhấn Done trên keyboard → thêm task
         etQuickAdd.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 submitQuickAdd();
@@ -269,14 +362,10 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
-    /**
-     * Lấy text từ Quick Add, tạo task mới với dueDate = hôm nay, insert vào DB.
-     */
     private void submitQuickAdd() {
         String title = etQuickAdd.getText().toString().trim();
         if (title.isEmpty()) return;
 
-        // Due date = đầu ngày hôm nay (00:00:00)
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -286,9 +375,14 @@ public class MainActivity extends AppCompatActivity
         Task newTask = new Task(title, "", cal.getTimeInMillis(), false, 0);
         taskViewModel.insert(newTask);
 
-        // Clear input & ẩn keyboard
         etQuickAdd.setText("");
         hideKeyboard();
+    }
+
+    // ─── Mở TaskDetailActivity ────────────────────────────────────────────────────
+
+    private void openTaskDetail(long taskId) {
+        startActivity(TaskDetailActivity.newIntent(this, taskId));
     }
 
     // ─── FAB → mở BottomSheet ────────────────────────────────────────────────────
@@ -297,9 +391,6 @@ public class MainActivity extends AppCompatActivity
         fabAddTask.setOnClickListener(v -> openAddTaskBottomSheet(null));
     }
 
-    /**
-     * Mở AddTaskBottomSheet. Nếu initialTitle != null, sẽ pre-fill title.
-     */
     private void openAddTaskBottomSheet(String initialTitle) {
         AddTaskBottomSheet bottomSheet;
         if (initialTitle != null && !initialTitle.isEmpty()) {
@@ -315,42 +406,35 @@ public class MainActivity extends AppCompatActivity
     private void setupViewModel() {
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
 
-        // Observe task chưa hoàn thành hôm nay
         taskViewModel.getTodayIncompleteTasks().observe(this, incompleteTasks -> {
             if (incompleteTasks == null) incompleteTasks = new ArrayList<>();
+            incompleteAdapter.submitList(new ArrayList<>(incompleteTasks));
 
-            // Lấy completed tasks hiện tại (nếu đã có)
             List<Task> completedTasks = taskViewModel.getTodayCompletedTasks().getValue();
-            if (completedTasks == null) completedTasks = new ArrayList<>();
-
-            updateUI(incompleteTasks, completedTasks);
+            updateEmptyState(incompleteTasks, completedTasks);
         });
 
-        // Observe task đã hoàn thành hôm nay
         taskViewModel.getTodayCompletedTasks().observe(this, completedTasks -> {
             if (completedTasks == null) completedTasks = new ArrayList<>();
+            completedAdapter.submitList(new ArrayList<>(completedTasks));
+            headerAdapter.setCompletedCount(completedTasks.size());
 
             List<Task> incompleteTasks = taskViewModel.getTodayIncompleteTasks().getValue();
-            if (incompleteTasks == null) incompleteTasks = new ArrayList<>();
+            updateEmptyState(incompleteTasks, completedTasks);
+        });
 
-            updateUI(incompleteTasks, completedTasks);
+        // Observe TodoLists → cập nhật Lists Panel
+        taskViewModel.getAllLists().observe(this, lists -> {
+            if (lists != null) {
+                listPanelAdapter.submitList(new ArrayList<>(lists));
+            }
         });
     }
 
-    /**
-     * Cập nhật RecyclerView với merged list: incomplete + completed.
-     * Hiện/ẩn empty state tùy theo tổng số task.
-     */
-    private void updateUI(List<Task> incompleteTasks, List<Task> completedTasks) {
-        // Merge cả 2 list: incomplete trước, completed sau
-        List<Task> mergedList = new ArrayList<>();
-        mergedList.addAll(incompleteTasks);
-        mergedList.addAll(completedTasks);
-
-        incompleteAdapter.submitList(mergedList);
-
-        // Hiện/ẩn empty state
-        boolean isEmpty = mergedList.isEmpty();
+    private void updateEmptyState(List<Task> incomplete, List<Task> completed) {
+        int total = (incomplete != null ? incomplete.size() : 0)
+                  + (completed != null ? completed.size() : 0);
+        boolean isEmpty = total == 0;
         layoutEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         rvTasks.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
     }

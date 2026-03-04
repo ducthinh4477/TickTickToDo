@@ -24,4 +24,39 @@
     <string name="menu_desc">Mở menu điều hướng</string>
     <string name="navigation_drawer_open">Mở thanh điều hướng</string>
     <string name="navigation_drawer_close">Đóng thanh điều hướng</string>
+
+    <!-- TaskDetailActivity -->
+    <string name="detail_back_desc">Đóng</string>
+    <string name="detail_save_desc">Lưu</string>
+    <string name="detail_saved">Đã lưu thay đổi</string>
+    <string name="detail_label_date">Ngày đến hạn</string>
+    <string name="detail_label_priority">Độ ưu tiên</string>
+    <string name="label_no_date">Chọn ngày</string>
+    <string name="error_title_empty">Tiêu đề không được để trống</string>
+    <string name="priority_none_label">Không</string>
+    <string name="priority_low_label">Thấp</string>
+    <string name="priority_medium_label">Trung bình</string>
+    <string name="priority_high_label">Cao</string>
+
+    <!-- Section Headers -->
+    <string name="section_completed">Đã hoàn thành (%d)</string>
+
+    <!-- TodoList -->
+    <string name="nav_lists_title">Danh sách</string>
+
+    <!-- Nav Rail -->
+    <string name="nav_task_desc">Công việc</string>
+    <string name="nav_calendar_desc">Lịch</string>
+    <string name="nav_search_desc">Tìm kiếm</string>
+
+    <!-- Header buttons -->
+    <string name="btn_sort_desc">Sắp xếp</string>
+    <string name="btn_more_desc">Thêm tùy chọn</string>
+
+    <!-- Popup user menu -->
+    <string name="menu_statistics">Thống kê</string>
+    <string name="menu_sign_out">Đăng xuất</string>
+
+    <!-- Lists panel -->
+    <string name="panel_inbox">Inbox</string>
 </resources>

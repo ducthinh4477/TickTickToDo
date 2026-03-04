@@ -1,6 +1,7 @@
 package hcmute.edu.vn.tickticktodo.ui;
 
 import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -54,8 +55,11 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private TaskViewModel taskViewModel;
     private final Calendar selectedDate = Calendar.getInstance(); // mặc định = today
     private int selectedPriority = 0; // 0 = None
+    private boolean hasTimeSelected = false;
     private final SimpleDateFormat dateFormat =
             new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
+    private final SimpleDateFormat timeFormat =
+            new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     // Priority cycle: 0 → 1 → 2 → 3 → 0
     private static final int[] PRIORITY_CYCLE = {0, 1, 2, 3};
@@ -162,13 +166,33 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
                     selectedDate.set(Calendar.YEAR, year);
                     selectedDate.set(Calendar.MONTH, month);
                     selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth);
-                    updateDueDateChip();
+                    // Tự động mở TimePicker ngay sau khi chọn ngày
+                    showTimePicker();
                 },
                 selectedDate.get(Calendar.YEAR),
                 selectedDate.get(Calendar.MONTH),
                 selectedDate.get(Calendar.DAY_OF_MONTH)
         );
         picker.show();
+    }
+
+    private void showTimePicker() {
+        int hour = hasTimeSelected ? selectedDate.get(Calendar.HOUR_OF_DAY) : 9;
+        int minute = hasTimeSelected ? selectedDate.get(Calendar.MINUTE) : 0;
+
+        TimePickerDialog timePicker = new TimePickerDialog(
+                requireContext(),
+                (view, hourOfDay, minuteOfDay) -> {
+                    selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    selectedDate.set(Calendar.MINUTE, minuteOfDay);
+                    selectedDate.set(Calendar.SECOND, 0);
+                    selectedDate.set(Calendar.MILLISECOND, 0);
+                    hasTimeSelected = true;
+                    updateDueDateChip();
+                },
+                hour, minute, true // is24HourView
+        );
+        timePicker.show();
     }
 
     /**
@@ -190,13 +214,19 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         selected.set(Calendar.SECOND, 0);
         selected.set(Calendar.MILLISECOND, 0);
 
+        String dateText;
         if (selected.getTimeInMillis() == today.getTimeInMillis()) {
-            chipDueDate.setText(getString(R.string.label_today));
+            dateText = getString(R.string.label_today);
         } else if (selected.getTimeInMillis() == tomorrow.getTimeInMillis()) {
-            chipDueDate.setText(getString(R.string.label_tomorrow));
+            dateText = getString(R.string.label_tomorrow);
         } else {
-            chipDueDate.setText(dateFormat.format(selected.getTime()));
+            dateText = dateFormat.format(selected.getTime());
         }
+
+        if (hasTimeSelected) {
+            dateText += " " + timeFormat.format(selectedDate.getTime());
+        }
+        chipDueDate.setText(dateText);
     }
 
     // ─── Priority button (cycle through 0 → 1 → 2 → 3 → 0) ─────────────────────
@@ -234,10 +264,12 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
         String description = etDescription.getText().toString().trim();
 
-        // Due date: đầu ngày đã chọn (00:00:00.000)
+        // Due date: nếu có chọn giờ thì giữ nguyên, không thì 00:00
         Calendar dueCal = (Calendar) selectedDate.clone();
-        dueCal.set(Calendar.HOUR_OF_DAY, 0);
-        dueCal.set(Calendar.MINUTE, 0);
+        if (!hasTimeSelected) {
+            dueCal.set(Calendar.HOUR_OF_DAY, 0);
+            dueCal.set(Calendar.MINUTE, 0);
+        }
         dueCal.set(Calendar.SECOND, 0);
         dueCal.set(Calendar.MILLISECOND, 0);
 

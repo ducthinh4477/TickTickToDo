@@ -7,19 +7,22 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
+import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.model.Task;
+import hcmute.edu.vn.tickticktodo.model.TodoList;
 
 /**
  * Room Database chính của ứng dụng.
  * Sử dụng Singleton pattern để đảm bảo chỉ có một instance duy nhất.
  */
-@Database(entities = {Task.class}, version = 1, exportSchema = false)
+@Database(entities = {Task.class, TodoList.class}, version = 2, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
     private static final String DATABASE_NAME = "ticktick_todo_db";
 
     public abstract TaskDao taskDao();
+    public abstract TodoListDao todoListDao();
 
     public static TaskDatabase getInstance(Context context) {
         if (INSTANCE == null) {

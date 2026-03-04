@@ -9,8 +9,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
+import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.model.Task;
+import hcmute.edu.vn.tickticktodo.model.TodoList;
 
 /**
  * Repository đóng vai trò trung gian giữa ViewModel và nguồn dữ liệu (Room).
@@ -20,11 +22,13 @@ import hcmute.edu.vn.tickticktodo.model.Task;
 public class TaskRepository {
 
     private final TaskDao taskDao;
+    private final TodoListDao todoListDao;
     private final ExecutorService executor;
 
     public TaskRepository(Application application) {
         TaskDatabase db = TaskDatabase.getInstance(application);
         taskDao = db.taskDao();
+        todoListDao = db.todoListDao();
         executor = Executors.newSingleThreadExecutor();
     }
 
@@ -66,5 +70,27 @@ public class TaskRepository {
 
     public void deleteAllCompleted() {
         executor.execute(taskDao::deleteAllCompleted);
+    }
+
+    // ─── TodoList CRUD ────────────────────────────────────────────────────────────
+
+    public LiveData<List<TodoList>> getAllLists() {
+        return todoListDao.getAllLists();
+    }
+
+    public LiveData<TodoList> getListById(long listId) {
+        return todoListDao.getListById(listId);
+    }
+
+    public void insertList(TodoList todoList) {
+        executor.execute(() -> todoListDao.insert(todoList));
+    }
+
+    public void updateList(TodoList todoList) {
+        executor.execute(() -> todoListDao.update(todoList));
+    }
+
+    public void deleteList(TodoList todoList) {
+        executor.execute(() -> todoListDao.delete(todoList));
     }
 }

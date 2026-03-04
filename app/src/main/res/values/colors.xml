@@ -21,4 +21,8 @@
 
     <!-- Swipe to delete -->
     <color name="swipe_delete_bg">#FFEB4D3D</color>
+
+    <!-- Nav Rail / Panel -->
+    <color name="nav_rail_bg">#F5F5F5</color>
+    <color name="panel_selected">#1A4A90D9</color>
 </resources>
