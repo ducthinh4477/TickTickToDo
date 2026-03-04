@@ -16,14 +16,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
-import androidx.activity.OnBackPressedCallback;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
-import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -54,9 +50,8 @@ public class MainActivity extends AppCompatActivity {
 
     private TaskViewModel taskViewModel;
 
-    // UI components — Drawer
-    private DrawerLayout drawerLayout;
-    private LinearLayout listsPanel;
+    // UI components — Menu Box (Column 2)
+    private LinearLayout menuBoxContainer;
     private RecyclerView rvListsPanel;
     private ListPanelAdapter listPanelAdapter;
 
@@ -111,19 +106,18 @@ public class MainActivity extends AppCompatActivity {
     // ─── Khởi tạo view references ────────────────────────────────────────────────
 
     private void initViews() {
-        // Drawer + Lists Panel
-        drawerLayout = findViewById(R.id.drawer_layout);
-        listsPanel = findViewById(R.id.lists_panel);
+        // Menu Box (Column 2)
+        menuBoxContainer = findViewById(R.id.menu_box_container);
         rvListsPanel = findViewById(R.id.rv_lists_panel);
 
         // Nav Rail
-        btnHamburger = findViewById(R.id.btn_hamburger);
         navAvatar = findViewById(R.id.nav_avatar);
         navTask = findViewById(R.id.nav_task);
         navCalendar = findViewById(R.id.nav_calendar);
         navSearch = findViewById(R.id.nav_search);
 
         // Header
+        btnHamburger = findViewById(R.id.btn_hamburger);
         tvHeaderDate = findViewById(R.id.tv_header_date);
         btnSort = findViewById(R.id.btn_sort);
         btnMore = findViewById(R.id.btn_more);
@@ -142,6 +136,15 @@ public class MainActivity extends AppCompatActivity {
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
         tvHeaderDate.setText(dateFormat.format(new Date()));
 
+        // Hamburger → toggle Menu Box (Column 2) visibility
+        btnHamburger.setOnClickListener(v -> {
+            if (menuBoxContainer.getVisibility() == View.VISIBLE) {
+                menuBoxContainer.setVisibility(View.GONE);
+            } else {
+                menuBoxContainer.setVisibility(View.VISIBLE);
+            }
+        });
+
         // Sort button
         btnSort.setOnClickListener(v ->
                 Toast.makeText(this, "Tính năng Sắp xếp đang phát triển",
@@ -156,15 +159,6 @@ public class MainActivity extends AppCompatActivity {
     // ─── Navigation Rail setup ───────────────────────────────────────────────────
 
     private void setupNavRail() {
-        // Hamburger → mở/đóng Lists Panel (Drawer)
-        btnHamburger.setOnClickListener(v -> {
-            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                drawerLayout.closeDrawer(GravityCompat.START);
-            } else {
-                drawerLayout.openDrawer(GravityCompat.START);
-            }
-        });
-
         // Avatar → PopupMenu (Settings, Statistics, Sign Out)
         navAvatar.setOnClickListener(this::showUserPopupMenu);
 
@@ -181,27 +175,6 @@ public class MainActivity extends AppCompatActivity {
         navSearch.setOnClickListener(v ->
                 Toast.makeText(this, "Tính năng Tìm kiếm đang phát triển",
                         Toast.LENGTH_SHORT).show());
-
-        // Back press: đóng drawer nếu đang mở
-        OnBackPressedCallback drawerBackCallback = new OnBackPressedCallback(false) {
-            @Override
-            public void handleOnBackPressed() {
-                drawerLayout.closeDrawer(GravityCompat.START);
-            }
-        };
-        getOnBackPressedDispatcher().addCallback(this, drawerBackCallback);
-
-        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
-            @Override
-            public void onDrawerOpened(@NonNull View drawerView) {
-                drawerBackCallback.setEnabled(true);
-            }
-
-            @Override
-            public void onDrawerClosed(@NonNull View drawerView) {
-                drawerBackCallback.setEnabled(false);
-            }
-        });
     }
 
     // ─── User PopupMenu (Avatar) ─────────────────────────────────────────────────
@@ -228,53 +201,42 @@ public class MainActivity extends AppCompatActivity {
         popup.show();
     }
 
-    // ─── Lists Panel (Drawer) setup ──────────────────────────────────────────────
+    // ─── Menu Box (Column 2) setup ─────────────────────────────────────────────
 
     private void setupListsPanel() {
         // Adapter cho dynamic TodoList items
         listPanelAdapter = new ListPanelAdapter(todoList -> {
             Toast.makeText(this, "List: " + todoList.getName(),
                     Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
             // TODO: filter tasks by todoList.getId()
         });
         rvListsPanel.setLayoutManager(new LinearLayoutManager(this));
         rvListsPanel.setAdapter(listPanelAdapter);
 
         // Built-in panel items
-        LinearLayout panelInbox = listsPanel.findViewById(R.id.panel_item_inbox);
-        LinearLayout panelToday = listsPanel.findViewById(R.id.panel_item_today);
-        LinearLayout panelCalendar = listsPanel.findViewById(R.id.panel_item_calendar);
-        LinearLayout panelNotifications = listsPanel.findViewById(R.id.panel_item_notifications);
-        LinearLayout panelHelp = listsPanel.findViewById(R.id.panel_item_help);
+        LinearLayout panelInbox = menuBoxContainer.findViewById(R.id.panel_item_inbox);
+        LinearLayout panelToday = menuBoxContainer.findViewById(R.id.panel_item_today);
+        LinearLayout panelCalendar = menuBoxContainer.findViewById(R.id.panel_item_calendar);
+        LinearLayout panelNotifications = menuBoxContainer.findViewById(R.id.panel_item_notifications);
+        LinearLayout panelHelp = menuBoxContainer.findViewById(R.id.panel_item_help);
 
-        panelInbox.setOnClickListener(v -> {
-            Toast.makeText(this, "Inbox", Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+        panelInbox.setOnClickListener(v ->
+            Toast.makeText(this, "Inbox", Toast.LENGTH_SHORT).show());
 
-        panelToday.setOnClickListener(v -> {
-            Toast.makeText(this, "Đang ở trang Today", Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+        panelToday.setOnClickListener(v ->
+            Toast.makeText(this, "Đang ở trang Today", Toast.LENGTH_SHORT).show());
 
-        panelCalendar.setOnClickListener(v -> {
+        panelCalendar.setOnClickListener(v ->
             Toast.makeText(this, "Tính năng Lịch đang phát triển",
-                    Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+                    Toast.LENGTH_SHORT).show());
 
-        panelNotifications.setOnClickListener(v -> {
+        panelNotifications.setOnClickListener(v ->
             Toast.makeText(this, "Tính năng Thông báo đang phát triển",
-                    Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+                    Toast.LENGTH_SHORT).show());
 
-        panelHelp.setOnClickListener(v -> {
+        panelHelp.setOnClickListener(v ->
             Toast.makeText(this, "Tính năng Trợ giúp đang phát triển",
-                    Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+                    Toast.LENGTH_SHORT).show());
     }
 
     // ─── RecyclerView setup ──────────────────────────────────────────────────────
