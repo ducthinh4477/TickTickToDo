@@ -2,4 +2,23 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- TickTick-style colors -->
+    <color name="text_primary">#FF212121</color>
+    <color name="text_secondary">#FF757575</color>
+    <color name="text_completed">#FFBDBDBD</color>
+    <color name="divider">#1F000000</color>
+
+    <!-- Priority flag colors (TickTick style) -->
+    <color name="priority_none">#FFBDBDBD</color>
+    <color name="priority_low">#FF4A90D9</color>
+    <color name="priority_medium">#FFF5A623</color>
+    <color name="priority_high">#FFEB4D3D</color>
+
+    <!-- Checkbox -->
+    <color name="checkbox_unchecked">#FFBDBDBD</color>
+    <color name="checkbox_checked">#FF4A90D9</color>
+
+    <!-- Swipe to delete -->
+    <color name="swipe_delete_bg">#FFEB4D3D</color>
 </resources>

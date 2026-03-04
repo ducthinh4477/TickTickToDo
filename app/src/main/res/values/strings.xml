@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">TickTickToDo</string>
+    <string name="priority_flag_desc">Mức độ ưu tiên</string>
+    <string name="quick_add_hint">Thêm công việc mới…</string>
+    <string name="add_task_desc">Thêm task</string>
+    <string name="send_task_desc">Gửi task</string>
+    <string name="empty_state_message">Không có công việc nào hôm nay.\nChạm + để thêm mới!</string>
+    <string name="header_today">Today</string>
+
+    <!-- AddTaskBottomSheet -->
+    <string name="hint_task_title">Tiêu đề công việc</string>
+    <string name="hint_task_description">Thêm mô tả…</string>
+    <string name="btn_save">Lưu</string>
+    <string name="label_today">Today</string>
+    <string name="label_tomorrow">Tomorrow</string>
+    <string name="fab_add_desc">Thêm công việc mới</string>
 </resources>
