@@ -3,6 +3,7 @@ package hcmute.edu.vn.tickticktodo;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -13,16 +14,21 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
+import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.text.SimpleDateFormat;
@@ -38,11 +44,15 @@ import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.ui.AddTaskBottomSheet;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements NavigationView.OnNavigationItemSelectedListener {
 
     private TaskViewModel taskViewModel;
 
     // UI components
+    private DrawerLayout drawerLayout;
+    private NavigationView navView;
+    private ImageButton btnHamburger;
     private TextView tvHeaderDate;
     private RecyclerView rvTasks;
     private LinearLayout layoutEmpty;
@@ -69,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
         setupHeader();
+        setupDrawer();
         setupRecyclerView();
         setupQuickAdd();
         setupFab();
@@ -78,6 +89,9 @@ public class MainActivity extends AppCompatActivity {
     // ─── Khởi tạo view references ────────────────────────────────────────────────
 
     private void initViews() {
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navView = findViewById(R.id.nav_view);
+        btnHamburger = findViewById(R.id.btn_hamburger);
         tvHeaderDate = findViewById(R.id.tv_header_date);
         rvTasks = findViewById(R.id.rv_tasks);
         layoutEmpty = findViewById(R.id.layout_empty);
@@ -91,6 +105,76 @@ public class MainActivity extends AppCompatActivity {
     private void setupHeader() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
         tvHeaderDate.setText(dateFormat.format(new Date()));
+    }
+
+    // ─── Navigation Drawer setup ─────────────────────────────────────────────────
+
+    private void setupDrawer() {
+        // ── 1. Hamburger button: mở/đóng drawer ──
+        btnHamburger.setOnClickListener(v -> {
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                drawerLayout.closeDrawer(GravityCompat.START);
+            } else {
+                drawerLayout.openDrawer(GravityCompat.START);
+            }
+        });
+
+        // ── 2. Menu item listener (Settings) ──
+        navView.setNavigationItemSelectedListener(this);
+
+        // ── 3. Bottom-pinned items: Notifications + Help & More ──
+        LinearLayout navItemNotifications = navView.findViewById(R.id.nav_item_notifications);
+        LinearLayout navItemHelp = navView.findViewById(R.id.nav_item_help);
+
+        navItemNotifications.setOnClickListener(v -> {
+            Toast.makeText(this, "Tính năng Thông báo đang phát triển",
+                    Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        navItemHelp.setOnClickListener(v -> {
+            Toast.makeText(this, "Tính năng Trợ giúp đang phát triển",
+                    Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        // ── 4. Back press: đóng drawer nếu đang mở ──
+        // Sử dụng OnBackPressedDispatcher (thay thế onBackPressed() đã deprecated)
+        OnBackPressedCallback drawerBackCallback = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackPressed() {
+                drawerLayout.closeDrawer(GravityCompat.START);
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, drawerBackCallback);
+
+        // Bật/tắt callback theo trạng thái drawer
+        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override
+            public void onDrawerOpened(@NonNull View drawerView) {
+                drawerBackCallback.setEnabled(true);
+            }
+
+            @Override
+            public void onDrawerClosed(@NonNull View drawerView) {
+                drawerBackCallback.setEnabled(false);
+            }
+        });
+    }
+
+    // ─── NavigationView menu item click ──────────────────────────────────────────
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == R.id.nav_settings) {
+            Toast.makeText(this, "Tính năng Cài đặt đang phát triển",
+                    Toast.LENGTH_SHORT).show();
+        }
+
+        drawerLayout.closeDrawer(GravityCompat.START);
+        return true;
     }
 
     // ─── RecyclerView setup ──────────────────────────────────────────────────────

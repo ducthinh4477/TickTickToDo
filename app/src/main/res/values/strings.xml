@@ -14,4 +14,14 @@
     <string name="label_today">Today</string>
     <string name="label_tomorrow">Tomorrow</string>
     <string name="fab_add_desc">Thêm công việc mới</string>
+
+    <!-- Navigation Drawer -->
+    <string name="nav_guest_user">Guest User</string>
+    <string name="nav_avatar_desc">Ảnh đại diện</string>
+    <string name="nav_settings">Cài đặt</string>
+    <string name="nav_notifications">Thông báo</string>
+    <string name="nav_help">Trợ giúp</string>
+    <string name="menu_desc">Mở menu điều hướng</string>
+    <string name="navigation_drawer_open">Mở thanh điều hướng</string>
+    <string name="navigation_drawer_close">Đóng thanh điều hướng</string>
 </resources>
