@@ -4,14 +4,12 @@ plugins {
 
 android {
     namespace = "hcmute.edu.vn.tickticktodo"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "hcmute.edu.vn.tickticktodo"
-        minSdk = 36
-        targetSdk = 36
+        minSdk = 26
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -38,6 +36,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 
     // Room Database
     implementation(libs.room.runtime)

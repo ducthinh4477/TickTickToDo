@@ -16,7 +16,7 @@
         android:layout_width="22dp"
         android:layout_height="22dp"
         android:src="@drawable/ic_list"
-        app:tint="@color/text_secondary" />
+        android:tint="@color/text_secondary" />
 
     <TextView
         android:id="@+id/tv_list_name"

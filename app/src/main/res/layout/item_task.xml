@@ -67,7 +67,7 @@
         app:layout_constraintBottom_toBottomOf="@id/tv_task_title"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/tv_task_title"
-        app:tint="@color/priority_none" />
+        android:tint="@color/priority_none" />
 
     <!-- ── Divider ở đáy ── -->
     <View

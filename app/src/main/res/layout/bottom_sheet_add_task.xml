@@ -94,7 +94,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/priority_flag_desc"
             android:src="@drawable/ic_flag"
-            app:tint="@color/priority_none" />
+            android:tint="@color/priority_none" />
 
         <!-- Spacer -->
         <View

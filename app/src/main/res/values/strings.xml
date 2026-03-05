@@ -59,4 +59,9 @@
 
     <!-- Lists panel -->
     <string name="panel_inbox">Inbox</string>
+
+    <!-- Drawer Menu items -->
+    <string name="menu_next_7_days">Next 7 Days</string>
+    <string name="menu_completed">Completed</string>
+    <string name="menu_trash">Trash</string>
 </resources>
