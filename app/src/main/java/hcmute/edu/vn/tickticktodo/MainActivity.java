@@ -15,7 +15,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -45,8 +46,8 @@ public class MainActivity extends AppCompatActivity {
 
     private TaskViewModel taskViewModel;
 
-    // UI — Menu Box
-    private LinearLayout menuBoxContainer;
+    // UI — Drawer
+    private DrawerLayout drawerLayout;
     private RecyclerView rvListsPanel;
     private ListPanelAdapter listPanelAdapter;
 
@@ -92,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        menuBoxContainer = findViewById(R.id.menuBoxContainer);
+        drawerLayout     = findViewById(R.id.drawer_layout);
         rvListsPanel     = findViewById(R.id.rv_lists_panel);
 
         navAvatar        = findViewById(R.id.nav_avatar);
@@ -118,10 +119,10 @@ public class MainActivity extends AppCompatActivity {
         tvHeaderDate.setText(dateFormat.format(new Date()));
 
         btnHamburger.setOnClickListener(v -> {
-            if (menuBoxContainer.getVisibility() == View.VISIBLE) {
-                menuBoxContainer.setVisibility(View.GONE);
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                drawerLayout.closeDrawer(GravityCompat.START);
             } else {
-                menuBoxContainer.setVisibility(View.VISIBLE);
+                drawerLayout.openDrawer(GravityCompat.START);
             }
         });
 
@@ -174,17 +175,17 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected("Completed"));
         findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected("Trash"));
         findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {
-            menuBoxContainer.setVisibility(View.GONE);
+            drawerLayout.closeDrawer(GravityCompat.START);
             Toast.makeText(this, "Tính năng Thông báo đang phát triển", Toast.LENGTH_SHORT).show();
         });
         findViewById(R.id.panel_item_help).setOnClickListener(v -> {
-            menuBoxContainer.setVisibility(View.GONE);
+            drawerLayout.closeDrawer(GravityCompat.START);
             Toast.makeText(this, "Tính năng Trợ giúp đang phát triển", Toast.LENGTH_SHORT).show();
         });
     }
 
     private void onPanelItemSelected(String label) {
-        menuBoxContainer.setVisibility(View.GONE);
+        drawerLayout.closeDrawer(GravityCompat.START);
         tvHeaderTitle.setText(label);
         Toast.makeText(this, "Đang tải: " + label, Toast.LENGTH_SHORT).show();
     }
