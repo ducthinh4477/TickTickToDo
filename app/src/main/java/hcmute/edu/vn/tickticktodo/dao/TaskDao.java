@@ -59,6 +59,14 @@ public interface TaskDao {
     @Query("UPDATE tasks SET is_completed = :isCompleted WHERE id = :taskId")
     void markTaskAsCompleted(long taskId, boolean isCompleted);
 
+    // ─── Lấy tất cả task (hoàn thành + chưa hoàn thành) trong một ngày cụ thể ──
+    // Dùng cho CalendarActivity: lọc theo khoảng [startOfDay, endOfDay)
+    // Sắp xếp: chưa hoàn thành trước, sau đó theo priority giảm dần, cuối cùng theo due_date
+    @Query("SELECT * FROM tasks " +
+           "WHERE due_date >= :startOfDay AND due_date < :endOfDay " +
+           "ORDER BY is_completed ASC, priority DESC, due_date ASC")
+    LiveData<List<Task>> getTasksByDate(long startOfDay, long endOfDay);
+
     // ─── Xóa tất cả task đã hoàn thành ─────────────────────────────────────────
     @Query("DELETE FROM tasks WHERE is_completed = 1")
     void deleteAllCompleted();

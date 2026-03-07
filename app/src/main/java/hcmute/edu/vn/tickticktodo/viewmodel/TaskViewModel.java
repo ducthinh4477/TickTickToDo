@@ -56,6 +56,17 @@ public class TaskViewModel extends AndroidViewModel {
         return repository.getAllTasks();
     }
 
+    /**
+     * Truy vấn tất cả task (hoàn thành + chưa hoàn thành) trong một ngày cụ thể.
+     * CalendarActivity gọi method này mỗi khi user chọn ngày khác trên CalendarView.
+     *
+     * @param startOfDay timestamp đầu ngày (00:00:00.000)
+     * @param endOfDay   timestamp đầu ngày kế tiếp (exclusive)
+     */
+    public LiveData<List<Task>> getTasksByDate(long startOfDay, long endOfDay) {
+        return repository.getTasksByDate(startOfDay, endOfDay);
+    }
+
     public LiveData<Task> getTaskById(long taskId) {
         return repository.getTaskById(taskId);
     }

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    item_icon_picker.xml
+    Một ô icon trong lưới chọn icon của AddListDialog.
+    Gồm: nền tròn (có thể highlight khi chọn) + ImageView icon + TextView tên.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="72dp"
+    android:layout_height="84dp"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <!-- Nền tròn chứa icon; background thay đổi khi selected -->
+    <FrameLayout
+        android:id="@+id/fl_icon_bg"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/bg_icon_picker_normal">
+
+        <ImageView
+            android:id="@+id/iv_icon"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_gravity="center"
+            android:scaleType="centerInside" />
+
+    </FrameLayout>
+
+    <!-- Tên icon -->
+    <TextView
+        android:id="@+id/tv_icon_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/text_secondary"
+        android:textSize="10sp" />
+
+</LinearLayout>
+

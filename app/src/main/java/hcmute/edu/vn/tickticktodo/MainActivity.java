@@ -15,7 +15,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -35,20 +36,26 @@ import java.util.Locale;
 import hcmute.edu.vn.tickticktodo.adapter.HeaderAdapter;
 import hcmute.edu.vn.tickticktodo.adapter.ListPanelAdapter;
 import hcmute.edu.vn.tickticktodo.adapter.TaskAdapter;
+import hcmute.edu.vn.tickticktodo.helper.LanguageManager;
 import hcmute.edu.vn.tickticktodo.helper.SwipeToDeleteCallback;
 import hcmute.edu.vn.tickticktodo.model.Task;
+import hcmute.edu.vn.tickticktodo.ui.AddListDialog;
 import hcmute.edu.vn.tickticktodo.ui.AddTaskBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.CalendarActivity;
+import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
+import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.TaskDetailActivity;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private TaskViewModel taskViewModel;
 
-    // UI — Menu Box
-    private LinearLayout menuBoxContainer;
+    // UI — Drawer
+    private DrawerLayout drawerLayout;
     private RecyclerView rvListsPanel;
     private ListPanelAdapter listPanelAdapter;
+    private ImageButton btnAddList;
 
     // UI — Header
     private TextView tvHeaderTitle;
@@ -57,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton navTask;
     private ImageButton navCalendar;
     private ImageButton navSearch;
+    private ImageButton navTimer;
     private TextView tvHeaderDate;
     private ImageButton btnSort;
     private ImageButton btnMore;
@@ -82,8 +90,8 @@ public class MainActivity extends AppCompatActivity {
         initViews();
         setupHeader();
         setupNavRail();
-        setupListsPanel();
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
+        setupListsPanel();
         initAdapters();
         setupRecyclerView();
         setupViewModel();
@@ -92,13 +100,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        menuBoxContainer = findViewById(R.id.menuBoxContainer);
+        drawerLayout     = findViewById(R.id.drawer_layout);
         rvListsPanel     = findViewById(R.id.rv_lists_panel);
+        btnAddList       = findViewById(R.id.btn_add_list);
 
         navAvatar        = findViewById(R.id.nav_avatar);
         navTask          = findViewById(R.id.nav_task);
         navCalendar      = findViewById(R.id.nav_calendar);
         navSearch        = findViewById(R.id.nav_search);
+        navTimer         = findViewById(R.id.nav_timer);
 
         btnHamburger     = findViewById(R.id.btn_hamburger);
         tvHeaderTitle    = findViewById(R.id.tv_header_today);
@@ -118,31 +128,34 @@ public class MainActivity extends AppCompatActivity {
         tvHeaderDate.setText(dateFormat.format(new Date()));
 
         btnHamburger.setOnClickListener(v -> {
-            if (menuBoxContainer.getVisibility() == View.VISIBLE) {
-                menuBoxContainer.setVisibility(View.GONE);
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                drawerLayout.closeDrawer(GravityCompat.START);
             } else {
-                menuBoxContainer.setVisibility(View.VISIBLE);
+                drawerLayout.openDrawer(GravityCompat.START);
             }
         });
 
         btnSort.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Sắp xếp đang phát triển", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, R.string.toast_sort_wip, Toast.LENGTH_SHORT).show());
 
         btnMore.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Thêm tùy chọn đang phát triển", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, R.string.toast_more_wip, Toast.LENGTH_SHORT).show());
     }
 
     private void setupNavRail() {
         navAvatar.setOnClickListener(this::showUserPopupMenu);
 
         navTask.setOnClickListener(v ->
-                Toast.makeText(this, "Đang ở trang Today", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, R.string.toast_on_today_page, Toast.LENGTH_SHORT).show());
 
         navCalendar.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Lịch đang phát triển", Toast.LENGTH_SHORT).show());
+                startActivity(CalendarActivity.newIntent(this)));
 
         navSearch.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Tìm kiếm đang phát triển", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, R.string.toast_search_wip, Toast.LENGTH_SHORT).show());
+
+        navTimer.setOnClickListener(v ->
+                startActivity(CountdownActivity.newIntent(this)));
     }
 
     private void showUserPopupMenu(View anchor) {
@@ -151,11 +164,12 @@ public class MainActivity extends AppCompatActivity {
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.menu_settings) {
-                Toast.makeText(this, "Tính năng Cài đặt đang phát triển", Toast.LENGTH_SHORT).show();
+                // Mở dialog chọn ngôn ngữ thay vì Toast
+                LanguageSelectionDialog.show(this);
             } else if (id == R.id.menu_statistics) {
-                Toast.makeText(this, "Tính năng Thống kê đang phát triển", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_statistics_wip, Toast.LENGTH_SHORT).show();
             } else if (id == R.id.menu_sign_out) {
-                Toast.makeText(this, "Tính năng Đăng xuất đang phát triển", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_signout_wip, Toast.LENGTH_SHORT).show();
             }
             return true;
         });
@@ -168,23 +182,34 @@ public class MainActivity extends AppCompatActivity {
         rvListsPanel.setLayoutManager(new LinearLayoutManager(this));
         rvListsPanel.setAdapter(listPanelAdapter);
 
-        findViewById(R.id.panel_item_today).setOnClickListener(v -> onPanelItemSelected("Today"));
-        findViewById(R.id.panel_item_next7days).setOnClickListener(v -> onPanelItemSelected("Next 7 Days"));
-        findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected("Inbox"));
-        findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected("Completed"));
-        findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected("Trash"));
+        // Nút "+" bên cạnh tiêu đề "Lists" → mở AddListDialog
+        btnAddList.setOnClickListener(v ->
+                AddListDialog.show(this, taskViewModel));
+
+        findViewById(R.id.panel_item_today).setOnClickListener(v -> onPanelItemSelected(getString(R.string.header_today)));
+        findViewById(R.id.panel_item_next7days).setOnClickListener(v -> {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            startActivity(CalendarActivity.newIntent(this));
+        });
+        findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected(getString(R.string.panel_inbox)));
+        findViewById(R.id.panel_item_focus_timer).setOnClickListener(v -> {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            startActivity(CountdownActivity.newIntent(this));
+        });
+        findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_completed)));
+        findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_trash)));
         findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {
-            menuBoxContainer.setVisibility(View.GONE);
-            Toast.makeText(this, "Tính năng Thông báo đang phát triển", Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+            Toast.makeText(this, R.string.toast_notifications_wip, Toast.LENGTH_SHORT).show();
         });
         findViewById(R.id.panel_item_help).setOnClickListener(v -> {
-            menuBoxContainer.setVisibility(View.GONE);
-            Toast.makeText(this, "Tính năng Trợ giúp đang phát triển", Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawer(GravityCompat.START);
+            Toast.makeText(this, R.string.toast_help_wip, Toast.LENGTH_SHORT).show();
         });
     }
 
     private void onPanelItemSelected(String label) {
-        menuBoxContainer.setVisibility(View.GONE);
+        drawerLayout.closeDrawer(GravityCompat.START);
         tvHeaderTitle.setText(label);
         Toast.makeText(this, "Đang tải: " + label, Toast.LENGTH_SHORT).show();
     }
@@ -232,8 +257,8 @@ public class MainActivity extends AppCompatActivity {
         final Task finalDeleted = deletedTask;
         taskViewModel.delete(finalDeleted);
 
-        Snackbar.make(rvTasks, "Đã xóa: " + finalDeleted.getTitle(), Snackbar.LENGTH_LONG)
-                .setAction("Undo", v -> taskViewModel.insert(new Task(
+        Snackbar.make(rvTasks, getString(R.string.snackbar_deleted, finalDeleted.getTitle()), Snackbar.LENGTH_LONG)
+                .setAction(R.string.snackbar_undo, v -> taskViewModel.insert(new Task(
                         finalDeleted.getTitle(),
                         finalDeleted.getDescription(),
                         finalDeleted.getDueDate(),

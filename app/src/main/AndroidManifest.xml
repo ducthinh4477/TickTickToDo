@@ -25,6 +25,14 @@
             android:name=".ui.TaskDetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.CountdownActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.CalendarActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

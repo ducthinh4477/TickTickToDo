@@ -42,7 +42,8 @@ public class ListPanelAdapter extends ListAdapter<TodoList, ListPanelAdapter.Vie
                 @Override
                 public boolean areContentsTheSame(@NonNull TodoList oldItem, @NonNull TodoList newItem) {
                     return oldItem.getName().equals(newItem.getName())
-                            && oldItem.getColorRes() == newItem.getColorRes();
+                            && oldItem.getColorRes() == newItem.getColorRes()
+                            && oldItem.getIconResId() == newItem.getIconResId();
                 }
             };
 
@@ -59,7 +60,14 @@ public class ListPanelAdapter extends ListAdapter<TodoList, ListPanelAdapter.Vie
         TodoList item = getItem(position);
         holder.tvName.setText(item.getName());
 
-        // Dùng colorRes nếu > 0, mặc định text_secondary
+        // ── Icon: usar iconResId si está disponible, si no ic_list por defecto
+        if (item.getIconResId() != 0) {
+            holder.ivIcon.setImageResource(item.getIconResId());
+        } else {
+            holder.ivIcon.setImageResource(R.drawable.ic_list);
+        }
+
+        // ── Tint: usar colorRes si está disponible, si no text_secondary ──────
         int color = item.getColorRes() > 0
                 ? item.getColorRes()
                 : ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary);

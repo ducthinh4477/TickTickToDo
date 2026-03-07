@@ -21,16 +21,15 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 
+import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
 /**
  * Màn hình xem và chỉnh sửa chi tiết một Task.
- * Nhận taskId từ Intent, load Task từ Room qua ViewModel,
- * cho phép chỉnh sửa và lưu lại.
  */
-public class TaskDetailActivity extends AppCompatActivity {
+public class TaskDetailActivity extends BaseActivity {
 
     /** Key dùng để truyền taskId qua Intent */
     public static final String EXTRA_TASK_ID = "extra_task_id";

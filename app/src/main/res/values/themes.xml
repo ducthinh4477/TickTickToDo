@@ -6,4 +6,11 @@
     </style>
 
     <style name="Theme.TickTickToDo" parent="Base.Theme.TickTickToDo" />
+
+    <!-- Style cho ngày trong CalendarView -->
+    <style name="CalendarDateText" parent="android:TextAppearance">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
 </resources>
+
