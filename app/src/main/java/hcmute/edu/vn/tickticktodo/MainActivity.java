@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -14,14 +15,19 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.res.ColorStateList;
+import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -32,31 +38,37 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.adapter.HeaderAdapter;
 import hcmute.edu.vn.tickticktodo.adapter.ListPanelAdapter;
 import hcmute.edu.vn.tickticktodo.adapter.TaskAdapter;
 import hcmute.edu.vn.tickticktodo.helper.SwipeToDeleteCallback;
 import hcmute.edu.vn.tickticktodo.model.Task;
+import hcmute.edu.vn.tickticktodo.ui.AddListDialog;
 import hcmute.edu.vn.tickticktodo.ui.AddTaskBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.CalendarActivity;
+import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
+import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
+import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.TaskDetailActivity;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private TaskViewModel taskViewModel;
 
-    // UI — Menu Box
+    // UI — Menu overlay
+    private FrameLayout menuOverlay;
+    private View menuBackdrop;
     private LinearLayout menuBoxContainer;
     private RecyclerView rvListsPanel;
     private ListPanelAdapter listPanelAdapter;
+    private ImageButton btnAddList;
 
     // UI — Header
     private TextView tvHeaderTitle;
     private ImageView navAvatar;
     private ImageButton btnHamburger;
-    private ImageButton navTask;
-    private ImageButton navCalendar;
-    private ImageButton navSearch;
     private TextView tvHeaderDate;
     private ImageButton btnSort;
     private ImageButton btnMore;
@@ -68,6 +80,11 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnSendTask;
     private FloatingActionButton fabAddTask;
 
+    // UI — Nav Rail items
+    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemProfile;
+    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconProfile;
+    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelProfile;
+
     // Adapters
     private TaskAdapter incompleteAdapter;
     private HeaderAdapter headerAdapter;
@@ -77,13 +94,18 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Bật edge-to-edge để layout nhận đúng window insets (tai thỏ / status bar)
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         setContentView(R.layout.activity_main);
 
         initViews();
+        setupNavRailInsets();   // ← xử lý paddingTop theo status bar
         setupHeader();
-        setupNavRail();
-        setupListsPanel();
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
+        setupMenuPanel();
+        setupNavRail();
         initAdapters();
         setupRecyclerView();
         setupViewModel();
@@ -91,15 +113,16 @@ public class MainActivity extends AppCompatActivity {
         setupFab();
     }
 
+    // ─── View binding ───────────────────────────────────────────────────────
+
     private void initViews() {
+        menuOverlay      = findViewById(R.id.menu_overlay);
+        menuBackdrop     = findViewById(R.id.menu_backdrop);
         menuBoxContainer = findViewById(R.id.menuBoxContainer);
         rvListsPanel     = findViewById(R.id.rv_lists_panel);
+        btnAddList       = findViewById(R.id.btn_add_list);
 
         navAvatar        = findViewById(R.id.nav_avatar);
-        navTask          = findViewById(R.id.nav_task);
-        navCalendar      = findViewById(R.id.nav_calendar);
-        navSearch        = findViewById(R.id.nav_search);
-
         btnHamburger     = findViewById(R.id.btn_hamburger);
         tvHeaderTitle    = findViewById(R.id.tv_header_today);
         tvHeaderDate     = findViewById(R.id.tv_header_date);
@@ -111,38 +134,113 @@ public class MainActivity extends AppCompatActivity {
         etQuickAdd       = findViewById(R.id.et_quick_add);
         btnSendTask      = findViewById(R.id.btn_send_task);
         fabAddTask       = findViewById(R.id.fab_add_task);
+
+        // Nav Rail items
+        navItemHome     = findViewById(R.id.nav_item_home);
+        navItemCalendar = findViewById(R.id.nav_item_calendar);
+        navItemFocus    = findViewById(R.id.nav_item_focus);
+        navItemProfile  = findViewById(R.id.nav_item_profile);
+        navIconHome     = findViewById(R.id.nav_icon_home);
+        navIconCalendar = findViewById(R.id.nav_icon_calendar);
+        navIconFocus    = findViewById(R.id.nav_icon_focus);
+        navIconProfile  = findViewById(R.id.nav_icon_profile);
+        navLabelHome    = findViewById(R.id.nav_label_home);
+        navLabelCalendar= findViewById(R.id.nav_label_calendar);
+        navLabelFocus   = findViewById(R.id.nav_label_focus);
+        navLabelProfile = findViewById(R.id.nav_label_profile);
+
+        // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
+        FrameLayout contentFrame = findViewById(R.id.content_frame);
+        contentFrame.getViewTreeObserver().addOnGlobalLayoutListener(
+                new ViewTreeObserver.OnGlobalLayoutListener() {
+                    @Override
+                    public void onGlobalLayout() {
+                        contentFrame.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                        int drawerWidth = contentFrame.getWidth() * 2 / 3;
+                        ViewGroup.LayoutParams lp = menuBoxContainer.getLayoutParams();
+                        lp.width = drawerWidth;
+                        menuBoxContainer.setLayoutParams(lp);
+                    }
+                });
     }
+
+    // ─── Header ─────────────────────────────────────────────────────────────
 
     private void setupHeader() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
         tvHeaderDate.setText(dateFormat.format(new Date()));
 
-        btnHamburger.setOnClickListener(v -> {
-            if (menuBoxContainer.getVisibility() == View.VISIBLE) {
-                menuBoxContainer.setVisibility(View.GONE);
-            } else {
-                menuBoxContainer.setVisibility(View.VISIBLE);
-            }
-        });
+        btnHamburger.setOnClickListener(v -> toggleMenu());
 
         btnSort.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Sắp xếp đang phát triển", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, R.string.toast_sort_wip, Toast.LENGTH_SHORT).show());
 
         btnMore.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Thêm tùy chọn đang phát triển", Toast.LENGTH_SHORT).show());
+                Toast.makeText(this, R.string.toast_more_wip, Toast.LENGTH_SHORT).show());
     }
 
-    private void setupNavRail() {
+    // ─── Slide-in menu ──────────────────────────────────────────────────────
+
+    private void toggleMenu() {
+        if (menuOverlay.getVisibility() == View.VISIBLE) {
+            closeMenu();
+        } else {
+            openMenu();
+        }
+    }
+
+    private void openMenu() {
+        menuOverlay.setVisibility(View.VISIBLE);
+        float drawerWidth = menuBoxContainer.getLayoutParams().width;
+        menuBoxContainer.setTranslationX(-drawerWidth);
+        menuBoxContainer.animate().translationX(0).setDuration(250).start();
+        menuBackdrop.setAlpha(0f);
+        menuBackdrop.animate().alpha(1f).setDuration(250).start();
+    }
+
+    private void closeMenu() {
+        float drawerWidth = menuBoxContainer.getLayoutParams().width;
+        menuBoxContainer.animate().translationX(-drawerWidth).setDuration(200)
+                .withEndAction(() -> menuOverlay.setVisibility(View.GONE))
+                .start();
+        menuBackdrop.animate().alpha(0f).setDuration(200).start();
+    }
+
+    private void setupMenuPanel() {
+        listPanelAdapter = new ListPanelAdapter(todoList -> {
+            closeMenu();
+            Toast.makeText(this, "List: " + todoList.getName(), Toast.LENGTH_SHORT).show();
+        });
+        rvListsPanel.setLayoutManager(new LinearLayoutManager(this));
+        rvListsPanel.setAdapter(listPanelAdapter);
+
         navAvatar.setOnClickListener(this::showUserPopupMenu);
+        btnAddList.setOnClickListener(v -> AddListDialog.show(this, taskViewModel));
 
-        navTask.setOnClickListener(v ->
-                Toast.makeText(this, "Đang ở trang Today", Toast.LENGTH_SHORT).show());
+        // Tapping backdrop closes menu
+        menuBackdrop.setOnClickListener(v -> closeMenu());
 
-        navCalendar.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Lịch đang phát triển", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.panel_item_today).setOnClickListener(v -> onPanelItemSelected(getString(R.string.header_today)));
+        findViewById(R.id.panel_item_next7days).setOnClickListener(v -> {
+            closeMenu();
+            startActivity(CalendarActivity.newIntent(this));
+        });
+        findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected(getString(R.string.panel_inbox)));
+        findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_completed)));
+        findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_trash)));
+        findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {
+            closeMenu();
+            Toast.makeText(this, R.string.toast_notifications_wip, Toast.LENGTH_SHORT).show();
+        });
+        findViewById(R.id.panel_item_help).setOnClickListener(v -> {
+            closeMenu();
+            Toast.makeText(this, R.string.toast_help_wip, Toast.LENGTH_SHORT).show();
+        });
+    }
 
-        navSearch.setOnClickListener(v ->
-                Toast.makeText(this, "Tính năng Tìm kiếm đang phát triển", Toast.LENGTH_SHORT).show());
+    private void onPanelItemSelected(String label) {
+        closeMenu();
+        tvHeaderTitle.setText(label);
     }
 
     private void showUserPopupMenu(View anchor) {
@@ -151,43 +249,85 @@ public class MainActivity extends AppCompatActivity {
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.menu_settings) {
-                Toast.makeText(this, "Tính năng Cài đặt đang phát triển", Toast.LENGTH_SHORT).show();
+                LanguageSelectionDialog.show(this);
+            } else if (id == R.id.menu_theme) {
+                ThemeSelectionDialog.show(this);
             } else if (id == R.id.menu_statistics) {
-                Toast.makeText(this, "Tính năng Thống kê đang phát triển", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_statistics_wip, Toast.LENGTH_SHORT).show();
             } else if (id == R.id.menu_sign_out) {
-                Toast.makeText(this, "Tính năng Đăng xuất đang phát triển", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_signout_wip, Toast.LENGTH_SHORT).show();
             }
             return true;
         });
         popup.show();
     }
 
-    private void setupListsPanel() {
-        listPanelAdapter = new ListPanelAdapter(todoList ->
-                Toast.makeText(this, "List: " + todoList.getName(), Toast.LENGTH_SHORT).show());
-        rvListsPanel.setLayoutManager(new LinearLayoutManager(this));
-        rvListsPanel.setAdapter(listPanelAdapter);
+    // ─── Nav Rail ───────────────────────────────────────────────────────────
 
-        findViewById(R.id.panel_item_today).setOnClickListener(v -> onPanelItemSelected("Today"));
-        findViewById(R.id.panel_item_next7days).setOnClickListener(v -> onPanelItemSelected("Next 7 Days"));
-        findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected("Inbox"));
-        findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected("Completed"));
-        findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected("Trash"));
-        findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {
-            menuBoxContainer.setVisibility(View.GONE);
-            Toast.makeText(this, "Tính năng Thông báo đang phát triển", Toast.LENGTH_SHORT).show();
-        });
-        findViewById(R.id.panel_item_help).setOnClickListener(v -> {
-            menuBoxContainer.setVisibility(View.GONE);
-            Toast.makeText(this, "Tính năng Trợ giúp đang phát triển", Toast.LENGTH_SHORT).show();
+    /**
+     * Áp dụng paddingTop cho nav_rail = status bar height + 16dp khoảng an toàn,
+     * đảm bảo btn_hamburger không bị che bởi tai thỏ / camera / đồng hồ.
+     */
+    private void setupNavRailInsets() {
+        LinearLayout navRail = findViewById(R.id.nav_rail);
+        ViewCompat.setOnApplyWindowInsetsListener(navRail, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            int extraDp = (int) (16 * view.getResources().getDisplayMetrics().density);
+            view.setPadding(
+                    view.getPaddingLeft(),
+                    insets.top + extraDp,   // status bar + 16dp khoảng an toàn
+                    view.getPaddingRight(),
+                    view.getPaddingBottom()
+            );
+            return WindowInsetsCompat.CONSUMED;
         });
     }
 
-    private void onPanelItemSelected(String label) {
-        menuBoxContainer.setVisibility(View.GONE);
-        tvHeaderTitle.setText(label);
-        Toast.makeText(this, "Đang tải: " + label, Toast.LENGTH_SHORT).show();
+    private void setupNavRail() {
+        navItemHome.setOnClickListener(v -> selectNavItem(R.id.nav_item_home));
+
+        navItemCalendar.setOnClickListener(v -> {
+            selectNavItem(R.id.nav_item_calendar);
+            startActivity(CalendarActivity.newIntent(this));
+        });
+
+        navItemFocus.setOnClickListener(v -> {
+            selectNavItem(R.id.nav_item_focus);
+            startActivity(CountdownActivity.newIntent(this));
+        });
+
+        navItemProfile.setOnClickListener(v -> {
+            selectNavItem(R.id.nav_item_profile);
+            showUserPopupMenu(navItemProfile);
+        });
+
+        // Highlight Home by default
+        selectNavItem(R.id.nav_item_home);
     }
+
+    private void selectNavItem(int selectedId) {
+        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_profile};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconProfile};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelProfile};
+
+        int accent    = getResources().getColor(R.color.accent_primary, getTheme());
+        int secondary = getResources().getColor(R.color.text_secondary, getTheme());
+
+        for (int i = 0; i < ids.length; i++) {
+            boolean selected = ids[i] == selectedId;
+            int color = selected ? accent : secondary;
+            icons[i].setImageTintList(ColorStateList.valueOf(color));
+            labels[i].setTextColor(color);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        selectNavItem(R.id.nav_item_home);
+    }
+
+    // ─── Adapters ───────────────────────────────────────────────────────────
 
     private void initAdapters() {
         incompleteAdapter = new TaskAdapter(
@@ -232,22 +372,24 @@ public class MainActivity extends AppCompatActivity {
         final Task finalDeleted = deletedTask;
         taskViewModel.delete(finalDeleted);
 
-        Snackbar.make(rvTasks, "Đã xóa: " + finalDeleted.getTitle(), Snackbar.LENGTH_LONG)
-                .setAction("Undo", v -> taskViewModel.insert(new Task(
+        Snackbar.make(rvTasks, getString(R.string.snackbar_deleted, finalDeleted.getTitle()), Snackbar.LENGTH_LONG)
+                .setAction(R.string.snackbar_undo, v -> taskViewModel.insert(new Task(
                         finalDeleted.getTitle(),
                         finalDeleted.getDescription(),
                         finalDeleted.getDueDate(),
                         finalDeleted.isCompleted(),
                         finalDeleted.getPriority()
                 )))
+                .setActionTextColor(getResources().getColor(R.color.accent_primary, getTheme()))
                 .show();
     }
 
+    // ─── Quick add ──────────────────────────────────────────────────────────
+
     private void setupQuickAdd() {
         etQuickAdd.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) { }
-            @Override public void afterTextChanged(Editable s) { }
-
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            @Override public void afterTextChanged(Editable s) {}
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 btnSendTask.setVisibility(s.toString().trim().isEmpty() ? View.GONE : View.VISIBLE);
@@ -280,10 +422,14 @@ public class MainActivity extends AppCompatActivity {
         hideKeyboard();
     }
 
+    // ─── FAB ────────────────────────────────────────────────────────────────
+
     private void setupFab() {
         fabAddTask.setOnClickListener(v ->
                 AddTaskBottomSheet.newInstance().show(getSupportFragmentManager(), "AddTask"));
     }
+
+    // ─── ViewModel / LiveData ───────────────────────────────────────────────
 
     private void setupViewModel() {
         taskViewModel.getTodayIncompleteTasks().observe(this, incompleteTasks -> {
@@ -312,11 +458,22 @@ public class MainActivity extends AppCompatActivity {
         rvTasks.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
     }
 
+    // ─── Utils ──────────────────────────────────────────────────────────────
+
     private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         View focus = getCurrentFocus();
         if (imm != null && focus != null) {
             imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (menuOverlay.getVisibility() == View.VISIBLE) {
+            closeMenu();
+        } else {
+            super.onBackPressed();
         }
     }
 }

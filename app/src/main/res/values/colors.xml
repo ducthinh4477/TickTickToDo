@@ -1,28 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- ═══════════════════════════════════════════════════════
+         UpTodo LIGHT Theme Color Palette
+         Bộ màu sáng — sử dụng khi chế độ DayNight ở trạng thái Light.
+         Bộ màu tối nằm trong values-night/colors.xml
+         ═══════════════════════════════════════════════════════ -->
 
-    <!-- TickTick-style colors -->
-    <color name="text_primary">#FF212121</color>
-    <color name="text_secondary">#FF757575</color>
-    <color name="text_completed">#FFBDBDBD</color>
-    <color name="divider">#1F000000</color>
+    <!-- Core backgrounds -->
+    <color name="background_primary">#FFF5F5F5</color>
+    <color name="background_surface">#FFFFFFFF</color>
+    <color name="background_card">#FFE8E8E8</color>
+    <color name="background_elevated">#FFFAFAFA</color>
+    <color name="background_input">#FFF0F0F0</color>
 
-    <!-- Priority flag colors (TickTick style) -->
-    <color name="priority_none">#FFBDBDBD</color>
-    <color name="priority_low">#FF4A90D9</color>
-    <color name="priority_medium">#FFF5A623</color>
-    <color name="priority_high">#FFEB4D3D</color>
+    <!-- Accent (giữ nguyên để nhất quán thương hiệu) -->
+    <color name="accent_primary">#FF7B61FF</color>
+    <color name="accent_secondary">#FF6C6DD4</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FF1C1C1E</color>
+    <color name="text_secondary">#FF6E6E73</color>
+    <color name="text_hint">#FFAEAEB2</color>
+    <color name="text_completed">#FFC7C7CC</color>
+
+    <!-- Divider -->
+    <color name="divider">#1A000000</color>
+
+    <!-- Priority / category tag colors -->
+    <color name="priority_none">#FF8E8E93</color>
+    <color name="priority_low">#FF7B61FF</color>
+    <color name="priority_medium">#FFFF9500</color>
+    <color name="priority_high">#FFFF3B30</color>
+
+    <!-- Category tag colors -->
+    <color name="tag_work">#FFFF9500</color>
+    <color name="tag_study">#FF34C759</color>
+    <color name="tag_home">#FFFF2D55</color>
+    <color name="tag_health">#FF5AC8FA</color>
 
     <!-- Checkbox -->
-    <color name="checkbox_unchecked">#FFBDBDBD</color>
-    <color name="checkbox_checked">#FF4A90D9</color>
+    <color name="checkbox_unchecked">#FFAEAEB2</color>
+    <color name="checkbox_checked">#FF7B61FF</color>
 
     <!-- Swipe to delete -->
-    <color name="swipe_delete_bg">#FFEB4D3D</color>
+    <color name="swipe_delete_bg">#FFFF3B30</color>
 
-    <!-- Nav Rail / Panel -->
-    <color name="nav_rail_bg">#F5F5F5</color>
-    <color name="panel_selected">#1A4A90D9</color>
+    <!-- Bottom Nav -->
+    <color name="bottom_nav_bg">#FFFFFFFF</color>
+    <color name="bottom_nav_active">#FF7B61FF</color>
+    <color name="bottom_nav_inactive">#FF8E8E93</color>
+
+    <!-- Compat -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="nav_rail_bg">#FFFFFFFF</color>
+    <color name="panel_selected">#1A7B61FF</color>
 </resources>
