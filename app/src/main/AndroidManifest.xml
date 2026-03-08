@@ -2,6 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- ══ Permissions ══ -->
+    <!-- Hiển thị notification (bắt buộc từ Android 13 / API 33) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Đặt exact alarm chính xác đến giây (bắt buộc từ Android 12 / API 31) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Nhận broadcast khi thiết bị khởi động lại để restore alarm -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,15 +19,21 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TickTickToDo">
+        <!-- ══ Splash / Welcome screen — Launcher Activity ══ -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".ui.SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TickTickToDo"
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
 
         <activity
             android:name=".ui.TaskDetailActivity"
@@ -37,6 +51,26 @@
         <activity
             android:name=".ui.StatisticsActivity"
             android:exported="false" />
+
+        <!-- TimerService: chạy logic đếm ngược Pomodoro, giao tiếp qua Binder + LocalBroadcast -->
+        <service
+            android:name=".service.TimerService"
+            android:exported="false" />
+
+        <!-- TaskReminderReceiver: nhận Intent từ AlarmManager → hiển thị Notification -->
+        <receiver
+            android:name=".receiver.TaskReminderReceiver"
+            android:exported="false" />
+
+        <!-- BootReceiver: restore tất cả alarm sau khi thiết bị khởi động lại -->
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

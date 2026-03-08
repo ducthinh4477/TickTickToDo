@@ -1,15 +1,13 @@
 package hcmute.edu.vn.tickticktodo.ui;
 
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.media.AudioAttributes;
-import android.media.MediaPlayer;
-import android.media.RingtoneManager;
-import android.net.Uri;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.CountDownTimer;
-import android.os.Handler;
-import android.os.Looper;
+import android.os.IBinder;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -18,18 +16,28 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.service.TimerService;
 
+/**
+ * CountdownActivity — Giao diện Pomodoro Timer.
+ *
+ * Kiến trúc giao tiếp với TimerService:
+ *   - bindService()  : lấy Binder để gọi start/pause/stop/setMode
+ *   - LocalBroadcast : nhận ACTION_TICK (mỗi giây) và ACTION_FINISH (khi hết giờ)
+ *
+ * Activity KHÔNG còn chứa CountDownTimer — toàn bộ logic nằm trong TimerService.
+ */
 public class CountdownActivity extends BaseActivity {
 
     // Timer modes (minutes)
@@ -37,31 +45,58 @@ public class CountdownActivity extends BaseActivity {
     private static final int MODE_SHORT_BREAK = 5;
     private static final int MODE_LONG_BREAK  = 15;
 
-    // State
-    private enum TimerState { IDLE, RUNNING, PAUSED }
+    // ── Service binding ──────────────────────────────────────────────────────────
+    private TimerService timerService;
+    private boolean      isBound = false;
 
-    private int currentModeMins = MODE_POMODORO;
-    private long totalMillis;
-    private long millisRemaining;
-    private TimerState timerState = TimerState.IDLE;
-    private int sessionCount = 1;
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            TimerService.TimerBinder tb = (TimerService.TimerBinder) binder;
+            timerService = tb.getService();
+            isBound = true;
+            // Sync lại UI với trạng thái hiện tại của Service
+            syncUiWithService();
+        }
 
-    private CountDownTimer countDownTimer;
-    private MediaPlayer mediaPlayer;
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isBound = false;
+            timerService = null;
+        }
+    };
 
-    // Views
+    // ── LocalBroadcast receiver ──────────────────────────────────────────────────
+    private final BroadcastReceiver timerReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (TimerService.ACTION_TICK.equals(intent.getAction())) {
+                long millis = intent.getLongExtra(TimerService.EXTRA_MILLIS_REMAINING, 0);
+                updateTimerDisplay(millis);
+
+            } else if (TimerService.ACTION_FINISH.equals(intent.getAction())) {
+                int modeMins = intent.getIntExtra(TimerService.EXTRA_MODE_MINS, 25);
+                onTimerFinished(modeMins);
+            }
+        }
+    };
+
+    // ── Views ────────────────────────────────────────────────────────────────────
     private TextView tvCountdown;
     private TextView tvTimerStatus;
     private TextView tvSessionCount;
-    private Button btnStartPause;
-    private Button btnStop;
+    private Button   btnStartPause;
+    private Button   btnStop;
     private TextView tabPomodoro;
     private TextView tabShortBreak;
     private TextView tabLongBreak;
 
+    // ── Factory ──────────────────────────────────────────────────────────────────
     public static Intent newIntent(Context context) {
         return new Intent(context, CountdownActivity.class);
     }
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────────
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,29 +107,36 @@ public class CountdownActivity extends BaseActivity {
         initViews();
         applyWindowInsets();
         setupListeners();
-        applyMode(MODE_POMODORO);
     }
 
-    /** Áp dụng paddingTop = status bar height cho header, tránh bị tai thỏ/notch che */
-    private void applyWindowInsets() {
-        RelativeLayout header = findViewById(R.id.countdown_header);
-        ViewCompat.setOnApplyWindowInsetsListener(header, (view, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            float density = getResources().getDisplayMetrics().density;
-            // paddingTop = status bar + 8dp khoảng thở
-            view.setPadding(
-                    view.getPaddingLeft(),
-                    insets.top + (int) (8 * density),
-                    view.getPaddingRight(),
-                    view.getPaddingBottom()
-            );
-            // height = 80dp base + status bar height
-            ViewGroup.LayoutParams lp = view.getLayoutParams();
-            lp.height = (int) (80 * density) + insets.top;
-            view.setLayoutParams(lp);
-            return WindowInsetsCompat.CONSUMED;
-        });
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Bind tới TimerService (tạo mới Service nếu chưa có)
+        Intent serviceIntent = new Intent(this, TimerService.class);
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+        // Đăng ký nhận broadcast từ Service
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(TimerService.ACTION_TICK);
+        filter.addAction(TimerService.ACTION_FINISH);
+        LocalBroadcastManager.getInstance(this).registerReceiver(timerReceiver, filter);
     }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Huỷ đăng ký broadcast
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(timerReceiver);
+
+        // Unbind khỏi Service
+        if (isBound) {
+            unbindService(serviceConnection);
+            isBound = false;
+        }
+    }
+
+    // ── View binding ─────────────────────────────────────────────────────────────
 
     private void initViews() {
         tvCountdown    = findViewById(R.id.tv_countdown);
@@ -109,66 +151,145 @@ public class CountdownActivity extends BaseActivity {
         ImageButton btnBack = findViewById(R.id.btn_countdown_back);
         btnBack.setOnClickListener(v -> finish());
 
-        // Handle back press: pause timer instead of cancelling
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (timerState == TimerState.RUNNING) {
-                    pauseTimer();
+                // Tạm dừng nếu đang chạy khi nhấn Back
+                if (isBound && timerService != null
+                        && timerService.getTimerState() == TimerService.TimerState.RUNNING) {
+                    timerService.pauseTimer();
                 }
                 finish();
             }
         });
     }
 
+    /** Áp dụng paddingTop = status bar height cho header, tránh tai thỏ/notch che */
+    private void applyWindowInsets() {
+        RelativeLayout header = findViewById(R.id.countdown_header);
+        ViewCompat.setOnApplyWindowInsetsListener(header, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            float density = getResources().getDisplayMetrics().density;
+            view.setPadding(
+                    view.getPaddingLeft(),
+                    insets.top + (int) (8 * density),
+                    view.getPaddingRight(),
+                    view.getPaddingBottom()
+            );
+            ViewGroup.LayoutParams lp = view.getLayoutParams();
+            lp.height = (int) (80 * density) + insets.top;
+            view.setLayoutParams(lp);
+            return WindowInsetsCompat.CONSUMED;
+        });
+    }
+
+    // ── Listeners ────────────────────────────────────────────────────────────────
+
     private void setupListeners() {
         tabPomodoro.setOnClickListener(v -> {
-            if (timerState == TimerState.IDLE) {
-                selectTab(tabPomodoro);
-                applyMode(MODE_POMODORO);
-            }
+            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
+            selectTab(tabPomodoro);
+            timerService.setMode(MODE_POMODORO);
         });
         tabShortBreak.setOnClickListener(v -> {
-            if (timerState == TimerState.IDLE) {
-                selectTab(tabShortBreak);
-                applyMode(MODE_SHORT_BREAK);
-            }
+            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
+            selectTab(tabShortBreak);
+            timerService.setMode(MODE_SHORT_BREAK);
         });
         tabLongBreak.setOnClickListener(v -> {
-            if (timerState == TimerState.IDLE) {
-                selectTab(tabLongBreak);
-                applyMode(MODE_LONG_BREAK);
-            }
+            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
+            selectTab(tabLongBreak);
+            timerService.setMode(MODE_LONG_BREAK);
         });
 
         btnStartPause.setOnClickListener(v -> {
-            switch (timerState) {
+            if (!isBound || timerService == null) return;
+            switch (timerService.getTimerState()) {
                 case IDLE:
-                    startTimer();
+                    timerService.startTimer();
+                    btnStartPause.setText(R.string.countdown_btn_pause);
+                    btnStop.setEnabled(true);
+                    tvTimerStatus.setText(R.string.countdown_status_focus);
                     break;
                 case RUNNING:
-                    pauseTimer();
+                    timerService.pauseTimer();
+                    btnStartPause.setText(R.string.countdown_btn_resume);
+                    tvTimerStatus.setText(R.string.countdown_status_paused);
                     break;
                 case PAUSED:
-                    resumeTimer();
+                    timerService.resumeTimer();
+                    btnStartPause.setText(R.string.countdown_btn_pause);
+                    tvTimerStatus.setText(R.string.countdown_status_focus);
                     break;
             }
         });
 
-        btnStop.setOnClickListener(v -> stopTimer());
+        btnStop.setOnClickListener(v -> {
+            if (!isBound || timerService == null) return;
+            timerService.stopTimer();
+            btnStartPause.setText(R.string.countdown_btn_start);
+            btnStop.setEnabled(false);
+            tvTimerStatus.setText(R.string.countdown_status_ready);
+        });
     }
 
-    // ──────────────────────────────────────────────
-    // Mode helpers
-    // ──────────────────────────────────────────────
+    // ── Sync UI sau khi bind ─────────────────────────────────────────────────────
 
-    private void applyMode(int minutes) {
-        currentModeMins = minutes;
-        totalMillis = minutes * 60 * 1000L;
-        millisRemaining = totalMillis;
-        updateTimerDisplay(millisRemaining);
-        tvTimerStatus.setText(R.string.countdown_status_ready);
+    /**
+     * Được gọi ngay sau khi bind thành công.
+     * Cập nhật toàn bộ UI theo trạng thái hiện tại của Service
+     * (ví dụ: user xoay màn hình hoặc quay lại Activity).
+     */
+    private void syncUiWithService() {
+        if (!isBound || timerService == null) return;
+
+        updateTimerDisplay(timerService.getMillisRemaining());
+        tvSessionCount.setText(String.valueOf(timerService.getSessionCount()));
+
+        switch (timerService.getTimerState()) {
+            case IDLE:
+                btnStartPause.setText(R.string.countdown_btn_start);
+                btnStop.setEnabled(false);
+                tvTimerStatus.setText(R.string.countdown_status_ready);
+                break;
+            case RUNNING:
+                btnStartPause.setText(R.string.countdown_btn_pause);
+                btnStop.setEnabled(true);
+                tvTimerStatus.setText(R.string.countdown_status_focus);
+                break;
+            case PAUSED:
+                btnStartPause.setText(R.string.countdown_btn_resume);
+                btnStop.setEnabled(true);
+                tvTimerStatus.setText(R.string.countdown_status_paused);
+                break;
+        }
     }
+
+    // ── Callbacks từ BroadcastReceiver ───────────────────────────────────────────
+
+    private void updateTimerDisplay(long millis) {
+        long minutes = millis / 1000 / 60;
+        long seconds = (millis / 1000) % 60;
+        tvCountdown.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+    }
+
+    private void onTimerFinished(int modeMins) {
+        btnStartPause.setText(R.string.countdown_btn_start);
+        btnStop.setEnabled(false);
+        tvTimerStatus.setText(R.string.countdown_status_done);
+
+        if (isBound && timerService != null) {
+            tvSessionCount.setText(String.valueOf(timerService.getSessionCount()));
+        }
+
+        Toast.makeText(this,
+                modeMins == MODE_POMODORO
+                        ? getString(R.string.countdown_toast_done)
+                        : getString(R.string.countdown_toast_break_done),
+                Toast.LENGTH_LONG).show();
+    }
+
+    // ── Tab UI helper ─────────────────────────────────────────────────────────────
 
     private void selectTab(TextView selected) {
         int white    = ContextCompat.getColor(this, android.R.color.white);
@@ -184,142 +305,4 @@ public class CountdownActivity extends BaseActivity {
         selected.setBackgroundResource(R.drawable.bg_tab_selected);
         selected.setTextColor(white);
     }
-
-    // ──────────────────────────────────────────────
-    // Timer control
-    // ──────────────────────────────────────────────
-
-    private void startTimer() {
-        timerState = TimerState.RUNNING;
-        btnStartPause.setText(R.string.countdown_btn_pause);
-        btnStop.setEnabled(true);
-        tvTimerStatus.setText(R.string.countdown_status_focus);
-        runCountdown(millisRemaining);
-    }
-
-    private void pauseTimer() {
-        if (countDownTimer != null) countDownTimer.cancel();
-        timerState = TimerState.PAUSED;
-        btnStartPause.setText(R.string.countdown_btn_resume);
-        tvTimerStatus.setText(R.string.countdown_status_paused);
-    }
-
-    private void resumeTimer() {
-        timerState = TimerState.RUNNING;
-        btnStartPause.setText(R.string.countdown_btn_pause);
-        tvTimerStatus.setText(R.string.countdown_status_focus);
-        runCountdown(millisRemaining);
-    }
-
-    private void stopTimer() {
-        if (countDownTimer != null) countDownTimer.cancel();
-        timerState = TimerState.IDLE;
-        millisRemaining = totalMillis;
-        btnStartPause.setText(R.string.countdown_btn_start);
-        btnStop.setEnabled(false);
-        tvTimerStatus.setText(R.string.countdown_status_ready);
-        updateTimerDisplay(millisRemaining);
-    }
-
-    private void runCountdown(long millis) {
-        countDownTimer = new CountDownTimer(millis, 1000) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                millisRemaining = millisUntilFinished;
-                updateTimerDisplay(millisUntilFinished);
-            }
-
-            @Override
-            public void onFinish() {
-                millisRemaining = 0;
-                updateTimerDisplay(0);
-                onTimerFinished();
-            }
-        }.start();
-    }
-
-    private void onTimerFinished() {
-        timerState = TimerState.IDLE;
-        btnStartPause.setText(R.string.countdown_btn_start);
-        btnStop.setEnabled(false);
-        tvTimerStatus.setText(R.string.countdown_status_done);
-
-        // Increment session counter (only for Pomodoro)
-        if (currentModeMins == MODE_POMODORO) {
-            sessionCount++;
-            tvSessionCount.setText(String.valueOf(sessionCount));
-        }
-
-        // Reset for next use
-        millisRemaining = totalMillis;
-
-        playAlarmSound();
-
-        Toast.makeText(this,
-                currentModeMins == MODE_POMODORO
-                        ? getString(R.string.countdown_toast_done)
-                        : getString(R.string.countdown_toast_break_done),
-                Toast.LENGTH_LONG).show();
-    }
-
-    // ──────────────────────────────────────────────
-    // UI helpers
-    // ──────────────────────────────────────────────
-
-    private void updateTimerDisplay(long millis) {
-        long minutes = millis / 1000 / 60;
-        long seconds = (millis / 1000) % 60;
-        tvCountdown.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
-    }
-
-    // ──────────────────────────────────────────────
-    // Alarm sound
-    // ──────────────────────────────────────────────
-
-    private void playAlarmSound() {
-        try {
-            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (alarmUri == null) {
-                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            }
-
-            if (mediaPlayer != null) {
-                mediaPlayer.release();
-            }
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build());
-            mediaPlayer.setDataSource(this, alarmUri);
-            mediaPlayer.prepare();
-            mediaPlayer.start();
-
-            // Auto-stop after 3 seconds so it doesn't keep ringing
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                    mediaPlayer.stop();
-                }
-            }, 3000);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // ──────────────────────────────────────────────
-    // Lifecycle
-    // ──────────────────────────────────────────────
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (countDownTimer != null) {
-            countDownTimer.cancel();
-        }
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-    }
 }
-

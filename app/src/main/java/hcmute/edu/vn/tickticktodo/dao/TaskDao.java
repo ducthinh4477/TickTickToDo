@@ -71,6 +71,10 @@ public interface TaskDao {
     @Query("DELETE FROM tasks WHERE is_completed = 1")
     void deleteAllCompleted();
 
+    // ─── Lấy tất cả task (đồng bộ, không LiveData) — dùng cho BootReceiver ────
+    @Query("SELECT * FROM tasks")
+    List<Task> getAllTasksSync();
+
     // ══════════════════════════════════════════════════════════════════════════════
     // SORT QUERIES — Sắp xếp danh sách task theo các tiêu chí khác nhau
     // ══════════════════════════════════════════════════════════════════════════════
