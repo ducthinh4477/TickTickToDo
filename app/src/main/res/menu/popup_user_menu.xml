@@ -7,6 +7,11 @@
         android:title="@string/nav_settings_language" />
 
     <item
+        android:id="@+id/menu_theme"
+        android:icon="@drawable/ic_theme"
+        android:title="@string/nav_settings_theme" />
+
+    <item
         android:id="@+id/menu_statistics"
         android:icon="@drawable/ic_statistics"
         android:title="@string/menu_statistics" />

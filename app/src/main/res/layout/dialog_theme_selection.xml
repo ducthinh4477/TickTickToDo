@@ -14,14 +14,14 @@
         android:background="@drawable/bg_dialog_header"
         android:gravity="center"
         android:padding="18dp"
-        android:text="@string/lang_dialog_title"
+        android:text="@string/theme_dialog_title"
         android:textColor="@color/white"
         android:textSize="17sp"
         android:textStyle="bold" />
 
-    <!-- Language options (RadioButtons added dynamically) -->
+    <!-- Các tùy chọn theme (RadioButtons thêm động) -->
     <RadioGroup
-        android:id="@+id/rg_languages"
+        android:id="@+id/rg_themes"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -44,12 +44,12 @@
         android:orientation="horizontal">
 
         <TextView
-            android:id="@+id/btn_lang_cancel"
+            android:id="@+id/btn_theme_cancel"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="@string/lang_dialog_cancel"
+            android:text="@string/theme_dialog_cancel"
             android:textColor="@color/text_secondary"
             android:textSize="15sp"
             android:background="?attr/selectableItemBackground"
@@ -62,12 +62,12 @@
             android:background="@color/divider" />
 
         <TextView
-            android:id="@+id/btn_lang_confirm"
+            android:id="@+id/btn_theme_confirm"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="@string/lang_dialog_confirm"
+            android:text="@string/theme_dialog_confirm"
             android:textColor="@color/accent_primary"
             android:textSize="15sp"
             android:textStyle="bold"

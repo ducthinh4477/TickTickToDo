@@ -5,6 +5,8 @@
     <string name="add_task_desc">Add task</string>
     <string name="send_task_desc">Send task</string>
     <string name="empty_state_message">No tasks for today.\nTap + to add one!</string>
+    <string name="empty_title">What do you want to do today?</string>
+    <string name="empty_subtitle">Tap + to add your tasks</string>
     <string name="header_today">Today</string>
 
     <!-- AddTaskBottomSheet -->
@@ -48,6 +50,11 @@
     <string name="nav_task_desc">Tasks</string>
     <string name="nav_calendar_desc">Calendar</string>
     <string name="nav_search_desc">Search</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_focus">Focus</string>
+    <string name="nav_profile">Profile</string>
 
     <!-- Header buttons -->
     <string name="btn_sort_desc">Sort</string>
@@ -95,6 +102,15 @@
     <string name="lang_dialog_cancel">Cancel</string>
     <string name="lang_dialog_confirm">Apply</string>
     <string name="nav_settings_language">Language</string>
+
+    <!-- ThemeSelectionDialog -->
+    <string name="theme_dialog_title">Theme / Giao diện</string>
+    <string name="theme_dialog_cancel">Cancel</string>
+    <string name="theme_dialog_confirm">Apply</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System Default</string>
+    <string name="nav_settings_theme">Theme</string>
 
     <!-- Toast / Snackbar messages (extracted from Java code) -->
     <string name="toast_on_today_page">You are on Today</string>

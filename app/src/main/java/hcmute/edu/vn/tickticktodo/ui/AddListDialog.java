@@ -160,8 +160,8 @@ public class AddListDialog extends Dialog {
             return;
         }
 
-        // Màu mặc định: priority_low (#4A90D9)
-        int defaultColor = host.getResources().getColor(R.color.priority_low, host.getTheme());
+        // Màu mặc định: accent_primary (#8875FF)
+        int defaultColor = host.getResources().getColor(R.color.accent_primary, host.getTheme());
 
         // Tạo TodoList với icon được chọn
         TodoList newList = new TodoList(name, defaultColor, selectedIconResId);

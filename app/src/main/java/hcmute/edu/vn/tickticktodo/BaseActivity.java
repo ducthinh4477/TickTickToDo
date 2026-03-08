@@ -1,27 +1,23 @@
 package hcmute.edu.vn.tickticktodo;
 
 import android.content.Context;
+import android.os.Bundle;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import hcmute.edu.vn.tickticktodo.helper.LanguageManager;
+import hcmute.edu.vn.tickticktodo.helper.ThemeManager;
 
 /**
  * Activity gốc mà mọi Activity trong ứng dụng phải kế thừa.
  *
- * Nhiệm vụ duy nhất: ghi đè attachBaseContext() để inject Context
- * đã được áp dụng đúng Locale (ngôn ngữ người dùng đã chọn).
- *
- * Tại sao dùng attachBaseContext() thay vì onCreate()?
- *   - attachBaseContext() được gọi TRƯỚC khi bất kỳ resource nào được inflate.
- *   - Đây là thời điểm duy nhất để Android load đúng bộ strings (values-vi / values-en).
- *   - Nếu set trong onCreate() sẽ quá muộn, layout đã được inflate với Locale cũ.
+ * Nhiệm vụ:
+ *   1. attachBaseContext() — inject Context với Locale đúng (ngôn ngữ người dùng đã chọn).
+ *   2. onCreate()          — áp dụng chế độ Sáng/Tối từ ThemeManager TRƯỚC super.onCreate()
+ *      để đảm bảo layout được inflate đúng bộ resource (values / values-night).
  *
  * Cách kế thừa:
- *   // TRƯỚC (extend AppCompatActivity):
- *   public class MainActivity extends AppCompatActivity { ... }
- *
- *   // SAU (extend BaseActivity):
  *   public class MainActivity extends BaseActivity { ... }
  *
  * Không cần thay đổi gì khác trong các Activity con.
@@ -32,6 +28,14 @@ public abstract class BaseActivity extends AppCompatActivity {
     protected void attachBaseContext(Context newBase) {
         // Wrap context với Locale đã lưu trong LanguageManager → SharedPreferences
         super.attachBaseContext(LanguageManager.applyLanguage(newBase));
+    }
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        // Áp dụng chế độ Sáng/Tối TRƯỚC khi super.onCreate() inflate layout
+        // Đọc tùy chọn từ SharedPreferences rồi gọi AppCompatDelegate.setDefaultNightMode()
+        ThemeManager.applyTheme(this);
+        super.onCreate(savedInstanceState);
     }
 }
 
