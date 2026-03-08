@@ -1,494 +1,375 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:animateLayoutChanges="true"
+    android:background="@color/white"
     android:orientation="horizontal"
-    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
+    <!-- ══ Column 1: Nav Rail (fixed) ══ -->
     <LinearLayout
         android:id="@+id/nav_rail"
-        android:layout_width="72dp"
+        android:layout_width="56dp"
         android:layout_height="match_parent"
-        android:background="@color/background_surface"
-        android:elevation="4dp"
+        android:background="#2C2C2C"
+        android:gravity="top|center_horizontal"
         android:orientation="vertical"
-        android:gravity="top">
+        android:paddingTop="18dp"
+        android:paddingBottom="12dp">
+
+        <ImageView
+            android:id="@+id/nav_avatar"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_avatar_circle"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/nav_avatar_desc"
+            android:padding="8dp"
+            android:src="@drawable/ic_user" />
+
+        <View android:layout_width="match_parent" android:layout_height="16dp" />
 
         <ImageButton
-            android:id="@+id/btn_hamburger"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_gravity="center_horizontal"
+            android:id="@+id/nav_task"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/menu_desc"
+            android:contentDescription="@string/nav_task_desc"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_menu"
-            app:tint="@color/text_primary" />
+            android:src="@drawable/ic_today"
+            android:tint="#FFFFFF" />
 
+        <View android:layout_width="match_parent" android:layout_height="8dp" />
 
-        <LinearLayout
-            android:id="@+id/nav_item_home"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_home"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_home"
-                android:src="@drawable/ic_home"
-                app:tint="@color/accent_primary" />
-            <TextView
-                android:id="@+id/nav_label_home"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_home"
-                android:textColor="@color/accent_primary"
-                android:textSize="11sp" />
-        </LinearLayout>
+        <ImageButton
+            android:id="@+id/nav_calendar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/nav_calendar_desc"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_calendar"
+            android:tint="#B0B0B0" />
 
-        <LinearLayout
-            android:id="@+id/nav_item_calendar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_calendar"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_calendar_desc"
-                android:src="@drawable/ic_calendar"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_calendar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_calendar_desc"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="8dp" />
 
-        <LinearLayout
-            android:id="@+id/nav_item_focus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_focus"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_focus"
-                android:src="@drawable/ic_timer"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_focus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_focus"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_item_profile"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_profile"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_profile"
-                android:src="@drawable/ic_user"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_profile"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_profile"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="8dp" />
+        <ImageButton
+            android:id="@+id/nav_search"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/nav_search_desc"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_search"
+            android:tint="#B0B0B0" />
 
     </LinearLayout>
 
-    <View
-        android:layout_width="1dp"
+    <!-- ══ Column 2: Menu Box (hidden by default) ══ -->
+    <LinearLayout
+        android:id="@+id/menuBoxContainer"
+        android:layout_width="240dp"
         android:layout_height="match_parent"
-        android:background="@color/divider" />
+        android:background="#FAFAFA"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
 
-    <FrameLayout
-        android:id="@+id/content_frame"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="20dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="12dp">
+
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_avatar_circle"
+                android:contentDescription="@string/nav_avatar_desc"
+                android:padding="8dp"
+                android:src="@drawable/ic_user" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="@string/nav_guest_user"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="8dp" android:paddingBottom="8dp">
+
+            <LinearLayout android:id="@+id/panel_item_today" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_today" android:tint="@color/priority_low" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/header_today" android:textColor="@color/text_primary" android:textSize="15sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/panel_item_next7days" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_calendar" android:tint="@color/text_secondary" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_next_7_days" android:textColor="@color/text_primary" android:textSize="15sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/panel_item_inbox" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_all_tasks" android:tint="@color/priority_low" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/panel_inbox" android:textColor="@color/text_primary" android:textSize="15sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="8dp" android:paddingBottom="8dp">
+
+            <LinearLayout android:id="@+id/panel_item_completed" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_completed" android:tint="#4CAF50" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_completed" android:textColor="@color/text_primary" android:textSize="15sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/panel_item_trash" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_delete" android:tint="@color/text_secondary" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_trash" android:textColor="@color/text_primary" android:textSize="15sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingStart="16dp" android:paddingTop="12dp" android:paddingBottom="6dp" android:text="@string/nav_lists_title" android:textColor="@color/text_secondary" android:textSize="12sp" android:textStyle="bold" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_lists_panel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingBottom="12dp">
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginBottom="4dp" android:background="#E0E0E0" />
+
+            <LinearLayout android:id="@+id/panel_item_notifications" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_notifications" android:tint="@color/text_secondary" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_notifications" android:textColor="@color/text_primary" android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/panel_item_help" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_help" android:tint="@color/text_secondary" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_help" android:textColor="@color/text_primary" android:textSize="14sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ══ Column 3: Main Content ══ -->
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
+        <!-- Header -->
+        <LinearLayout
+            android:id="@+id/header"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/background_primary">
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="12dp">
+
+            <ImageButton
+                android:id="@+id/btn_hamburger"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/menu_desc"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_menu" />
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:orientation="vertical">
 
-                <LinearLayout
-                    android:id="@+id/header"
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/tv_header_today"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="12dp"
-                    android:paddingTop="12dp"
-                    android:paddingEnd="4dp"
-                    android:paddingBottom="4dp">
+                    android:text="@string/header_today"
+                    android:textColor="@color/text_primary"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
 
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            android:id="@+id/tv_header_today"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/header_today"
-                            android:textColor="@color/text_primary"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-                        <TextView
-                            android:id="@+id/tv_header_date"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="1dp"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="13sp" />
-                    </LinearLayout>
-
-                    <ImageButton
-                        android:id="@+id/btn_sort"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/btn_sort_desc"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_sort"
-                        app:tint="@color/text_secondary" />
-
-                    <ImageButton
-                        android:id="@+id/btn_more"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/btn_more_desc"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_more_vert"
-                        app:tint="@color/text_secondary" />
-                </LinearLayout>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_quick_add"
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/tv_header_date"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
-                    app:cardBackgroundColor="@color/background_card"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="46dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingStart="14dp">
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:contentDescription="@string/add_task_desc"
-                            android:src="@drawable/ic_search"
-                            app:tint="@color/text_hint" />
-                        <EditText
-                            android:id="@+id/et_quick_add"
-                            android:layout_width="0dp"
-                            android:layout_height="match_parent"
-                            android:layout_marginStart="10dp"
-                            android:layout_weight="1"
-                            android:autofillHints=""
-                            android:background="@android:color/transparent"
-                            android:hint="@string/quick_add_hint"
-                            android:imeOptions="actionDone"
-                            android:inputType="text"
-                            android:maxLines="1"
-                            android:textColor="@color/text_primary"
-                            android:textColorHint="@color/text_hint" />
-                        <ImageButton
-                            android:id="@+id/btn_send_task"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:layout_marginEnd="6dp"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="@string/send_task_desc"
-                            android:src="@drawable/ic_send"
-                            android:visibility="gone"
-                            app:tint="@color/accent_primary" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1">
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/rv_tasks"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:clipToPadding="false"
-                        android:paddingStart="16dp"
-                        android:paddingTop="4dp"
-                        android:paddingEnd="16dp"
-                        android:paddingBottom="80dp" />
-
-                    <LinearLayout
-                        android:id="@+id/layout_empty"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:visibility="gone">
-                        <ImageView
-                            android:layout_width="140dp"
-                            android:layout_height="140dp"
-                            android:alpha="0.7"
-                            android:contentDescription="@string/empty_title"
-                            android:src="@drawable/ic_empty_tasks" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:gravity="center"
-                            android:text="@string/empty_title"
-                            android:textColor="@color/text_primary"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:gravity="center"
-                            android:text="@string/empty_subtitle"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="14sp" />
-                    </LinearLayout>
-                </FrameLayout>
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    tools:text="Wed, Mar 4" />
 
             </LinearLayout>
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fab_add_task"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|center_horizontal"
-                android:layout_marginBottom="24dp"
-                android:contentDescription="@string/fab_add_desc"
-                android:src="@drawable/ic_add"
-                app:backgroundTint="@color/accent_primary"
-                app:elevation="8dp"
-                app:fabSize="normal"
-                app:tint="@color/white" />
+            <ImageButton
+                android:id="@+id/btn_sort"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_sort_desc"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_sort" />
 
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
+            <ImageButton
+                android:id="@+id/btn_more"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_more_desc"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_more_vert" />
 
+        </LinearLayout>
+
+        <!-- RecyclerView + Empty state -->
         <FrameLayout
-            android:id="@+id/menu_overlay"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
-            <View
-                android:id="@+id/menu_backdrop"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_tasks"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:alpha="0"
-                android:background="#99000000" />
+                android:clipToPadding="false"
+                android:paddingBottom="8dp"
+                tools:listitem="@layout/item_task" />
 
             <LinearLayout
-                android:id="@+id/menuBoxContainer"
-                android:layout_width="240dp"
-                android:layout_height="match_parent"
-                android:layout_gravity="start"
-                android:background="@color/background_surface"
-                android:elevation="8dp"
-                android:orientation="vertical">
+                android:id="@+id/layout_empty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="20dp"
-                    android:paddingTop="32dp"
-                    android:paddingEnd="20dp"
-                    android:paddingBottom="16dp">
-                    <ImageView
-                        android:id="@+id/nav_avatar"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:background="@drawable/bg_avatar_circle"
-                        android:clickable="true"
-                        android:contentDescription="@string/nav_avatar_desc"
-                        android:focusable="true"
-                        android:padding="8dp"
-                        android:src="@drawable/ic_user" />
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="14dp"
-                        android:layout_weight="1"
-                        android:text="@string/nav_guest_user"
-                        android:textColor="@color/text_primary"
-                        android:textSize="17sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                    android:text="🎯"
+                    android:textSize="48sp" />
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
-                    <LinearLayout android:id="@+id/panel_item_today" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_today" app:tint="@color/accent_primary" android:contentDescription="@null" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/header_today" android:textColor="@color/text_primary" android:textSize="15sp" />
-                    </LinearLayout>
-                    <LinearLayout android:id="@+id/panel_item_next7days" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_calendar" app:tint="@color/text_secondary" android:contentDescription="@null" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_next_7_days" android:textColor="@color/text_primary" android:textSize="15sp" />
-                    </LinearLayout>
-                    <LinearLayout android:id="@+id/panel_item_inbox" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_all_tasks" app:tint="@color/accent_primary" android:contentDescription="@null" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/panel_inbox" android:textColor="@color/text_primary" android:textSize="15sp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-                    <LinearLayout android:id="@+id/panel_item_completed" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_completed" app:tint="@color/tag_study" android:contentDescription="@null" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_completed" android:textColor="@color/text_primary" android:textSize="15sp" />
-                    </LinearLayout>
-                    <LinearLayout android:id="@+id/panel_item_trash" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_delete" app:tint="@color/text_secondary" android:contentDescription="@null" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_trash" android:textColor="@color/text_primary" android:textSize="15sp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="20dp"
-                    android:paddingTop="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="4dp">
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:letterSpacing="0.08"
-                        android:text="@string/nav_lists_title"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
-                    <ImageButton
-                        android:id="@+id/btn_add_list"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/add_list_fab_desc"
-                        android:scaleType="centerInside"
-                        android:src="@drawable/ic_add"
-                        app:tint="@color/accent_primary" />
-                </LinearLayout>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rv_lists_panel"
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:clipToPadding="false" />
-
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingTop="4dp">
-                    <LinearLayout android:id="@+id/panel_item_notifications" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_notifications" app:tint="@color/text_secondary" android:contentDescription="@null" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_notifications" android:textColor="@color/text_secondary" android:textSize="14sp" />
-                    </LinearLayout>
-                    <LinearLayout android:id="@+id/panel_item_help" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_help" app:tint="@color/text_secondary" android:contentDescription="@null" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_help" android:textColor="@color/text_secondary" android:textSize="14sp" />
-                    </LinearLayout>
-                </LinearLayout>
+                    android:layout_marginTop="12dp"
+                    android:text="@string/empty_state_message"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="15sp" />
 
             </LinearLayout>
 
         </FrameLayout>
 
-    </FrameLayout>
+        <!-- Bottom bar: Quick Add + FAB -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_quick_add"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="68dp"
+                android:layout_marginBottom="12dp"
+                android:layout_gravity="center_vertical"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="8dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@string/add_task_desc"
+                        android:src="@drawable/ic_add"
+                        android:tint="@color/priority_low" />
+
+                    <EditText
+                        android:id="@+id/et_quick_add"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:background="@android:color/transparent"
+                        android:hint="@string/quick_add_hint"
+                        android:imeOptions="actionDone"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/text_secondary"
+                        android:textSize="15sp" />
+
+                    <ImageButton
+                        android:id="@+id/btn_send_task"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/send_task_desc"
+                        android:src="@drawable/ic_send"
+                        android:visibility="gone"
+                        android:tint="@color/priority_low"
+                        tools:visibility="visible" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fab_add_task"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="16dp"
+                android:contentDescription="@string/fab_add_desc"
+                android:src="@drawable/ic_add"
+                app:backgroundTint="@color/priority_low"
+                app:fabSize="mini"
+                android:tint="@color/white" />
+
+        </FrameLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

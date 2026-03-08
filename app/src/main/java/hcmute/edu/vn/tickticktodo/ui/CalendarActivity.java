@@ -22,7 +22,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.adapter.TaskAdapter;
 import hcmute.edu.vn.tickticktodo.model.Task;
@@ -42,7 +41,7 @@ import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
  * Mỗi lần ngày thay đổi, observer cũ được remove và observer mới được đăng ký
  * để tránh memory leak và đảm bảo dữ liệu luôn đúng ngày.
  */
-public class CalendarActivity extends BaseActivity {
+public class CalendarActivity extends AppCompatActivity {
 
     // ─── Factory ────────────────────────────────────────────────────────────────
 

@@ -4,8 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_primary"
-    android:fitsSystemWindows="true"
+    android:background="@color/white"
     android:orientation="vertical"
     tools:context=".ui.TaskDetailActivity">
 
@@ -14,7 +13,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/background_surface"
+        android:background="@color/white"
         android:elevation="0dp"
         app:navigationIcon="@drawable/ic_close"
         app:navigationContentDescription="@string/detail_back_desc">
@@ -29,7 +28,7 @@
             android:contentDescription="@string/detail_save_desc"
             android:scaleType="centerInside"
             android:src="@drawable/ic_save"
-            app:tint="@color/accent_primary" />
+            android:tint="@color/priority_low" />
 
     </androidx.appcompat.widget.Toolbar>
 
@@ -133,11 +132,11 @@
                 android:layout_height="wrap_content"
                 android:text="@string/label_no_date"
                 app:chipIcon="@drawable/ic_calendar"
-                app:chipIconTint="@color/accent_primary"
-                app:chipBackgroundColor="#1A8875FF"
-                app:chipStrokeColor="#338875FF"
+                app:chipIconTint="@color/priority_low"
+                app:chipBackgroundColor="#F0F4FF"
+                app:chipStrokeColor="#C5D8FF"
                 app:chipStrokeWidth="1dp"
-                android:textColor="@color/accent_primary"
+                android:textColor="@color/priority_low"
                 android:textSize="13sp"
                 style="@style/Widget.Material3.Chip.Filter" />
 
