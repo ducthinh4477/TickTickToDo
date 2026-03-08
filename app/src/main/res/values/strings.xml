@@ -145,4 +145,32 @@
     <string name="icon_name_travel">Travel</string>
     <string name="icon_name_calendar">Calendar</string>
     <string name="icon_name_timer">Timer</string>
+
+    <!-- ViewOptionsBottomSheet -->
+    <string name="view_mode_list">List</string>
+    <string name="view_mode_kanban">Kanban</string>
+    <string name="view_mode_timeline">Timeline</string>
+    <string name="option_hide_completed">Hide Completed</string>
+    <string name="option_show_details">Show Details</string>
+    <string name="option_view_options">View Options</string>
+    <string name="option_add_section">Add Section</string>
+    <string name="option_list_activities">List Activities</string>
+
+    <!-- Sort / Group options -->
+    <string name="sort_by_date">Sort by Date</string>
+    <string name="sort_by_priority">Sort by Priority</string>
+    <string name="sort_by_title">Sort by Title (A-Z)</string>
+    <string name="sort_custom">Custom Order</string>
+
+    <!-- Statistics -->
+    <string name="statistics_title">Statistics</string>
+    <string name="statistics_overview">Overview</string>
+    <string name="statistics_total_completed">Total Completed</string>
+    <string name="statistics_completed_today">Completed Today</string>
+    <string name="statistics_completed_7_days">Completed (Last 7 Days)</string>
+    <string name="statistics_completion_rate_today">Completion Rate Today</string>
+    <string name="statistics_tasks_label">tasks</string>
+    <string name="statistics_percent_format">%d%%</string>
+    <string name="statistics_no_tasks_today">No tasks today</string>
+    <string name="statistics_completion_detail">%1$d / %2$d %3$s</string>
 </resources>

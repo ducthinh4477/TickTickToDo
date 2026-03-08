@@ -13,9 +13,10 @@
 
     <!-- Back button + Title -->
     <RelativeLayout
+        android:id="@+id/countdown_header"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:paddingTop="8dp">
+        android:layout_height="80dp"
+        android:paddingTop="32dp">
 
         <ImageButton
             android:id="@+id/btn_countdown_back"

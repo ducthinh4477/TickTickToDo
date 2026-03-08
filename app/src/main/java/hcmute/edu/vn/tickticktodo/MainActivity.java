@@ -49,8 +49,10 @@ import hcmute.edu.vn.tickticktodo.ui.AddTaskBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.CalendarActivity;
 import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
 import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
+import hcmute.edu.vn.tickticktodo.ui.StatisticsActivity;
 import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.TaskDetailActivity;
+import hcmute.edu.vn.tickticktodo.ui.ViewOptionsBottomSheet;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
 public class MainActivity extends BaseActivity {
@@ -172,11 +174,12 @@ public class MainActivity extends BaseActivity {
 
         btnHamburger.setOnClickListener(v -> toggleMenu());
 
-        btnSort.setOnClickListener(v ->
-                Toast.makeText(this, R.string.toast_sort_wip, Toast.LENGTH_SHORT).show());
+        btnSort.setOnClickListener(v -> showSortPopupMenu(v));
 
-        btnMore.setOnClickListener(v ->
-                Toast.makeText(this, R.string.toast_more_wip, Toast.LENGTH_SHORT).show());
+        btnMore.setOnClickListener(v -> {
+            ViewOptionsBottomSheet bottomSheet = ViewOptionsBottomSheet.newInstance();
+            bottomSheet.show(getSupportFragmentManager(), "ViewOptions");
+        });
     }
 
     // ─── Slide-in menu ──────────────────────────────────────────────────────
@@ -253,9 +256,32 @@ public class MainActivity extends BaseActivity {
             } else if (id == R.id.menu_theme) {
                 ThemeSelectionDialog.show(this);
             } else if (id == R.id.menu_statistics) {
-                Toast.makeText(this, R.string.toast_statistics_wip, Toast.LENGTH_SHORT).show();
+                startActivity(StatisticsActivity.newIntent(this));
             } else if (id == R.id.menu_sign_out) {
                 Toast.makeText(this, R.string.toast_signout_wip, Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        });
+        popup.show();
+    }
+
+    /**
+     * Hiển thị menu Sort: Date / Priority / Title / Custom.
+     * Khi chọn, gọi taskViewModel.setSortMode() → LiveData tự cập nhật UI.
+     */
+    private void showSortPopupMenu(View anchor) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        popup.getMenuInflater().inflate(R.menu.popup_sort_menu, popup.getMenu());
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.sort_date_asc) {
+                taskViewModel.setSortMode(TaskViewModel.SORT_BY_DATE_ASC);
+            } else if (id == R.id.sort_priority) {
+                taskViewModel.setSortMode(TaskViewModel.SORT_BY_PRIORITY);
+            } else if (id == R.id.sort_title) {
+                taskViewModel.setSortMode(TaskViewModel.SORT_BY_TITLE);
+            } else if (id == R.id.sort_custom) {
+                taskViewModel.setSortMode(TaskViewModel.SORT_BY_CUSTOM);
             }
             return true;
         });

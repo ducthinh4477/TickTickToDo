@@ -10,13 +10,19 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.ContextCompat;
 
 import java.util.Locale;
@@ -60,11 +66,34 @@ public class CountdownActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_countdown);
 
         initViews();
+        applyWindowInsets();
         setupListeners();
         applyMode(MODE_POMODORO);
+    }
+
+    /** Áp dụng paddingTop = status bar height cho header, tránh bị tai thỏ/notch che */
+    private void applyWindowInsets() {
+        RelativeLayout header = findViewById(R.id.countdown_header);
+        ViewCompat.setOnApplyWindowInsetsListener(header, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            float density = getResources().getDisplayMetrics().density;
+            // paddingTop = status bar + 8dp khoảng thở
+            view.setPadding(
+                    view.getPaddingLeft(),
+                    insets.top + (int) (8 * density),
+                    view.getPaddingRight(),
+                    view.getPaddingBottom()
+            );
+            // height = 80dp base + status bar height
+            ViewGroup.LayoutParams lp = view.getLayoutParams();
+            lp.height = (int) (80 * density) + insets.top;
+            view.setLayoutParams(lp);
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     private void initViews() {

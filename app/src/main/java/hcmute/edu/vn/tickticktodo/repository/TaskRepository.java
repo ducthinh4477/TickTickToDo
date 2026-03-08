@@ -76,6 +76,54 @@ public class TaskRepository {
         executor.execute(taskDao::deleteAllCompleted);
     }
 
+    // ─── SORT ────────────────────────────────────────────────────────────────────
+
+    public LiveData<List<Task>> getAllTasksSortByDateAsc() {
+        return taskDao.getAllTasksSortByDateAsc();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByDateDesc() {
+        return taskDao.getAllTasksSortByDateDesc();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByPriority() {
+        return taskDao.getAllTasksSortByPriority();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByTitle() {
+        return taskDao.getAllTasksSortByTitle();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByCustom() {
+        return taskDao.getAllTasksSortByCustom();
+    }
+
+    public void updateOrderIndex(long taskId, int orderIndex) {
+        executor.execute(() -> taskDao.updateOrderIndex(taskId, orderIndex));
+    }
+
+    // ─── STATISTICS ─────────────────────────────────────────────────────────────
+
+    public LiveData<Integer> countTotalCompleted() {
+        return taskDao.countTotalCompleted();
+    }
+
+    public LiveData<Integer> countCompletedToday(long startOfDay, long endOfDay) {
+        return taskDao.countCompletedToday(startOfDay, endOfDay);
+    }
+
+    public LiveData<Integer> countCompletedLast7Days(long sevenDaysAgo, long endOfToday) {
+        return taskDao.countCompletedLast7Days(sevenDaysAgo, endOfToday);
+    }
+
+    public LiveData<Integer> countTotalTasksToday(long startOfDay, long endOfDay) {
+        return taskDao.countTotalTasksToday(startOfDay, endOfDay);
+    }
+
+    public void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate) {
+        executor.execute(() -> taskDao.markTaskAsCompletedWithDate(taskId, isCompleted, completedDate));
+    }
+
     // ─── TodoList CRUD ────────────────────────────────────────────────────────────
 
     public LiveData<List<TodoList>> getAllLists() {

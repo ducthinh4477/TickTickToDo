@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/sort_date_asc"
+        android:icon="@drawable/ic_calendar"
+        android:title="@string/sort_by_date" />
+
+    <item
+        android:id="@+id/sort_priority"
+        android:icon="@drawable/ic_flag"
+        android:title="@string/sort_by_priority" />
+
+    <item
+        android:id="@+id/sort_title"
+        android:icon="@drawable/ic_sort"
+        android:title="@string/sort_by_title" />
+
+    <item
+        android:id="@+id/sort_custom"
+        android:icon="@drawable/ic_view_options"
+        android:title="@string/sort_custom" />
+
+</menu>
+

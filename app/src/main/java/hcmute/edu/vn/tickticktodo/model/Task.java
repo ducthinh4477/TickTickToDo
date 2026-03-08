@@ -49,6 +49,12 @@ public class Task {
     @ColumnInfo(name = "list_id")
     private Long listId; // khóa ngoại tới TodoList (null = Inbox / không thuộc list nào)
 
+    @ColumnInfo(name = "order_index", defaultValue = "0")
+    private int orderIndex; // Thứ tự kéo thả (drag & drop), dùng cho Sort Custom
+
+    @ColumnInfo(name = "completed_date")
+    private Long completedDate; // Timestamp khi task được hoàn thành (null nếu chưa hoàn thành)
+
     // Constructor
     public Task(String title, String description, Long dueDate, boolean isCompleted, int priority) {
         this.title = title;
@@ -57,6 +63,8 @@ public class Task {
         this.isCompleted = isCompleted;
         this.priority = priority;
         this.listId = null;
+        this.orderIndex = 0;
+        this.completedDate = null;
     }
 
     // Getters & Setters
@@ -115,5 +123,21 @@ public class Task {
 
     public void setListId(Long listId) {
         this.listId = listId;
+    }
+
+    public int getOrderIndex() {
+        return orderIndex;
+    }
+
+    public void setOrderIndex(int orderIndex) {
+        this.orderIndex = orderIndex;
+    }
+
+    public Long getCompletedDate() {
+        return completedDate;
+    }
+
+    public void setCompletedDate(Long completedDate) {
+        this.completedDate = completedDate;
     }
 }

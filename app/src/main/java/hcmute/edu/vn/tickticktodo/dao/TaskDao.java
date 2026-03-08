@@ -70,4 +70,65 @@ public interface TaskDao {
     // ─── Xóa tất cả task đã hoàn thành ─────────────────────────────────────────
     @Query("DELETE FROM tasks WHERE is_completed = 1")
     void deleteAllCompleted();
+
+    // ══════════════════════════════════════════════════════════════════════════════
+    // SORT QUERIES — Sắp xếp danh sách task theo các tiêu chí khác nhau
+    // ══════════════════════════════════════════════════════════════════════════════
+
+    // ─── Sort theo ngày (due_date tăng dần, NULL cuối cùng) ────────────────────
+    @Query("SELECT * FROM tasks ORDER BY " +
+           "CASE WHEN due_date IS NULL THEN 1 ELSE 0 END, due_date ASC")
+    LiveData<List<Task>> getAllTasksSortByDateAsc();
+
+    // ─── Sort theo ngày (due_date giảm dần, NULL cuối cùng) ────────────────────
+    @Query("SELECT * FROM tasks ORDER BY " +
+           "CASE WHEN due_date IS NULL THEN 1 ELSE 0 END, due_date DESC")
+    LiveData<List<Task>> getAllTasksSortByDateDesc();
+
+    // ─── Sort theo độ ưu tiên (cao → thấp) ─────────────────────────────────────
+    @Query("SELECT * FROM tasks ORDER BY priority DESC, due_date ASC")
+    LiveData<List<Task>> getAllTasksSortByPriority();
+
+    // ─── Sort theo tên (A-Z) ────────────────────────────────────────────────────
+    @Query("SELECT * FROM tasks ORDER BY title COLLATE NOCASE ASC")
+    LiveData<List<Task>> getAllTasksSortByTitle();
+
+    // ─── Sort tùy chỉnh (theo order_index, dùng cho kéo thả) ───────────────────
+    @Query("SELECT * FROM tasks ORDER BY order_index ASC, due_date ASC")
+    LiveData<List<Task>> getAllTasksSortByCustom();
+
+    // ─── Cập nhật thứ tự kéo thả (order_index) ────────────────────────────────
+    @Query("UPDATE tasks SET order_index = :orderIndex WHERE id = :taskId")
+    void updateOrderIndex(long taskId, int orderIndex);
+
+    // ══════════════════════════════════════════════════════════════════════════════
+    // STATISTICS QUERIES — Thống kê
+    // ══════════════════════════════════════════════════════════════════════════════
+
+    // ─── Đếm tổng số task đã hoàn thành ────────────────────────────────────────
+    @Query("SELECT COUNT(*) FROM tasks WHERE is_completed = 1")
+    LiveData<Integer> countTotalCompleted();
+
+    // ─── Đếm task hoàn thành hôm nay (theo completed_date) ────────────────────
+    @Query("SELECT COUNT(*) FROM tasks " +
+           "WHERE is_completed = 1 " +
+           "AND completed_date >= :startOfDay AND completed_date < :endOfDay")
+    LiveData<Integer> countCompletedToday(long startOfDay, long endOfDay);
+
+    // ─── Đếm task hoàn thành trong 7 ngày qua ─────────────────────────────────
+    @Query("SELECT COUNT(*) FROM tasks " +
+           "WHERE is_completed = 1 " +
+           "AND completed_date >= :sevenDaysAgo AND completed_date < :endOfToday")
+    LiveData<Integer> countCompletedLast7Days(long sevenDaysAgo, long endOfToday);
+
+    // ─── Đếm tổng số task hôm nay (cho tính Completion Rate) ──────────────────
+    @Query("SELECT COUNT(*) FROM tasks " +
+           "WHERE due_date >= :startOfDay AND due_date < :endOfDay")
+    LiveData<Integer> countTotalTasksToday(long startOfDay, long endOfDay);
+
+    // ─── Cập nhật completed_date khi đánh dấu hoàn thành ──────────────────────
+    @Query("UPDATE tasks SET is_completed = :isCompleted, " +
+           "completed_date = CASE WHEN :isCompleted = 1 THEN :completedDate ELSE NULL END " +
+           "WHERE id = :taskId")
+    void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate);
 }

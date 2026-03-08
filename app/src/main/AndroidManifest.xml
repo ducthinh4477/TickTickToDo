@@ -33,6 +33,10 @@
         <activity
             android:name=".ui.CalendarActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ui.StatisticsActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

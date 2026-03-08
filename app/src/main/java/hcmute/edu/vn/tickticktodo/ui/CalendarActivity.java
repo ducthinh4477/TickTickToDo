@@ -2,6 +2,7 @@ package hcmute.edu.vn.tickticktodo.ui;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.CalendarView;
 import android.widget.LinearLayout;
@@ -9,6 +10,10 @@ import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -61,9 +66,11 @@ public class CalendarActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_calendar);
         initViews();
         setupToolbar();
+        applyWindowInsets();
         setupViewModel();
         setupTaskAdapter();
         setupRecyclerView();
@@ -84,6 +91,29 @@ public class CalendarActivity extends BaseActivity {
         Toolbar toolbar = findViewById(R.id.toolbar_calendar);
         setSupportActionBar(toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
+    }
+
+    /** Áp dụng paddingTop = status bar height cho root layout, tránh bị tai thỏ/notch che */
+    private void applyWindowInsets() {
+        View rootLayout = findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            // Áp paddingTop lên Toolbar để đẩy nội dung xuống dưới status bar
+            Toolbar toolbar = findViewById(R.id.toolbar_calendar);
+            toolbar.setPadding(
+                    toolbar.getPaddingLeft(),
+                    insets.top,
+                    toolbar.getPaddingRight(),
+                    toolbar.getPaddingBottom()
+            );
+            // Tăng chiều cao Toolbar để chứa cả status bar
+            android.view.ViewGroup.LayoutParams lp = toolbar.getLayoutParams();
+            TypedValue tv = new TypedValue();
+            getTheme().resolveAttribute(androidx.appcompat.R.attr.actionBarSize, tv, true);
+            lp.height = getResources().getDimensionPixelSize(tv.resourceId) + insets.top;
+            toolbar.setLayoutParams(lp);
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
     private void setupViewModel() {
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);

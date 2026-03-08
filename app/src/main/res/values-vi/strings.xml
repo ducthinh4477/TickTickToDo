@@ -119,4 +119,32 @@
     <!-- Empty state -->
     <string name="empty_title">Hôm nay bạn muốn làm gì?</string>
     <string name="empty_subtitle">Chạm + để thêm công việc</string>
+
+    <!-- ViewOptionsBottomSheet -->
+    <string name="view_mode_list">Danh sách</string>
+    <string name="view_mode_kanban">Bảng</string>
+    <string name="view_mode_timeline">Dòng thời gian</string>
+    <string name="option_hide_completed">Ẩn đã hoàn thành</string>
+    <string name="option_show_details">Hiện chi tiết</string>
+    <string name="option_view_options">Tùy chọn hiển thị</string>
+    <string name="option_add_section">Thêm phần</string>
+    <string name="option_list_activities">Hoạt động danh sách</string>
+
+    <!-- Sort / Group options -->
+    <string name="sort_by_date">Sắp xếp theo ngày</string>
+    <string name="sort_by_priority">Sắp xếp theo độ ưu tiên</string>
+    <string name="sort_by_title">Sắp xếp theo tên (A-Z)</string>
+    <string name="sort_custom">Thứ tự tùy chỉnh</string>
+
+    <!-- Statistics -->
+    <string name="statistics_title">Thống kê</string>
+    <string name="statistics_overview">Tổng quan</string>
+    <string name="statistics_total_completed">Tổng đã hoàn thành</string>
+    <string name="statistics_completed_today">Hoàn thành hôm nay</string>
+    <string name="statistics_completed_7_days">Hoàn thành (7 ngày qua)</string>
+    <string name="statistics_completion_rate_today">Tỷ lệ hoàn thành hôm nay</string>
+    <string name="statistics_tasks_label">công việc</string>
+    <string name="statistics_percent_format">%d%%</string>
+    <string name="statistics_no_tasks_today">Không có công việc hôm nay</string>
+    <string name="statistics_completion_detail">%1$d / %2$d %3$s</string>
 </resources>
