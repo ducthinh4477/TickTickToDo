@@ -68,7 +68,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="@string/lang_dialog_confirm"
-            android:textColor="@color/priority_low"
+            android:textColor="@color/accent_primary"
             android:textSize="15sp"
             android:textStyle="bold"
             android:background="?attr/selectableItemBackground"

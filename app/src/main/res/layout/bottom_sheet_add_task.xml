@@ -73,15 +73,15 @@
             android:id="@+id/chip_due_date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/priority_low"
+            android:textColor="@color/accent_primary"
             android:textSize="13sp"
-            app:chipBackgroundColor="#0A4A90D9"
+            app:chipBackgroundColor="#0A8875FF"
             app:chipCornerRadius="8dp"
             app:chipIcon="@drawable/ic_calendar"
             app:chipIconSize="18dp"
-            app:chipIconTint="@color/priority_low"
+            app:chipIconTint="@color/accent_primary"
             app:chipMinHeight="32dp"
-            app:chipStrokeColor="@color/priority_low"
+            app:chipStrokeColor="@color/accent_primary"
             app:chipStrokeWidth="0.5dp"
             tools:text="Today" />
 
@@ -94,7 +94,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/priority_flag_desc"
             android:src="@drawable/ic_flag"
-            android:tint="@color/priority_none" />
+            app:tint="@color/priority_none" />
 
         <!-- Spacer -->
         <View

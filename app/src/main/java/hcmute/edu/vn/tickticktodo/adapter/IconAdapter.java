@@ -79,7 +79,7 @@ public class IconAdapter extends RecyclerView.Adapter<IconAdapter.IconViewHolder
         // ── Tên icon ─────────────────────────────────────────────────────────
         holder.tvIconName.setText(item.getLabelResId());
         holder.tvIconName.setTextColor(isSelected
-                ? ContextCompat.getColor(holder.itemView.getContext(), R.color.priority_low)
+                ? ContextCompat.getColor(holder.itemView.getContext(), R.color.accent_primary)
                 : ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary));
 
         // ── Click ─────────────────────────────────────────────────────────────

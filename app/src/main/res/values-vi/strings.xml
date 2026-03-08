@@ -102,4 +102,11 @@
     <string name="icon_name_travel">Du lịch</string>
     <string name="icon_name_calendar">Lịch</string>
     <string name="icon_name_timer">Hẹn giờ</string>
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_focus">Tập trung</string>
+    <string name="nav_profile">Cá nhân</string>
+    <!-- Empty state -->
+    <string name="empty_title">Hôm nay bạn muốn làm gì?</string>
+    <string name="empty_subtitle">Chạm + để thêm công việc</string>
 </resources>

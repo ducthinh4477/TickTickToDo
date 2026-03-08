@@ -2,7 +2,7 @@
 <!-- Circular background for avatar icon -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <solid android:color="@color/priority_low" />
+    <solid android:color="@color/accent_primary" />
     <size
         android:width="48dp"
         android:height="48dp" />
