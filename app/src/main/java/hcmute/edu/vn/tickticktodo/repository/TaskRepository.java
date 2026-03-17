@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.helper.ReminderScheduler;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
 
@@ -18,18 +19,23 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
  * Repository đóng vai trò trung gian giữa ViewModel và nguồn dữ liệu (Room).
  * Mọi thao tác ghi (insert, update, delete) được thực thi trên background thread
  * thông qua ExecutorService.
+ *
+ * Repository cũng tự động gọi ReminderScheduler để set/cancel alarm nhắc nhở
+ * mỗi khi task được thêm, cập nhật hoặc xóa.
  */
 public class TaskRepository {
 
     private final TaskDao taskDao;
     private final TodoListDao todoListDao;
     private final ExecutorService executor;
+    private final Application application; // giữ để pass Context cho ReminderScheduler
 
     public TaskRepository(Application application) {
         TaskDatabase db = TaskDatabase.getInstance(application);
         taskDao = db.taskDao();
         todoListDao = db.todoListDao();
         executor = Executors.newSingleThreadExecutor();
+        this.application = application;
     }
 
     // ─── READ ────────────────────────────────────────────────────────────────────
@@ -40,6 +46,14 @@ public class TaskRepository {
 
     public LiveData<List<Task>> getCompletedTasks(long startOfDay, long endOfDay) {
         return taskDao.getCompletedTasks(startOfDay, endOfDay);
+    }
+
+    public LiveData<List<Task>> getTasksByDate(long startOfDay, long endOfDay) {
+        return taskDao.getTasksByDate(startOfDay, endOfDay);
+    }
+
+    public LiveData<List<Task>> getTasksByDateRange(long startDate, long endDate) {
+        return taskDao.getTasksByDateRange(startDate, endDate);
     }
 
     public LiveData<List<Task>> getAllTasks() {
@@ -53,24 +67,117 @@ public class TaskRepository {
     // ─── WRITE (background thread) ──────────────────────────────────────────────
 
     public void insert(Task task) {
-        executor.execute(() -> taskDao.insert(task));
+        executor.execute(() -> {
+            long newId = taskDao.insert(task);
+            // Set alarm: gán id vừa insert rồi schedule
+            task.setId(newId);
+            ReminderScheduler.scheduleReminder(application, task);
+
+            // Notification if due today
+            checkAndNotifyIfToday(task);
+        });
+    }
+
+    private void checkAndNotifyIfToday(Task task) {
+        if (task.getDueDate() == null) return;
+
+        java.util.Calendar todayStart = java.util.Calendar.getInstance();
+        todayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        todayStart.set(java.util.Calendar.MINUTE, 0);
+        todayStart.set(java.util.Calendar.SECOND, 0);
+        todayStart.set(java.util.Calendar.MILLISECOND, 0);
+
+        java.util.Calendar todayEnd = (java.util.Calendar) todayStart.clone();
+        todayEnd.add(java.util.Calendar.DAY_OF_YEAR, 1);
+
+        long due = task.getDueDate();
+        if (due >= todayStart.getTimeInMillis() && due < todayEnd.getTimeInMillis()) {
+            hcmute.edu.vn.tickticktodo.helper.NotificationHelper.showTaskNotification(
+                    application,
+                    "Bạn có công việc mới cho hôm nay",
+                    task.getTitle(),
+                    (int) task.getId()
+            );
+        }
     }
 
     public void update(Task task) {
-        executor.execute(() -> taskDao.update(task));
+        executor.execute(() -> {
+            taskDao.update(task);
+            // Đặt lại alarm (dueDate có thể thay đổi), hoặc cancel nếu đã hoàn thành
+            if (task.isCompleted()) {
+                ReminderScheduler.cancelReminder(application, task.getId());
+            } else {
+                ReminderScheduler.scheduleReminder(application, task);
+            }
+        });
     }
 
     public void delete(Task task) {
-        executor.execute(() -> taskDao.delete(task));
+        executor.execute(() -> {
+            taskDao.delete(task);
+            ReminderScheduler.cancelReminder(application, task.getId()); // huỷ alarm
+        });
     }
 
-    public void markTaskAsCompleted(long taskId, boolean isCompleted) {
-        executor.execute(() -> taskDao.markTaskAsCompleted(taskId, isCompleted));
+    public void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate) {
+        executor.execute(() -> {
+            taskDao.markTaskAsCompletedWithDate(taskId, isCompleted, completedDate);
+            if (isCompleted) {
+                ReminderScheduler.cancelReminder(application, taskId); // hoàn thành → huỷ alarm
+            }
+        });
     }
 
     public void deleteAllCompleted() {
         executor.execute(taskDao::deleteAllCompleted);
+        // Không cần cancel từng alarm vì task đã hoàn thành đã bị cancel khi mark complete
     }
+
+    // ─── SORT ────────────────────────────────────────────────────────────────────
+
+    public LiveData<List<Task>> getAllTasksSortByDateAsc() {
+        return taskDao.getAllTasksSortByDateAsc();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByDateDesc() {
+        return taskDao.getAllTasksSortByDateDesc();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByPriority() {
+        return taskDao.getAllTasksSortByPriority();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByTitle() {
+        return taskDao.getAllTasksSortByTitle();
+    }
+
+    public LiveData<List<Task>> getAllTasksSortByCustom() {
+        return taskDao.getAllTasksSortByCustom();
+    }
+
+    public void updateOrderIndex(long taskId, int orderIndex) {
+        executor.execute(() -> taskDao.updateOrderIndex(taskId, orderIndex));
+    }
+
+    // ─── STATISTICS ─────────────────────────────────────────────────────────────
+
+    public LiveData<Integer> countTotalCompleted() {
+        return taskDao.countTotalCompleted();
+    }
+
+    public LiveData<Integer> countCompletedToday(long startOfDay, long endOfDay) {
+        return taskDao.countCompletedToday(startOfDay, endOfDay);
+    }
+
+    public LiveData<Integer> countCompletedLast7Days(long sevenDaysAgo, long endOfToday) {
+        return taskDao.countCompletedLast7Days(sevenDaysAgo, endOfToday);
+    }
+
+    public LiveData<Integer> countTotalTasksToday(long startOfDay, long endOfDay) {
+        return taskDao.countTotalTasksToday(startOfDay, endOfDay);
+    }
+
 
     // ─── TodoList CRUD ────────────────────────────────────────────────────────────
 

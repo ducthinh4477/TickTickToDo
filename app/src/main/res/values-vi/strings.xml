@@ -1,0 +1,190 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TickTickToDo</string>
+    <string name="splash_tagline">Sắp xếp ngày của bạn, từng bước một.</string>
+    <string name="priority_flag_desc">Mức độ ưu tiên</string>
+    <string name="quick_add_hint">Thêm công việc mới…</string>
+    <string name="add_task_desc">Thêm task</string>
+    <string name="send_task_desc">Gửi task</string>
+    <string name="empty_state_message">Không có công việc nào hôm nay.\nChạm + để thêm mới!</string>
+    <string name="header_today">Hôm nay</string>
+    <string name="hint_task_title">Tiêu đề công việc</string>
+    <string name="hint_task_description">Thêm mô tả…</string>
+    <string name="btn_save">Lưu</string>
+    <string name="label_today">Hôm nay</string>
+    <string name="label_tomorrow">Ngày mai</string>
+    <string name="fab_add_desc">Thêm công việc mới</string>
+    <string name="nav_guest_user">Khách</string>
+    <string name="nav_avatar_desc">Ảnh đại diện</string>
+    <string name="nav_settings">Cài đặt</string>
+    <string name="nav_notifications">Thông báo</string>
+    <string name="nav_help">Trợ giúp</string>
+    <string name="menu_desc">Mở menu điều hướng</string>
+    <string name="navigation_drawer_open">Mở thanh điều hướng</string>
+    <string name="navigation_drawer_close">Đóng thanh điều hướng</string>
+    <string name="detail_back_desc">Đóng</string>
+    <string name="detail_save_desc">Lưu</string>
+    <string name="detail_saved">Đã lưu thay đổi</string>
+    <string name="detail_label_date">Ngày đến hạn</string>
+    <string name="detail_label_priority">Độ ưu tiên</string>
+    <string name="label_no_date">Chọn ngày</string>
+    <string name="error_title_empty">Tiêu đề không được để trống</string>
+    <string name="priority_none_label">Không</string>
+    <string name="priority_low_label">Thấp</string>
+    <string name="priority_medium_label">Trung bình</string>
+    <string name="priority_high_label">Cao</string>
+    <string name="section_completed">Đã hoàn thành (%d)</string>
+    <string name="nav_lists_title">Danh sách</string>
+    <string name="nav_task_desc">Công việc</string>
+    <string name="nav_calendar_desc">Lịch</string>
+    <string name="nav_search_desc">Tìm kiếm</string>
+    <string name="btn_sort_desc">Sắp xếp</string>
+    <string name="btn_more_desc">Thêm tùy chọn</string>
+    <string name="menu_statistics">Thống kê</string>
+    <string name="menu_sign_out">Đăng xuất</string>
+    <string name="panel_inbox">Hộp thư đến</string>
+    <string name="menu_next_7_days">7 ngày tới</string>
+    <string name="menu_completed">Đã hoàn thành</string>
+    <string name="menu_trash">Thùng rác</string>
+    <string name="countdown_title">Đồng hồ tập trung</string>
+    <string name="countdown_back_desc">Đóng</string>
+    <string name="countdown_mode_pomodoro">Pomodoro</string>
+    <string name="countdown_mode_short_break">Nghỉ ngắn</string>
+    <string name="countdown_mode_long_break">Nghỉ dài</string>
+    <string name="countdown_btn_start">Bắt đầu</string>
+    <string name="countdown_btn_pause">Tạm dừng</string>
+    <string name="countdown_btn_resume">Tiếp tục</string>
+    <string name="countdown_btn_stop">Dừng lại</string>
+    <string name="countdown_status_ready">Sẵn sàng tập trung</string>
+    <string name="countdown_status_focus">Đang tập trung…</string>
+    <string name="countdown_status_paused">Đã tạm dừng</string>
+    <string name="countdown_status_done">✓ Hoàn thành!</string>
+    <string name="countdown_session">Phiên làm việc:</string>
+    <string name="countdown_toast_done">🎉 Chúc mừng! Bạn đã hoàn thành một phiên Pomodoro!</string>
+    <string name="countdown_toast_break_done">☕ Hết giờ nghỉ! Sẵn sàng tập trung tiếp nhé!</string>
+    <string name="nav_timer_desc">Đồng hồ tập trung</string>
+    <string name="calendar_title">Lịch</string>
+    <string name="calendar_back_desc">Đóng Lịch</string>
+    <string name="calendar_empty_message">Không có công việc nào\ncho ngày này</string>
+    <string name="calendar_task_count">%d công việc</string>
+    <string name="calendar_one_task">1 công việc</string>
+    <string name="nav_calendar_menu_desc">Mở Lịch</string>
+    <string name="lang_dialog_title">Chọn ngôn ngữ</string>
+    <string name="lang_dialog_cancel">Hủy</string>
+    <string name="lang_dialog_confirm">Áp dụng</string>
+    <string name="nav_settings_language">Ngôn ngữ</string>
+
+    <!-- ThemeSelectionDialog -->
+    <string name="theme_dialog_title">Chọn giao diện</string>
+    <string name="theme_dialog_cancel">Hủy</string>
+    <string name="theme_dialog_confirm">Áp dụng</string>
+    <string name="theme_light">Sáng</string>
+    <string name="theme_dark">Tối</string>
+    <string name="theme_system">Theo hệ thống</string>
+    <string name="nav_settings_theme">Giao diện</string>
+
+    <string name="toast_on_today_page">Bạn đang ở trang Hôm nay</string>
+    <string name="toast_sort_wip">Tính năng Sắp xếp đang phát triển</string>
+    <string name="toast_more_wip">Tính năng Thêm tùy chọn đang phát triển</string>
+    <string name="toast_search_wip">Tính năng Tìm kiếm đang phát triển</string>
+    <string name="toast_notifications_wip">Tính năng Thông báo đang phát triển</string>
+    <string name="toast_help_wip">Tính năng Trợ giúp đang phát triển</string>
+    <string name="toast_settings_wip">Tính năng Cài đặt đang phát triển</string>
+    <string name="toast_statistics_wip">Tính năng Thống kê đang phát triển</string>
+    <string name="toast_signout_wip">Tính năng Đăng xuất đang phát triển</string>
+    <string name="toast_loading">Đang tải: %s</string>
+    <string name="snackbar_deleted">Đã xóa: %s</string>
+    <string name="snackbar_undo">Hoàn tác</string>
+    <!-- AddListDialog -->
+    <string name="add_list_dialog_title">Danh sách mới</string>
+    <string name="add_list_hint_name">Tên danh sách</string>
+    <string name="add_list_label_icon">Chọn biểu tượng</string>
+    <string name="add_list_btn_cancel">Hủy</string>
+    <string name="add_list_btn_create">Tạo mới</string>
+    <string name="add_list_error_empty_name">Tên không được để trống</string>
+    <string name="add_list_created">Đã tạo danh sách!</string>
+    <string name="add_list_fab_desc">Thêm danh sách mới</string>
+    <string name="icon_name_list">Mặc định</string>
+    <string name="icon_name_work">Công việc</string>
+    <string name="icon_name_study">Học tập</string>
+    <string name="icon_name_home">Gia đình</string>
+    <string name="icon_name_shopping">Mua sắm</string>
+    <string name="icon_name_health">Sức khỏe</string>
+    <string name="icon_name_travel">Du lịch</string>
+    <string name="icon_name_calendar">Lịch</string>
+    <string name="icon_name_timer">Hẹn giờ</string>
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_focus">Tập trung</string>
+    <string name="nav_profile">Cá nhân</string>
+    <!-- Empty state -->
+    <string name="empty_title">Hôm nay bạn muốn làm gì?</string>
+    <string name="empty_subtitle">Chạm + để thêm công việc</string>
+
+    <!-- ViewOptionsBottomSheet -->
+    <string name="view_mode_list">Danh sách</string>
+    <string name="view_mode_kanban">Bảng</string>
+    <string name="view_mode_timeline">Dòng thời gian</string>
+    <string name="option_hide_completed">Ẩn đã hoàn thành</string>
+    <string name="option_show_details">Hiện chi tiết</string>
+    <string name="option_view_options">Tùy chọn hiển thị</string>
+    <string name="option_add_section">Thêm phần</string>
+    <string name="option_list_activities">Hoạt động danh sách</string>
+
+    <!-- Sort / Group options -->
+    <string name="sort_by_date">Sắp xếp theo ngày</string>
+    <string name="sort_by_priority">Sắp xếp theo độ ưu tiên</string>
+    <string name="sort_by_title">Sắp xếp theo tên (A-Z)</string>
+    <string name="sort_custom">Thứ tự tùy chỉnh</string>
+
+    <!-- Statistics -->
+    <string name="statistics_title">Thống kê</string>
+    <string name="statistics_overview">Tổng quan</string>
+    <string name="statistics_total_completed">Tổng đã hoàn thành</string>
+    <string name="statistics_completed_today">Hoàn thành hôm nay</string>
+    <string name="statistics_completed_7_days">Hoàn thành (7 ngày qua)</string>
+    <string name="statistics_completion_rate_today">Tỷ lệ hoàn thành hôm nay</string>
+    <string name="statistics_tasks_label">công việc</string>
+    <string name="statistics_percent_format">%d%%</string>
+    <string name="statistics_no_tasks_today">Không có công việc hôm nay</string>
+    <string name="statistics_completion_detail">%1$d / %2$d %3$s</string>
+
+    <!-- Task Reminder Notification -->
+    <string name="reminder_notification_title">Nhắc nhở công việc</string>
+    <string name="reminder_channel_description">Thông báo nhắc nhở các công việc sắp đến hạn</string>
+
+    <!-- School Sync -->
+    <string name="school_calendar_sync">Đồng bộ lịch trường học</string>
+    <string name="sync_school_calendar_desc">Đồng bộ thời khóa biểu của bạn với TickTickToDo</string>
+    <!-- CalendarActivity Month Grid Navigation -->
+    <string name="cal_prev_month_desc">Tháng trước</string>
+    <string name="cal_next_month_desc">Tháng sau</string>
+    <string name="cal_today">Hôm nay</string>
+    <string name="cal_add_event_desc">Thêm sự kiện mới</string>
+
+    <!-- Day-of-week headers -->
+    <string name="cal_day_mon">T2</string>
+    <string name="cal_day_tue">T3</string>
+    <string name="cal_day_wed">T4</string>
+    <string name="cal_day_thu">T5</string>
+    <string name="cal_day_fri">T6</string>
+    <string name="cal_day_sat">T7</string>
+    <string name="cal_day_sun">CN</string>
+
+    <!-- Add Calendar Event BottomSheet -->
+    <string name="cal_add_event_title">Thêm sự kiện</string>
+    <string name="cal_event_hint_title">Tiêu đề sự kiện *</string>
+    <string name="cal_event_hint_date">Ngày bắt đầu</string>
+    <string name="cal_event_hint_time">Giờ bắt đầu</string>
+    <string name="cal_event_hint_description">Mô tả (tuỳ chọn)</string>
+    <string name="cal_event_hint_location">Địa điểm (tuỳ chọn)</string>
+    <string name="cal_event_hint_duration">Thời lượng (tuỳ chọn)</string>
+    <string name="cal_event_duration_suffix">phút</string>
+    <string name="cal_event_label_recurrence">Lặp lại:</string>
+    <string name="cal_recurrence_none">Không lặp</string>
+    <string name="cal_recurrence_weekly">Hàng tuần</string>
+    <string name="cal_recurrence_monthly">Hàng tháng</string>
+    <string name="cal_event_btn_cancel">Hủy</string>
+    <string name="cal_event_btn_save">Lưu sự kiện</string>
+    <string name="cal_event_saved_toast">Đã lưu sự kiện!</string>
+</resources>

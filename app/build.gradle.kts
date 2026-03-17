@@ -46,6 +46,15 @@ dependencies {
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.lifecycle.livedata)
 
+    // LocalBroadcastManager (tách ra khỏi support library từ AndroidX)
+    implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime:2.9.0")
+
+    // Biweekly for parsing iCal / iCalendar (.ics) files
+    implementation("net.sf.biweekly:biweekly:0.6.6")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

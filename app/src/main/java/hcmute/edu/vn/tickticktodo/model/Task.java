@@ -49,7 +49,37 @@ public class Task {
     @ColumnInfo(name = "list_id")
     private Long listId; // khóa ngoại tới TodoList (null = Inbox / không thuộc list nào)
 
+    @ColumnInfo(name = "order_index", defaultValue = "0")
+    private int orderIndex; // Thứ tự kéo thả (drag & drop), dùng cho Sort Custom
+
+    @ColumnInfo(name = "completed_date")
+    private Long completedDate; // Timestamp khi task được hoàn thành (null nếu chưa hoàn thành)
+
+    // ─── Calendar Event fields (thêm v4 → v5) ───────────────────────────────────
+
+    @ColumnInfo(name = "location")
+    private String location; // Địa điểm sự kiện (null nếu không có)
+
+    @ColumnInfo(name = "duration", defaultValue = "0")
+    private int duration; // Thời lượng (phút). 0 = không xác định
+
+    /**
+     * Lặp lại sự kiện:
+     *   0 = RECURRENCE_NONE    – Không lặp
+     *   1 = RECURRENCE_WEEKLY  – Hàng tuần
+     *   2 = RECURRENCE_MONTHLY – Hàng tháng
+     */
+    @ColumnInfo(name = "recurrence", defaultValue = "0")
+    private int recurrence;
+
+    public static final int RECURRENCE_NONE    = 0;
+    public static final int RECURRENCE_WEEKLY  = 1;
+    public static final int RECURRENCE_MONTHLY = 2;
+
     // Constructor
+    public Task() {
+    }
+
     public Task(String title, String description, Long dueDate, boolean isCompleted, int priority) {
         this.title = title;
         this.description = description;
@@ -57,6 +87,8 @@ public class Task {
         this.isCompleted = isCompleted;
         this.priority = priority;
         this.listId = null;
+        this.orderIndex = 0;
+        this.completedDate = null;
     }
 
     // Getters & Setters
@@ -115,5 +147,47 @@ public class Task {
 
     public void setListId(Long listId) {
         this.listId = listId;
+    }
+
+    public int getOrderIndex() {
+        return orderIndex;
+    }
+
+    public void setOrderIndex(int orderIndex) {
+        this.orderIndex = orderIndex;
+    }
+
+    public Long getCompletedDate() {
+        return completedDate;
+    }
+
+    public void setCompletedDate(Long completedDate) {
+        this.completedDate = completedDate;
+    }
+
+    // ─── Calendar Event getters/setters ──────────────────────────────────────────
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
+    }
+
+    public int getRecurrence() {
+        return recurrence;
+    }
+
+    public void setRecurrence(int recurrence) {
+        this.recurrence = recurrence;
     }
 }

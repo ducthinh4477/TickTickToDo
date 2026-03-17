@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF1A1A2E"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    tools:context=".ui.CountdownActivity">
+
+    <!-- Back button + Title -->
+    <RelativeLayout
+        android:id="@+id/countdown_header"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:paddingTop="32dp">
+
+        <ImageButton
+            android:id="@+id/btn_countdown_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/countdown_back_desc"
+            android:src="@drawable/ic_close"
+            android:tint="#FFFFFFFF" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="@string/countdown_title"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+    </RelativeLayout>
+
+    <!-- Mode selector tabs -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:background="#22FFFFFF"
+        android:orientation="horizontal"
+        android:padding="4dp">
+
+        <TextView
+            android:id="@+id/tab_pomodoro"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/bg_tab_selected"
+            android:gravity="center"
+            android:text="@string/countdown_mode_pomodoro"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tab_short_break"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:gravity="center"
+            android:text="@string/countdown_mode_short_break"
+            android:textColor="#AAFFFFFF"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tab_long_break"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:gravity="center"
+            android:text="@string/countdown_mode_long_break"
+            android:textColor="#AAFFFFFF"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <!-- Spacer -->
+    <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+    <!-- Timer circle -->
+    <FrameLayout
+        android:layout_width="280dp"
+        android:layout_height="280dp">
+
+        <!-- Outer glow ring -->
+        <View
+            android:layout_width="280dp"
+            android:layout_height="280dp"
+            android:layout_gravity="center"
+            android:alpha="0.18"
+            android:background="@drawable/bg_timer_ring_outer" />
+
+        <!-- Main circle -->
+        <FrameLayout
+            android:layout_width="248dp"
+            android:layout_height="248dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_timer_circle">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <!-- Countdown text -->
+                <TextView
+                    android:id="@+id/tv_countdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:text="25:00"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="64sp"
+                    android:textStyle="bold"
+                    tools:text="25:00" />
+
+                <!-- Status label -->
+                <TextView
+                    android:id="@+id/tv_timer_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/countdown_status_ready"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+    </FrameLayout>
+
+    <!-- Session counter -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/countdown_session"
+            android:textColor="#AAFFFFFF"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_session_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="1"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- Spacer -->
+    <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+    <!-- Control Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingBottom="48dp">
+
+        <!-- Stop/Reset button -->
+        <Button
+            android:id="@+id/btn_stop"
+            android:layout_width="140dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_btn_timer_secondary"
+            android:enabled="false"
+            android:text="@string/countdown_btn_stop"
+            android:textColor="#FF4A90D9"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <!-- Start/Pause button -->
+        <Button
+            android:id="@+id/btn_start_pause"
+            android:layout_width="140dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/bg_btn_timer_primary"
+            android:text="@string/countdown_btn_start"
+            android:textColor="#FFFFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</LinearLayout>
+

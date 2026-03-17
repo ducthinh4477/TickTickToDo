@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ═══════════════════════════════════════════════════════
+         UpTodo DARK Theme Color Palette (Night Mode)
+         Giống bộ màu gốc của dự án — giao diện tối mặc định
+         ═══════════════════════════════════════════════════════ -->
+
+    <!-- Core backgrounds -->
+    <color name="background_primary">#FF121212</color>
+    <color name="background_surface">#FF1D1D1D</color>
+    <color name="background_card">#FF363636</color>
+    <color name="background_elevated">#FF272727</color>
+    <color name="background_input">#FF1D1D1D</color>
+
+    <!-- Accent -->
+    <color name="accent_primary">#FF8875FF</color>
+    <color name="accent_secondary">#FF8687E7</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#FFAFAFAF</color>
+    <color name="text_hint">#FF535353</color>
+    <color name="text_completed">#FF6B6B6B</color>
+
+    <!-- Divider -->
+    <color name="divider">#1AFFFFFF</color>
+
+    <!-- Priority / category tag colors -->
+    <color name="priority_none">#FF6B6B6B</color>
+    <color name="priority_low">#FF8875FF</color>
+    <color name="priority_medium">#FFFF9B73</color>
+    <color name="priority_high">#FFFF4949</color>
+
+    <!-- Category tag colors -->
+    <color name="tag_work">#FFFF9B73</color>
+    <color name="tag_study">#FF80FFD1</color>
+    <color name="tag_home">#FFFF79F2</color>
+    <color name="tag_health">#FF66E1FF</color>
+
+    <!-- Checkbox -->
+    <color name="checkbox_unchecked">#FF535353</color>
+    <color name="checkbox_checked">#FF8875FF</color>
+
+    <!-- Swipe to delete -->
+    <color name="swipe_delete_bg">#FFFF4949</color>
+
+    <!-- Bottom Nav -->
+    <color name="bottom_nav_bg">#FF363636</color>
+    <color name="bottom_nav_active">#FF8875FF</color>
+    <color name="bottom_nav_inactive">#FFAFAFAF</color>
+
+    <!-- Compat -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="nav_rail_bg">#FF1D1D1D</color>
+    <color name="panel_selected">#1A8875FF</color>
+</resources>
+

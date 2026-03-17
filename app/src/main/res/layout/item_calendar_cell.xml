@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ô ngày trong Calendar Month Grid.
+  Chiều cao cố định 88dp – đủ để hiển thị số ngày + tối đa 3 dòng event nhỏ.
+  Chiều rộng do GridLayoutManager(spanCount=7) tự chia đều theo màn hình.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cell_root"
+    android:layout_width="match_parent"
+    android:layout_height="88dp"
+    android:orientation="vertical"
+    android:background="@drawable/bg_calendar_cell"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!--
+      Hàng trên: Số ngày, được bọc trong FrameLayout 26×26dp.
+      Adapter sẽ set background của TextView này:
+        • bg_today_circle   → nếu là "Hôm nay"  (chữ trắng)
+        • bg_selected_day   → nếu đang được chọn (chữ accent)
+        • null              → bình thường
+    -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="28dp"
+        android:paddingTop="4dp">
+
+        <TextView
+            android:id="@+id/tv_day_number"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary"
+            android:includeFontPadding="false" />
+
+    </FrameLayout>
+
+    <!--
+      Khoảng trống sự kiện: chiếm phần còn lại của ô vuông.
+      CalendarAdapter sẽ addView() các TextView event chip vào đây (tối đa 3).
+    -->
+    <LinearLayout
+        android:id="@+id/layout_events"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingLeft="2dp"
+        android:paddingRight="2dp"
+        android:paddingBottom="2dp"
+        android:clipChildren="false" />
+
+</LinearLayout>
