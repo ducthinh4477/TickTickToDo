@@ -55,6 +55,27 @@ public class Task {
     @ColumnInfo(name = "completed_date")
     private Long completedDate; // Timestamp khi task được hoàn thành (null nếu chưa hoàn thành)
 
+    // ─── Calendar Event fields (thêm v4 → v5) ───────────────────────────────────
+
+    @ColumnInfo(name = "location")
+    private String location; // Địa điểm sự kiện (null nếu không có)
+
+    @ColumnInfo(name = "duration", defaultValue = "0")
+    private int duration; // Thời lượng (phút). 0 = không xác định
+
+    /**
+     * Lặp lại sự kiện:
+     *   0 = RECURRENCE_NONE    – Không lặp
+     *   1 = RECURRENCE_WEEKLY  – Hàng tuần
+     *   2 = RECURRENCE_MONTHLY – Hàng tháng
+     */
+    @ColumnInfo(name = "recurrence", defaultValue = "0")
+    private int recurrence;
+
+    public static final int RECURRENCE_NONE    = 0;
+    public static final int RECURRENCE_WEEKLY  = 1;
+    public static final int RECURRENCE_MONTHLY = 2;
+
     // Constructor
     public Task() {
     }
@@ -142,5 +163,31 @@ public class Task {
 
     public void setCompletedDate(Long completedDate) {
         this.completedDate = completedDate;
+    }
+
+    // ─── Calendar Event getters/setters ──────────────────────────────────────────
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
+    }
+
+    public int getRecurrence() {
+        return recurrence;
+    }
+
+    public void setRecurrence(int recurrence) {
+        this.recurrence = recurrence;
     }
 }

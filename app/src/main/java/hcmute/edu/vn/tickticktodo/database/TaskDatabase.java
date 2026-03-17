@@ -22,8 +22,9 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
  *   v1 → v2: Thêm bảng todo_lists
  *   v2 → v3: Thêm cột icon_res_id vào bảng todo_lists (DEFAULT 0)
  *   v3 → v4: Thêm cột order_index, completed_date vào bảng tasks
+ *   v4 → v5: Thêm cột location, duration, recurrence vào bảng tasks (Calendar event)
  */
-@Database(entities = {Task.class, TodoList.class}, version = 4, exportSchema = false)
+@Database(entities = {Task.class, TodoList.class}, version = 5, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -59,6 +60,26 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    // ─── Migration v4 → v5 ───────────────────────────────────────────────────────
+    // Thêm 3 cột mới cho tính năng Calendar Event:
+    //   location  – địa điểm (TEXT, nullable)
+    //   duration  – thời lượng tính bằng phút (INTEGER, default 0)
+    //   recurrence – kiểu lặp lại: 0=none, 1=weekly, 2=monthly (INTEGER, default 0)
+    static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                "ALTER TABLE tasks ADD COLUMN location TEXT"
+            );
+            database.execSQL(
+                "ALTER TABLE tasks ADD COLUMN duration INTEGER NOT NULL DEFAULT 0"
+            );
+            database.execSQL(
+                "ALTER TABLE tasks ADD COLUMN recurrence INTEGER NOT NULL DEFAULT 0"
+            );
+        }
+    };
+
     // ─── Singleton ───────────────────────────────────────────────────────────────
     public static TaskDatabase getInstance(Context context) {
         if (INSTANCE == null) {
@@ -69,7 +90,7 @@ public abstract class TaskDatabase extends RoomDatabase {
                             TaskDatabase.class,
                             DATABASE_NAME
                     )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4) // Migration an toàn (giữ data)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();
                 }

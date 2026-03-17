@@ -5,13 +5,17 @@
     <!-- ══ Permissions ══ -->
     <!-- Hiển thị notification (bắt buộc từ Android 13 / API 33) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Đặt exact alarm chính xác đến giây (bắt buộc từ Android 12 / API 31) -->
+    <!-- Đặt exact alarm chính xác đến giây (bắt buộc từ Android 12 / API 31) — user phải cấp qua Settings -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Tự động được cấp trên Android 13+ cho ứng dụng lịch/nhắc nhở, không cần user action -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <!-- Nhận broadcast khi thiết bị khởi động lại để restore alarm -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Truy cập chính sách Không làm phiền (DND) để thông báo từ app luôn hiển thị -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
     <application
         android:name=".TickTickApplication"

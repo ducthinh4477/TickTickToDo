@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nền hình viên thuốc (pill) cho dòng event nhỏ trong ô ngày Calendar. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/accent_primary" />
+    <corners android:radius="2dp" />
+</shape>

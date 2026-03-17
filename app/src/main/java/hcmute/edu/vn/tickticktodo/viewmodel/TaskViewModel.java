@@ -126,6 +126,18 @@ public class TaskViewModel extends AndroidViewModel {
         return repository.getTasksByDate(startOfDay, endOfDay);
     }
 
+    /**
+     * Truy vấn tất cả task trong một khoảng ngày tuỳ ý (dùng cho Calendar Month Grid).
+     * CalendarActivity gọi method này một lần cho toàn bộ cửa sổ 42 ngày (6 tuần)
+     * rồi phân bổ task vào từng ô ngày trong CalendarAdapter.
+     *
+     * @param startDate timestamp bắt đầu (thường = ngày đầu tuần đầu tiên hiển thị)
+     * @param endDate   timestamp kết thúc (exclusive, thường = ngày sau tuần cuối)
+     */
+    public LiveData<List<Task>> getTasksByDateRange(long startDate, long endDate) {
+        return repository.getTasksByDateRange(startDate, endDate);
+    }
+
     public LiveData<Task> getTaskById(long taskId) {
         return repository.getTaskById(taskId);
     }

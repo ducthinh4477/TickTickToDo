@@ -98,6 +98,38 @@
     <string name="calendar_one_task">1 task</string>
     <string name="nav_calendar_menu_desc">Open Calendar</string>
 
+    <!-- CalendarActivity Month Grid Navigation -->
+    <string name="cal_prev_month_desc">Previous month</string>
+    <string name="cal_next_month_desc">Next month</string>
+    <string name="cal_today">Today</string>
+    <string name="cal_add_event_desc">Add new event</string>
+
+    <!-- Day-of-week headers (Mon-first, Vietnamese abbreviation) -->
+    <string name="cal_day_mon">T2</string>
+    <string name="cal_day_tue">T3</string>
+    <string name="cal_day_wed">T4</string>
+    <string name="cal_day_thu">T5</string>
+    <string name="cal_day_fri">T6</string>
+    <string name="cal_day_sat">T7</string>
+    <string name="cal_day_sun">CN</string>
+
+    <!-- Add Calendar Event BottomSheet -->
+    <string name="cal_add_event_title">New Event</string>
+    <string name="cal_event_hint_title">Event title *</string>
+    <string name="cal_event_hint_date">Start date</string>
+    <string name="cal_event_hint_time">Time</string>
+    <string name="cal_event_hint_description">Description (optional)</string>
+    <string name="cal_event_hint_location">Location (optional)</string>
+    <string name="cal_event_hint_duration">Duration (optional)</string>
+    <string name="cal_event_duration_suffix">minutes</string>
+    <string name="cal_event_label_recurrence">Repeat:</string>
+    <string name="cal_recurrence_none">No repeat</string>
+    <string name="cal_recurrence_weekly">Weekly</string>
+    <string name="cal_recurrence_monthly">Monthly</string>
+    <string name="cal_event_btn_cancel">Cancel</string>
+    <string name="cal_event_btn_save">Save Event</string>
+    <string name="cal_event_saved_toast">Event saved!</string>
+
     <!-- LanguageSelectionDialog -->
     <string name="lang_dialog_title">Language / Ngôn ngữ</string>
     <string name="lang_dialog_cancel">Cancel</string>
@@ -178,4 +210,8 @@
     <!-- Task Reminder Notification -->
     <string name="reminder_notification_title">Task Reminder</string>
     <string name="reminder_channel_description">Notifications to remind you about upcoming tasks</string>
+
+    <!-- School Sync -->
+    <string name="school_calendar_sync">School Calendar Sync</string>
+    <string name="sync_school_calendar_desc">Sync your school schedule with TickTickToDo</string>
 </resources>

@@ -1,122 +1,206 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<!--
+  activity_calendar.xml — Màn hình Lịch tháng (Month Grid View).
+  Thiết kế theo phong cách Google Calendar web:
+    1. Toolbar điều hướng back
+    2. Header: nút "<" / Tháng X năm YYYY / nút ">" / Hôm nay
+    3. Hàng tiêu đề thứ trong tuần: T2 T3 T4 T5 T6 T7 CN
+    4. RecyclerView GridLayoutManager(span=7) — 42 ô ngày (6 tuần)
+    5. FloatingActionButton thêm sự kiện mới
+-->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
-    android:orientation="vertical"
+    android:background="@color/background_primary"
     tools:context=".ui.CalendarActivity">
 
-    <!-- ══ Toolbar ══ -->
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar_calendar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorSurface"
-        android:elevation="4dp"
-        app:navigationIcon="@drawable/ic_close"
-        app:navigationContentDescription="@string/calendar_back_desc"
-        app:title="@string/calendar_title"
-        app:titleTextColor="@color/text_primary"
-        app:subtitleTextColor="@color/text_secondary" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
-
-    <!-- ══ CalendarView – nửa trên ══ -->
-    <CalendarView
-        android:id="@+id/calendar_view"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:dateTextAppearance="@style/CalendarDateText"
-        android:firstDayOfWeek="2"
-        android:focusable="true"
-        android:focusableInTouchMode="true" />
-
-    <!-- ══ Divider + Header cho phần dưới ══ -->
+    <!-- ─── Nội dung chính ─────────────────────────────────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/background_card"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="10dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tv_selected_date_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            tools:text="Thứ Hai, 8 tháng 3" />
-
-        <TextView
-            android:id="@+id/tv_task_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            tools:text="3 công việc" />
-
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
-
-    <!-- ══ RecyclerView – nửa dưới ══ -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_calendar_tasks"
+        <!-- ── Toolbar với nút Back ── -->
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar_calendar"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="16dp"
-            tools:listitem="@layout/item_task" />
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/background_surface"
+            android:elevation="0dp"
+            app:navigationIcon="@drawable/ic_back"
+            app:navigationContentDescription="@string/calendar_back_desc" />
 
-        <!-- Empty state -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider" />
+
+        <!-- ── Header điều hướng tháng ── -->
         <LinearLayout
-            android:id="@+id/layout_calendar_empty"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone"
-            tools:visibility="gone">
+            android:id="@+id/layout_month_header"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:background="@color/background_surface">
 
+            <!-- Nút tháng trước "<" -->
+            <ImageButton
+                android:id="@+id/btn_prev_month"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_chevron_left"
+                android:contentDescription="@string/cal_prev_month_desc"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="@color/text_secondary" />
+
+            <!-- Tiêu đề "Tháng X năm YYYY" -->
             <TextView
+                android:id="@+id/tv_month_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                tools:text="Tháng 3 năm 2025" />
+
+            <!-- Nút tháng sau ">" -->
+            <ImageButton
+                android:id="@+id/btn_next_month"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_chevron_right"
+                android:contentDescription="@string/cal_next_month_desc"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="@color/text_secondary" />
+
+            <!-- Nút "Hôm nay" -->
+            <Button
+                android:id="@+id/btn_today"
+                style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📅"
-                android:textSize="48sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/calendar_empty_message"
-                android:textColor="@color/text_secondary"
-                android:textSize="15sp"
-                android:gravity="center" />
+                android:text="@string/cal_today"
+                android:textSize="13sp"
+                android:textColor="@color/accent_primary"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
 
         </LinearLayout>
 
-    </FrameLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider" />
 
-</LinearLayout>
+        <!-- ── Hàng tiêu đề thứ trong tuần ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:orientation="horizontal"
+            android:background="@color/background_surface">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/cal_day_mon"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/cal_day_tue"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/cal_day_wed"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/cal_day_thu"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/cal_day_fri"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/cal_day_sat"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/accent_primary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/cal_day_sun"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/priority_high" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider" />
+
+        <!-- ── RecyclerView lưới 6×7 = 42 ô ngày ── -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_calendar_grid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingBottom="80dp"
+            tools:listitem="@layout/item_calendar_cell" />
+
+    </LinearLayout>
+
+    <!-- ─── FAB: Thêm sự kiện mới ────────────────────────────────────────── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add_event"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="20dp"
+        android:contentDescription="@string/cal_add_event_desc"
+        android:src="@drawable/ic_add"
+        app:backgroundTint="@color/accent_primary"
+        app:tint="@color/white" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

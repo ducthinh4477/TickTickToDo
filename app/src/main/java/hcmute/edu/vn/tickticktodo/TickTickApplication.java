@@ -12,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 
 import hcmute.edu.vn.tickticktodo.worker.DatabaseCleanupWorker;
 import hcmute.edu.vn.tickticktodo.worker.SyncWorker;
+import hcmute.edu.vn.tickticktodo.worker.DailyDigestWorker;
+import hcmute.edu.vn.tickticktodo.worker.OverdueCheckWorker;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
 
 public class TickTickApplication extends Application {
@@ -71,5 +73,11 @@ public class TickTickApplication extends Application {
         // 3. School Sync Worker
         // Checks every 6 hours for new school tasks if enabled
         hcmute.edu.vn.tickticktodo.worker.SchoolSyncWorker.schedulePeriodicSync(this);
+
+        // 4. Daily Digest Worker — gửi tổng hợp công việc lúc 8:00 AM mỗi ngày
+        DailyDigestWorker.schedule(this);
+
+        // 5. Overdue Check Worker — kiểm tra task quá hạn mỗi 12 giờ
+        OverdueCheckWorker.schedule(this);
     }
 }

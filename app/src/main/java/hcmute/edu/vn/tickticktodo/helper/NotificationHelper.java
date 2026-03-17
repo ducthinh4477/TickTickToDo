@@ -29,11 +29,15 @@ import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
  */
 public class NotificationHelper {
 
-    public static final String CHANNEL_ID_TIMER = "timer_notification_channel";
-    public static final String CHANNEL_ID_TASK = "task_reminder_channel";
+    public static final String CHANNEL_ID_TIMER        = "timer_notification_channel";
+    public static final String CHANNEL_ID_TASK         = "task_reminder_channel";
+    public static final String CHANNEL_ID_DAILY_DIGEST = "daily_digest_channel";
+    public static final String CHANNEL_ID_OVERDUE      = "overdue_channel";
 
-    private static final String CHANNEL_NAME_TIMER = "Pomodoro Timer";
-    private static final String CHANNEL_NAME_TASK = "Task Reminders";
+    private static final String CHANNEL_NAME_TIMER        = "Pomodoro Timer";
+    private static final String CHANNEL_NAME_TASK         = "Task Reminders";
+    private static final String CHANNEL_NAME_DAILY_DIGEST = "Tổng hợp hàng ngày";
+    private static final String CHANNEL_NAME_OVERDUE      = "Công việc quá hạn";
 
     /**
      * Creates notification channels for both Timer and Tasks.
@@ -73,6 +77,27 @@ public class NotificationHelper {
             taskChannel.enableLights(true);
 
             manager.createNotificationChannel(taskChannel);
+
+            // 3. Daily Digest Channel (Default importance — không cần âm thanh to, chỉ cần thấy)
+            NotificationChannel dailyChannel = new NotificationChannel(
+                    CHANNEL_ID_DAILY_DIGEST,
+                    CHANNEL_NAME_DAILY_DIGEST,
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            dailyChannel.setDescription("Tóm tắt công việc trong ngày vào mỗi buổi sáng");
+            dailyChannel.setShowBadge(true);
+            manager.createNotificationChannel(dailyChannel);
+
+            // 4. Overdue Task Channel (High importance — cần user chú ý)
+            NotificationChannel overdueChannel = new NotificationChannel(
+                    CHANNEL_ID_OVERDUE,
+                    CHANNEL_NAME_OVERDUE,
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            overdueChannel.setDescription("Thông báo khi có công việc đã quá hạn chưa hoàn thành");
+            overdueChannel.setSound(soundUri, audioAttributes);
+            overdueChannel.enableVibration(true);
+            manager.createNotificationChannel(overdueChannel);
         }
     }
 
@@ -211,5 +236,78 @@ public class NotificationHelper {
                 .addAction(actionSnooze);
 
         NotificationManagerCompat.from(context).notify(taskId, builder.build());
+    }
+
+    /**
+     * Hiển thị thông báo tổng hợp công việc buổi sáng (Daily Digest).
+     * Chỉ hiển thị nếu có ít nhất 1 task chưa hoàn thành hôm nay.
+     */
+    public static void showDailyDigestNotification(Context context, int taskCount) {
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) return;
+
+        Intent openAppIntent = new Intent(context, MainActivity.class);
+        openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, 2000, openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        String title;
+        String body;
+        if (taskCount == 0) {
+            title = "Hôm nay bạn không có công việc nào!";
+            body = "Tuyệt vời! Hãy tận hưởng ngày hôm nay hoặc lên kế hoạch trước.";
+        } else {
+            title = "Bạn có " + taskCount + " công việc hôm nay";
+            body = "Hãy bắt đầu ngày mới với danh sách công việc của bạn. Chúc bạn làm việc hiệu quả!";
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_DAILY_DIGEST)
+                .setSmallIcon(R.drawable.ic_notifications)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent);
+
+        NotificationManagerCompat.from(context).notify(8001, builder.build());
+    }
+
+    /**
+     * Hiển thị thông báo cảnh báo công việc quá hạn.
+     */
+    public static void showOverdueNotification(Context context, int overdueCount, String firstTaskTitle) {
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) return;
+
+        Intent openAppIntent = new Intent(context, MainActivity.class);
+        openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, 2001, openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        String title = overdueCount == 1
+                ? "1 công việc đã quá hạn"
+                : overdueCount + " công việc đã quá hạn";
+
+        String body = overdueCount == 1
+                ? "\"" + firstTaskTitle + "\" đã qua hạn. Hãy hoàn thành hoặc cập nhật deadline."
+                : "\"" + firstTaskTitle + "\" và " + (overdueCount - 1) + " công việc khác đã quá hạn. Kiểm tra ngay!";
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_OVERDUE)
+                .setSmallIcon(R.drawable.ic_notifications)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent);
+
+        NotificationManagerCompat.from(context).notify(8002, builder.build());
     }
 }

@@ -67,6 +67,14 @@ public interface TaskDao {
            "ORDER BY is_completed ASC, priority DESC, due_date ASC")
     LiveData<List<Task>> getTasksByDate(long startOfDay, long endOfDay);
 
+    // ─── Lấy tất cả task trong một khoảng thời gian tuỳ ý (cho Calendar Month Grid) ─
+    // startDate và endDate có thể trải dài 42 ngày (6 tuần) bao trọn lưới lịch tháng.
+    // Dùng để nạp 1 lần cho cả tháng, sau đó phân bổ vào từng ô ngày trong Adapter.
+    @Query("SELECT * FROM tasks " +
+           "WHERE due_date >= :startDate AND due_date < :endDate " +
+           "ORDER BY due_date ASC")
+    LiveData<List<Task>> getTasksByDateRange(long startDate, long endDate);
+
     // ─── Xóa tất cả task đã hoàn thành ─────────────────────────────────────────
     @Query("DELETE FROM tasks WHERE is_completed = 1")
     void deleteAllCompleted();
@@ -143,4 +151,21 @@ public interface TaskDao {
     // Xóa các task đã hoàn thành cũ hơn thời gian cho trước (Auto-archive)
     @Query("DELETE FROM tasks WHERE is_completed = 1 AND completed_date < :threshold")
     int deleteOldCompletedTasks(long threshold);
+
+    // ─── Sync queries dành cho Worker (không LiveData) ──────────────────────────
+
+    // Lấy task chưa hoàn thành trong ngày hôm nay (đồng bộ) — cho DailyDigestWorker
+    @Query("SELECT * FROM tasks " +
+           "WHERE is_completed = 0 " +
+           "AND due_date >= :startOfDay AND due_date < :endOfDay " +
+           "ORDER BY priority DESC, due_date ASC")
+    List<Task> getIncompleteTasksForDaySync(long startOfDay, long endOfDay);
+
+    // Lấy task quá hạn chưa hoàn thành (đồng bộ) — cho OverdueCheckWorker
+    @Query("SELECT * FROM tasks " +
+           "WHERE is_completed = 0 " +
+           "AND due_date IS NOT NULL " +
+           "AND due_date < :now " +
+           "ORDER BY due_date ASC")
+    List<Task> getOverdueIncompleteTasksSync(long now);
 }

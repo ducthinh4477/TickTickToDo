@@ -52,6 +52,10 @@ public class TaskRepository {
         return taskDao.getTasksByDate(startOfDay, endOfDay);
     }
 
+    public LiveData<List<Task>> getTasksByDateRange(long startDate, long endDate) {
+        return taskDao.getTasksByDateRange(startDate, endDate);
+    }
+
     public LiveData<List<Task>> getAllTasks() {
         return taskDao.getAllTasks();
     }
