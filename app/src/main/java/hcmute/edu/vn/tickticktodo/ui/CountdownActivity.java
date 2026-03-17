@@ -66,6 +66,39 @@ public class CountdownActivity extends BaseActivity {
         }
     };
 
+    private void syncUiWithService() {
+        if (timerService == null) return;
+
+        long millis = timerService.getMillisRemaining();
+        int mode = timerService.getCurrentModeMins();
+        TimerService.TimerState state = timerService.getTimerState();
+
+        updateTimerDisplay(millis);
+        updateButtonsState(state);
+
+        // Update tabs selection based on mode
+        if (mode == MODE_POMODORO) selectTab(tabPomodoro);
+        else if (mode == MODE_SHORT_BREAK) selectTab(tabShortBreak);
+        else if (mode == MODE_LONG_BREAK) selectTab(tabLongBreak);
+
+        // Update session count
+        int session = timerService.getSessionCount();
+        tvSessionCount.setText(getString(R.string.countdown_session) + " " + session);
+    }
+
+    private void updateButtonsState(TimerService.TimerState state) {
+        if (state == TimerService.TimerState.RUNNING) {
+            btnStartPause.setText(getString(R.string.countdown_btn_pause));
+            tvTimerStatus.setText(getString(R.string.countdown_status_focus));
+        } else if (state == TimerService.TimerState.PAUSED) {
+            btnStartPause.setText(getString(R.string.countdown_btn_resume));
+            tvTimerStatus.setText(getString(R.string.countdown_status_paused));
+        } else {
+            btnStartPause.setText(getString(R.string.countdown_btn_start));
+            tvTimerStatus.setText(getString(R.string.countdown_status_ready));
+        }
+    }
+
     // ── LocalBroadcast receiver ──────────────────────────────────────────────────
     private final BroadcastReceiver timerReceiver = new BroadcastReceiver() {
         @Override
@@ -203,66 +236,33 @@ public class CountdownActivity extends BaseActivity {
         });
 
         btnStartPause.setOnClickListener(v -> {
-            if (!isBound || timerService == null) return;
-            switch (timerService.getTimerState()) {
-                case IDLE:
-                    timerService.startTimer();
-                    btnStartPause.setText(R.string.countdown_btn_pause);
-                    btnStop.setEnabled(true);
-                    tvTimerStatus.setText(R.string.countdown_status_focus);
-                    break;
-                case RUNNING:
-                    timerService.pauseTimer();
-                    btnStartPause.setText(R.string.countdown_btn_resume);
-                    tvTimerStatus.setText(R.string.countdown_status_paused);
-                    break;
-                case PAUSED:
-                    timerService.resumeTimer();
-                    btnStartPause.setText(R.string.countdown_btn_pause);
-                    tvTimerStatus.setText(R.string.countdown_status_focus);
-                    break;
+            if (!isBound) return;
+            TimerService.TimerState state = timerService.getTimerState();
+
+            if (state == TimerService.TimerState.RUNNING) {
+                timerService.pauseTimer();
+            } else if (state == TimerService.TimerState.PAUSED) {
+                timerService.resumeTimer();
+            } else {
+                // START
+                // Quan trọng: Gọi startService để đảm bảo Service sống độc lập
+                Intent intent = new Intent(this, TimerService.class);
+                intent.setAction(TimerService.ACTION_START);
+                ContextCompat.startForegroundService(this, intent);
+
+                // Binder gọi logic (thực ra onStartCommand cũng gọi, nhưng gọi trực tiếp qua binder nhanh hơn cập nhật UI)
+                timerService.startTimer();
             }
+            // UI sẽ tự cập nhật qua broadcast hoặc logic sync
+            updateButtonsState(timerService.getTimerState());
         });
 
         btnStop.setOnClickListener(v -> {
-            if (!isBound || timerService == null) return;
+            if (!isBound) return;
             timerService.stopTimer();
-            btnStartPause.setText(R.string.countdown_btn_start);
-            btnStop.setEnabled(false);
-            tvTimerStatus.setText(R.string.countdown_status_ready);
+            // UI update handled by broadcast tick (reset to full time)
+            updateButtonsState(TimerService.TimerState.IDLE);
         });
-    }
-
-    // ── Sync UI sau khi bind ─────────────────────────────────────────────────────
-
-    /**
-     * Được gọi ngay sau khi bind thành công.
-     * Cập nhật toàn bộ UI theo trạng thái hiện tại của Service
-     * (ví dụ: user xoay màn hình hoặc quay lại Activity).
-     */
-    private void syncUiWithService() {
-        if (!isBound || timerService == null) return;
-
-        updateTimerDisplay(timerService.getMillisRemaining());
-        tvSessionCount.setText(String.valueOf(timerService.getSessionCount()));
-
-        switch (timerService.getTimerState()) {
-            case IDLE:
-                btnStartPause.setText(R.string.countdown_btn_start);
-                btnStop.setEnabled(false);
-                tvTimerStatus.setText(R.string.countdown_status_ready);
-                break;
-            case RUNNING:
-                btnStartPause.setText(R.string.countdown_btn_pause);
-                btnStop.setEnabled(true);
-                tvTimerStatus.setText(R.string.countdown_status_focus);
-                break;
-            case PAUSED:
-                btnStartPause.setText(R.string.countdown_btn_resume);
-                btnStop.setEnabled(true);
-                tvTimerStatus.setText(R.string.countdown_status_paused);
-                break;
-        }
     }
 
     // ── Callbacks từ BroadcastReceiver ───────────────────────────────────────────

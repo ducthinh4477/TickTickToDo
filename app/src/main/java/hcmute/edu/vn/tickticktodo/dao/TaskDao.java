@@ -135,4 +135,12 @@ public interface TaskDao {
            "completed_date = CASE WHEN :isCompleted = 1 THEN :completedDate ELSE NULL END " +
            "WHERE id = :taskId")
     void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate);
+
+    // Mới: Tìm unique task đã sync từ trường
+    @Query("SELECT * FROM tasks WHERE title = :title AND due_date = :dueDate LIMIT 1")
+    Task findTaskByTitleAndDate(String title, Long dueDate);
+
+    // Xóa các task đã hoàn thành cũ hơn thời gian cho trước (Auto-archive)
+    @Query("DELETE FROM tasks WHERE is_completed = 1 AND completed_date < :threshold")
+    int deleteOldCompletedTasks(long threshold);
 }

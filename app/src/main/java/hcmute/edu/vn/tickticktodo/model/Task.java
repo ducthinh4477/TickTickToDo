@@ -56,6 +56,9 @@ public class Task {
     private Long completedDate; // Timestamp khi task được hoàn thành (null nếu chưa hoàn thành)
 
     // Constructor
+    public Task() {
+    }
+
     public Task(String title, String description, Long dueDate, boolean isCompleted, int priority) {
         this.title = title;
         this.description = description;

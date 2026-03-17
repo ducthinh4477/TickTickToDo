@@ -16,6 +16,30 @@
         <item name="android:navigationBarColor">@color/bottom_nav_bg</item>
         <!-- Status bar icons sáng trên nền tối -->
         <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Custom CalendarView Style -->
+        <item name="android:calendarViewStyle">@style/Widget.TickTickToDo.CalendarView</item>
+    </style>
+
+    <!-- CalendarView Dark Mode Style -->
+    <style name="Widget.TickTickToDo.CalendarView" parent="android:Widget.CalendarView">
+        <item name="android:dateTextAppearance">@style/CalendarDateText</item>
+        <item name="android:weekDayTextAppearance">@style/CalendarDateText</item>
+        <item name="android:focusedMonthDateColor">@color/white</item>
+        <item name="android:unfocusedMonthDateColor">@color/text_secondary</item>
+        <item name="android:selectedWeekBackgroundColor">@color/accent_primary</item>
+        <item name="android:weekNumberColor">@color/text_secondary</item>
+        <item name="android:weekSeparatorLineColor">@color/divider</item>
+
+        <!-- Fix black header in dark mode if needed (API 23+) -->
+        <!-- Note: CalendarView legacy header color is hard to style perfectly without custom view or using MaterialCalendarView -->
+        <!-- But ensure background is correct -->
+    </style>
+
+    <!-- CalendarView date text -->
+    <style name="CalendarDateText" parent="android:TextAppearance">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/white</item>
     </style>
 
 </resources>

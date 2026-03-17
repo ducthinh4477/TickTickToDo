@@ -68,7 +68,33 @@ public class TaskRepository {
             // Set alarm: gán id vừa insert rồi schedule
             task.setId(newId);
             ReminderScheduler.scheduleReminder(application, task);
+
+            // Notification if due today
+            checkAndNotifyIfToday(task);
         });
+    }
+
+    private void checkAndNotifyIfToday(Task task) {
+        if (task.getDueDate() == null) return;
+
+        java.util.Calendar todayStart = java.util.Calendar.getInstance();
+        todayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        todayStart.set(java.util.Calendar.MINUTE, 0);
+        todayStart.set(java.util.Calendar.SECOND, 0);
+        todayStart.set(java.util.Calendar.MILLISECOND, 0);
+
+        java.util.Calendar todayEnd = (java.util.Calendar) todayStart.clone();
+        todayEnd.add(java.util.Calendar.DAY_OF_YEAR, 1);
+
+        long due = task.getDueDate();
+        if (due >= todayStart.getTimeInMillis() && due < todayEnd.getTimeInMillis()) {
+            hcmute.edu.vn.tickticktodo.helper.NotificationHelper.showTaskNotification(
+                    application,
+                    "Bạn có công việc mới cho hôm nay",
+                    task.getTitle(),
+                    (int) task.getId()
+            );
+        }
     }
 
     public void update(Task task) {

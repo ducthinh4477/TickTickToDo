@@ -1,5 +1,6 @@
 package hcmute.edu.vn.tickticktodo;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -53,6 +54,7 @@ import hcmute.edu.vn.tickticktodo.ui.StatisticsActivity;
 import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.TaskDetailActivity;
 import hcmute.edu.vn.tickticktodo.ui.ViewOptionsBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.SchoolLoginActivity;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
 public class MainActivity extends BaseActivity {
@@ -83,9 +85,9 @@ public class MainActivity extends BaseActivity {
     private FloatingActionButton fabAddTask;
 
     // UI — Nav Rail items
-    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemProfile;
-    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconProfile;
-    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelProfile;
+    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemProfile;
+    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconProfile;
+    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelProfile;
 
     // Adapters
     private TaskAdapter incompleteAdapter;
@@ -141,14 +143,17 @@ public class MainActivity extends BaseActivity {
         navItemHome     = findViewById(R.id.nav_item_home);
         navItemCalendar = findViewById(R.id.nav_item_calendar);
         navItemFocus    = findViewById(R.id.nav_item_focus);
+        navItemSchool   = findViewById(R.id.nav_item_school);
         navItemProfile  = findViewById(R.id.nav_item_profile);
         navIconHome     = findViewById(R.id.nav_icon_home);
         navIconCalendar = findViewById(R.id.nav_icon_calendar);
         navIconFocus    = findViewById(R.id.nav_icon_focus);
+        navIconSchool   = findViewById(R.id.nav_icon_school);
         navIconProfile  = findViewById(R.id.nav_icon_profile);
         navLabelHome    = findViewById(R.id.nav_label_home);
         navLabelCalendar= findViewById(R.id.nav_label_calendar);
         navLabelFocus   = findViewById(R.id.nav_label_focus);
+        navLabelSchool  = findViewById(R.id.nav_label_school);
         navLabelProfile = findViewById(R.id.nav_label_profile);
 
         // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
@@ -322,6 +327,12 @@ public class MainActivity extends BaseActivity {
             startActivity(CountdownActivity.newIntent(this));
         });
 
+        navItemSchool.setOnClickListener(v -> {
+            selectNavItem(R.id.nav_item_school);
+            Intent intent = new Intent(this, SchoolLoginActivity.class);
+            startActivity(intent);
+        });
+
         navItemProfile.setOnClickListener(v -> {
             selectNavItem(R.id.nav_item_profile);
             showUserPopupMenu(navItemProfile);
@@ -332,9 +343,9 @@ public class MainActivity extends BaseActivity {
     }
 
     private void selectNavItem(int selectedId) {
-        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_profile};
-        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconProfile};
-        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelProfile};
+        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_profile};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconProfile};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelProfile};
 
         int accent    = getResources().getColor(R.color.accent_primary, getTheme());
         int secondary = getResources().getColor(R.color.text_secondary, getTheme());

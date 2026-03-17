@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -13,6 +14,9 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.chip.Chip;
@@ -104,6 +108,30 @@ public class TaskDetailActivity extends BaseActivity {
 
         // Nút Save (dấu tick ✓)
         findViewById(R.id.btn_save).setOnClickListener(v -> saveTask());
+
+        // Áp dụng padding để tránh notch
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            // Lấy LayoutParams hiện tại
+            ViewGroup.LayoutParams lp = v.getLayoutParams();
+
+            // Áp dụng padding để tránh notch
+            v.setPadding(v.getPaddingLeft(), insets.top, v.getPaddingRight(), v.getPaddingBottom());
+
+            // Cập nhật chiều cao để chứa notch + kích thước action bar
+            // Sử dụng WRAP_CONTENT để cho phép Toolbar mở rộng cùng với padding
+            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            v.setLayoutParams(lp);
+
+            // Đảm bảo chiều cao tối thiểu khớp với kích thước Action Bar tiêu chuẩn
+            android.util.TypedValue tv = new android.util.TypedValue();
+            if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
+                int actionBarHeight = android.util.TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
+                v.setMinimumHeight(actionBarHeight + insets.top);
+            }
+
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     // ─── Load task từ DB ──────────────────────────────────────────────────────

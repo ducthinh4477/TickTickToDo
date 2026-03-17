@@ -115,6 +115,34 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/nav_item_school"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
+            <ImageView
+                android:id="@+id/nav_icon_school"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:contentDescription="School"
+                android:src="@drawable/ic_study"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:id="@+id/nav_label_school"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="School"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/nav_item_profile"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
