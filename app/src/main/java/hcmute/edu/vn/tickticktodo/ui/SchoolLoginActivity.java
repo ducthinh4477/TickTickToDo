@@ -1,13 +1,22 @@
 package hcmute.edu.vn.tickticktodo.ui;
 
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -15,6 +24,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.Observer;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
+import android.Manifest;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputEditText;
@@ -86,6 +96,27 @@ public class SchoolLoginActivity extends BaseActivity {
 
     // ─── Xác nhận & Đồng bộ ──────────────────────────────────────────────────
 
+    private void requestPermissionsAndBatteryOptimization() {
+        // Yêu cầu quyền thông báo cho Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+            }
+        }
+
+        // Nhắc nhở tắt tối ưu hoá pin (Battery Optimization) để app chạy ngầm không bị hệ điều hành đóng
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                Intent intent = new Intent();
+                intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+                Toast.makeText(this, "Vui lòng 'Tắt tối ưu hoá pin' để theo dõi deadline liên tục 24/24", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
     private void confirmAndSync() {
         // Xóa lỗi cũ
         urlInputLayout.setError(null);
@@ -107,6 +138,8 @@ public class SchoolLoginActivity extends BaseActivity {
             urlEditText.requestFocus();
             return;
         }
+
+        requestPermissionsAndBatteryOptimization();
 
         // Hợp lệ → lưu và đồng bộ
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);

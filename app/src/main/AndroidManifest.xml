@@ -92,6 +92,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Receiver đảm nhiệm việc buộc cập nhật Moodle ngay tức thì -->
+        <receiver
+            android:name=".receiver.SchoolSyncReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

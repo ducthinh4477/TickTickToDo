@@ -114,6 +114,24 @@ public class MoodleActivity extends BaseActivity {
         btnSettings.setOnClickListener(v -> launchSchoolLogin());
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Cơ chế "Refresh" khi mở App như yêu cầu: Tự động tải lại khi vào tab Moodle
+        SharedPreferences settings = getSharedPreferences(SchoolLoginActivity.PREFS_NAME, 0);
+        String url = settings.getString(SchoolLoginActivity.KEY_ICAL_URL, "");
+        if (!url.isEmpty()) {
+            swipeRefreshLayout.setRefreshing(true);
+            UUID workId = SchoolSyncWorker.triggerManualSync(this);
+            WorkManager.getInstance(this).getWorkInfoByIdLiveData(workId)
+                    .observe(this, workInfo -> {
+                        if (workInfo != null && workInfo.getState().isFinished()) {
+                            swipeRefreshLayout.setRefreshing(false);
+                        }
+                    });
+        }
+    }
+
     private void checkMoodleConfig() {
         SharedPreferences settings = getSharedPreferences(SchoolLoginActivity.PREFS_NAME, 0);
         String iCalUrl = settings.getString(SchoolLoginActivity.KEY_ICAL_URL, null);

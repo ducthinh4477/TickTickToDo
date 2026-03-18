@@ -187,10 +187,20 @@ public class SchoolSyncWorker extends Worker {
             return Result.success();
 
         } catch (IllegalArgumentException e) {
+            boolean isManualSync = getTags().contains("school_sync_manual");
             if ("HTML_CONTENT_TYPE".equals(e.getMessage())) {
                 androidx.work.Data errorData = new androidx.work.Data.Builder()
                         .putString("ERROR_MSG", "Lỗi: Link iCal của Moodle đã hết hạn (Server yêu cầu đăng nhập HTML). Vui lòng Copy link mới!")
                         .build();
+                
+                // Nếu chạy ngầm mà URL hết hạn, lập tức bắn popup notification cảnh báo user
+                if (!isManualSync) {
+                    NotificationHelper.showTaskNotification(context,
+                        "Cảnh báo Moodle",
+                        "Link đồng bộ Moodle đã hết hạn. Vui lòng mở ứng dụng và cập nhật lại đường dẫn mới!",
+                        9998);
+                }
+                
                 return Result.failure(errorData);
             }
             Log.e(TAG, "Dữ liệu không hợp lệ", e);
@@ -292,39 +302,46 @@ public class SchoolSyncWorker extends Worker {
         }
     }
 
-    // Helper to schedule notification 24h and 2h before deadline
+    // Helper to schedule notification at multiple intervals before deadline
     private void scheduleDeadlineAlarm(Context context, long taskId, long deadlineMillis, String title) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
 
-        Intent intent = new Intent(context, TaskReminderReceiver.class);
-        intent.putExtra(TaskReminderReceiver.EXTRA_TASK_ID, taskId);
-        intent.putExtra(TaskReminderReceiver.EXTRA_TASK_TITLE, "Sắp đến hạn: " + title);
-
         long now = System.currentTimeMillis();
 
-        // Alarm trước 24h
-        long triggerTime24h = deadlineMillis - 24 * 60 * 60 * 1000;
-        if (triggerTime24h > now) {
-            PendingIntent pendingIntent24h = PendingIntent.getBroadcast(
-                    context,
-                    (int) taskId * 10 + 1,
-                    intent,
-                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-            );
-            setAlarmSafe(alarmManager, triggerTime24h, pendingIntent24h);
-        }
+        // Danh sách các khoảng thời gian: 24h, 6h, 1h, 15m, 10m
+        long[] intervalsMillis = {
+                24 * 60 * 60 * 1000L,
+                6 * 60 * 60 * 1000L,
+                60 * 60 * 1000L,
+                15 * 60 * 1000L,
+                10 * 60 * 1000L
+        };
 
-        // Alarm trước 2h
-        long triggerTime2h = deadlineMillis - 2 * 60 * 60 * 1000;
-        if (triggerTime2h > now) {
-            PendingIntent pendingIntent2h = PendingIntent.getBroadcast(
-                    context,
-                    (int) taskId * 10 + 2,
-                    intent,
-                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-            );
-            setAlarmSafe(alarmManager, triggerTime2h, pendingIntent2h);
+        String[] timeLabels = {
+                "24 giờ",
+                "6 giờ",
+                "1 giờ",
+                "15 phút",
+                "10 phút"
+        };
+
+        for (int i = 0; i < intervalsMillis.length; i++) {
+            long triggerTime = deadlineMillis - intervalsMillis[i];
+            if (triggerTime > now) {
+                Intent intent = new Intent(context, TaskReminderReceiver.class);
+                intent.putExtra(TaskReminderReceiver.EXTRA_TASK_ID, taskId);
+                intent.putExtra(TaskReminderReceiver.EXTRA_TASK_TITLE, title);
+                intent.putExtra(TaskReminderReceiver.EXTRA_TIME_LEFT, timeLabels[i]);
+
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        (int) taskId * 100 + i, // Unique request code per interval
+                        intent,
+                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                );
+                setAlarmSafe(alarmManager, triggerTime, pendingIntent);
+            }
         }
     }
 
@@ -350,18 +367,22 @@ public class SchoolSyncWorker extends Worker {
 
     // Static helper to start periodic sync
     public static void schedulePeriodicSync(Context context) {
+        // Hủy lịch cũ sử dụng AlarmManager nếu có, vì ta sẽ chuyển sang WorkManager tối ưu hơn
+        hcmute.edu.vn.tickticktodo.receiver.SchoolSyncReceiver.cancelExact(context);
+
+        // Thiết lập điều kiện: Chỉ đồng bộ khi có Wi-Fi (UNMETERED) VÀ khi đang sạc (RequiresCharging)
         Constraints constraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiredNetworkType(NetworkType.UNMETERED)
+                .setRequiresCharging(true)
                 .build();
 
-        // Rút ngắn thời gian xuống 15 phút (Mức tối thiểu được WorkManager cho phép)
+        // Thời gian lập lịch lặp lại liên tục: 15 phút/lần (Thấp nhất mà Android hỗ trợ cho WorkManager)
         PeriodicWorkRequest syncRequest =
                 new PeriodicWorkRequest.Builder(SchoolSyncWorker.class, 15, TimeUnit.MINUTES)
                         .setConstraints(constraints)
-                        .addTag("school_sync")
+                        .addTag("school_sync_bg")
                         .build();
 
-        // Sử dụng UPDATE để đè lên lịch cũ 6 tiếng ngay lập tức
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 "SchoolSyncWork",
                 ExistingPeriodicWorkPolicy.UPDATE,
