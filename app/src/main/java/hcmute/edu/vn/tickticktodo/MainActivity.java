@@ -329,7 +329,7 @@ public class MainActivity extends BaseActivity {
 
         navItemSchool.setOnClickListener(v -> {
             selectNavItem(R.id.nav_item_school);
-            Intent intent = new Intent(this, SchoolLoginActivity.class);
+            Intent intent = new Intent(this, hcmute.edu.vn.tickticktodo.ui.MoodleActivity.class);
             startActivity(intent);
         });
 

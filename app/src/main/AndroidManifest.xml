@@ -80,6 +80,8 @@
             android:exported="false" />
 
         <activity android:name=".ui.SchoolLoginActivity" android:exported="false"/>
+        
+        <activity android:name=".ui.MoodleActivity" android:exported="false"/>
 
         <!-- BootReceiver: restore tất cả alarm sau khi thiết bị khởi động lại -->
         <receiver

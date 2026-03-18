@@ -72,6 +72,9 @@ public class Task {
     @ColumnInfo(name = "recurrence", defaultValue = "0")
     private int recurrence;
 
+    @ColumnInfo(name = "source")
+    private String source; // Nguồn task, VD: 'Moodle'
+
     public static final int RECURRENCE_NONE    = 0;
     public static final int RECURRENCE_WEEKLY  = 1;
     public static final int RECURRENCE_MONTHLY = 2;
@@ -92,6 +95,14 @@ public class Task {
     }
 
     // Getters & Setters
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
 
     public long getId() {
         return id;

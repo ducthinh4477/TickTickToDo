@@ -64,7 +64,7 @@ public class SchoolSyncWorker extends Worker {
         Log.d(TAG, "Syncing from URL: " + iCalUrl);
 
         try {
-            // 2. Download iCal file — có check HTTP response code
+            // 2. Download iCal file — có check HTTP response code và check thay đổi Content-Type
             InputStream in = downloadUrl(iCalUrl);
             if (in == null) {
                 Log.e(TAG, "downloadUrl returned null, retrying...");
@@ -87,27 +87,34 @@ public class SchoolSyncWorker extends Worker {
 
             // 4. Update Database
             for (VEvent event : events) {
-                // ── Bug Fix 1: Null-safe đọc các field của VEvent ──
-                // Moodle có thể bỏ qua UID hoặc Summary với một số loại event
                 String summary = event.getSummary() != null ? event.getSummary().getValue() : null;
                 if (summary == null || summary.trim().isEmpty()) {
                     Log.w(TAG, "Skipping event with null/empty summary");
-                    continue; // Bỏ qua event không có tên
-                }
-
-                // DateStart bắt buộc theo chuẩn iCal, nhưng vẫn guard
-                if (event.getDateStart() == null || event.getDateStart().getValue() == null) {
-                    Log.w(TAG, "Skipping event '" + summary + "': missing DTSTART");
                     continue;
                 }
-                Date start = event.getDateStart().getValue();
 
-                // Moodle thường dùng DTEND hoặc DURATION, fallback về DTSTART nếu thiếu
-                Date end;
+                Date start = null;
+                Date end = null;
+
+                if (event.getDateStart() != null && event.getDateStart().getValue() != null) {
+                    start = event.getDateStart().getValue();
+                }
+
                 if (event.getDateEnd() != null && event.getDateEnd().getValue() != null) {
                     end = event.getDateEnd().getValue();
-                } else {
-                    end = start; // Fallback: deadline = thời điểm bắt đầu
+                } else if (start != null && event.getDuration() != null && event.getDuration().getValue() != null) {
+                    end = new Date(start.getTime() + event.getDuration().getValue().toMillis());
+                }
+
+                // Fallback Moodle: Bài tập thường chỉ có Deadline (End) mà không có Start
+                if (start == null && end != null) {
+                    start = end;
+                }
+
+                // Nếu không có bất kỳ thời gian nào thì bỏ qua
+                if (start == null && end == null) {
+                    Log.w(TAG, "Skipping event '" + summary + "': missing both DTSTART and DTEND");
+                    continue;
                 }
 
                 // Moodle UteX LMS thường dùng description cho nội dung bài tập
@@ -119,6 +126,7 @@ public class SchoolSyncWorker extends Worker {
                 Task existingTask = dao.findTaskByTitleAndDate(summary, end.getTime());
                 if (existingTask == null) {
                     Task newTask = new Task(summary, description, end.getTime(), false, 2);
+                    newTask.setSource("Moodle"); // Đánh dấu nguồn task
                     long newId = dao.insert(newTask);
                     scheduleDeadlineAlarm(context, newId, end.getTime(), summary);
                     newTasksCount++;
@@ -144,6 +152,15 @@ public class SchoolSyncWorker extends Worker {
 
             return Result.success();
 
+        } catch (IllegalArgumentException e) {
+            if ("HTML_CONTENT_TYPE".equals(e.getMessage())) {
+                androidx.work.Data errorData = new androidx.work.Data.Builder()
+                        .putString("ERROR_MSG", "Link iCal của UTS/Moodle đã hết hạn hoặc không hợp lệ. Vui lòng lấy link mới.")
+                        .build();
+                return Result.failure(errorData);
+            }
+            Log.e(TAG, "Giữ liệu không hợp lệ", e);
+            return Result.failure();
         } catch (IOException e) {
             Log.e(TAG, "Network error during sync", e);
             return Result.retry();
@@ -156,10 +173,10 @@ public class SchoolSyncWorker extends Worker {
     /**
      * Download iCal từ URL.
      * - Set User-Agent để tránh bị server Moodle chặn.
-     * - Kiểm tra HTTP response code trước khi đọc body.
+     * - Kiểm tra HTTP response code và Content-Type.
      * - Tự follow HTTPS redirect một lần nếu cần.
      *
-     * @return InputStream nếu thành công, null nếu server trả lỗi / redirect không theo được.
+     * @return InputStream nếu thành công, null nếu server trả lỗi / redirect.
      */
     private InputStream downloadUrl(String urlString) throws IOException {
         URL url = new URL(urlString);
@@ -173,6 +190,12 @@ public class SchoolSyncWorker extends Worker {
                 "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
         conn.setInstanceFollowRedirects(true);
         conn.connect();
+
+        // ── Kiểm tra Content-Type để phát hiện Token hết hạn (bị redirect ra trang đăng nhập) ──
+        String contentType = conn.getContentType();
+        if (contentType != null && contentType.toLowerCase().contains("text/html")) {
+            throw new IllegalArgumentException("HTML_CONTENT_TYPE");
+        }
 
         // ── Bug Fix 3: Kiểm tra response code — getInputStream() ném exception cho 4xx/5xx ──
         int responseCode = conn.getResponseCode();
@@ -274,7 +297,7 @@ public class SchoolSyncWorker extends Worker {
     }
 
     // Static helper for manual sync — REPLACE đảm bảo không bị duplicate khi nhấn đồng bộ nhiều lần
-    public static void triggerManualSync(Context context) {
+    public static java.util.UUID triggerManualSync(Context context) {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build();
@@ -289,5 +312,6 @@ public class SchoolSyncWorker extends Worker {
                 ExistingWorkPolicy.REPLACE,
                 manualRequest
         );
+        return manualRequest.getId();
     }
 }

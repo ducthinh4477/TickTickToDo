@@ -168,4 +168,14 @@ public interface TaskDao {
            "AND due_date < :now " +
            "ORDER BY due_date ASC")
     List<Task> getOverdueIncompleteTasksSync(long now);
+
+    // ─── Moodle Queries ─────────────────────────────────────────────────────────
+
+    // Lấy bài tập Moodle sắp đến hạn (chưa hoàn thành)
+    @Query("SELECT * FROM tasks WHERE source = 'Moodle' AND is_completed = 0 AND due_date >= :currentTime ORDER BY due_date ASC")
+    LiveData<List<Task>> getUpcomingMoodleTasks(long currentTime);
+
+    // Đếm tổng số bài Moodle chưa hoàn thành làm cảnh báo
+    @Query("SELECT COUNT(*) FROM tasks WHERE source = 'Moodle' AND is_completed = 0")
+    LiveData<Integer> getUnreadMoodleTasksCount();
 }

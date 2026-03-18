@@ -142,6 +142,16 @@ public class TaskViewModel extends AndroidViewModel {
         return repository.getTaskById(taskId);
     }
 
+    // ─── Moodle ──────────────────────────────────────────────────────────────────
+
+    public LiveData<List<Task>> getUpcomingMoodleTasks(long currentTime) {
+        return repository.getUpcomingMoodleTasks(currentTime);
+    }
+
+    public LiveData<Integer> getUnreadMoodleTasksCount() {
+        return repository.getUnreadMoodleTasksCount();
+    }
+
     // ─── Actions ─────────────────────────────────────────────────────────────────
 
     public void insert(Task task) {

@@ -13,6 +13,10 @@
         android:icon="@drawable/ic_timer"
         android:title="@string/nav_focus" />
     <item
+        android:id="@+id/nav_moodle"
+        android:icon="@drawable/ic_school"
+        android:title="Moodle" />
+    <item
         android:id="@+id/nav_profile"
         android:icon="@drawable/ic_user"
         android:title="@string/nav_profile" />

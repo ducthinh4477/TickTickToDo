@@ -23,8 +23,9 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
  *   v2 → v3: Thêm cột icon_res_id vào bảng todo_lists (DEFAULT 0)
  *   v3 → v4: Thêm cột order_index, completed_date vào bảng tasks
  *   v4 → v5: Thêm cột location, duration, recurrence vào bảng tasks (Calendar event)
+ *   v5 → v6: Thêm cột source vào bảng tasks (chứa nguồn như 'Moodle')
  */
-@Database(entities = {Task.class, TodoList.class}, version = 5, exportSchema = false)
+@Database(entities = {Task.class, TodoList.class}, version = 6, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -80,6 +81,17 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    // ─── Migration v5 → v6 ───────────────────────────────────────────────────────
+    // Thêm cột source để xác định nguồn của task (vd: 'Moodle')
+    static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                "ALTER TABLE tasks ADD COLUMN source TEXT"
+            );
+        }
+    };
+
     // ─── Singleton ───────────────────────────────────────────────────────────────
     public static TaskDatabase getInstance(Context context) {
         if (INSTANCE == null) {
@@ -90,7 +102,7 @@ public abstract class TaskDatabase extends RoomDatabase {
                             TaskDatabase.class,
                             DATABASE_NAME
                     )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5) // Migration an toàn (giữ data)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();
                 }

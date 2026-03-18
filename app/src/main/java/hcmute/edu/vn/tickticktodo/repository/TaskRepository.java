@@ -148,6 +148,16 @@ public class TaskRepository {
         return taskDao.getAllTasksSortByPriority();
     }
 
+    // ─── Moodle ──────────────────────────────────────────────────────────────────
+
+    public LiveData<List<Task>> getUpcomingMoodleTasks(long currentTime) {
+        return taskDao.getUpcomingMoodleTasks(currentTime);
+    }
+
+    public LiveData<Integer> getUnreadMoodleTasksCount() {
+        return taskDao.getUnreadMoodleTasksCount();
+    }
+
     public LiveData<List<Task>> getAllTasksSortByTitle() {
         return taskDao.getAllTasksSortByTitle();
     }
