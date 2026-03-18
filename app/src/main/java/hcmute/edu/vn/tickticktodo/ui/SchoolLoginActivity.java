@@ -57,6 +57,13 @@ public class SchoolLoginActivity extends BaseActivity {
         urlEditText    = findViewById(R.id.urlEditText);
         btnSync        = findViewById(R.id.btnSync);
 
+        // Nạp tự động URL đã lưu trước đó nếu có
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String savedUrl = prefs.getString(KEY_ICAL_URL, "");
+        if (!TextUtils.isEmpty(savedUrl)) {
+            urlEditText.setText(savedUrl);
+        }
+
         // Đảm bảo nút Đồng bộ không bị thanh điều hướng che bởi navigation bar
         android.widget.LinearLayout bottomContainer = findViewById(R.id.bottomContainer);
         ViewCompat.setOnApplyWindowInsetsListener(bottomContainer, (view, windowInsets) -> {
@@ -115,10 +122,12 @@ public class SchoolLoginActivity extends BaseActivity {
                         showLoading(false);
                         Toast.makeText(this, "Đồng bộ lịch học / bài tập thành công!", Toast.LENGTH_SHORT).show();
                         finish();
-                    } else if (workInfo.getState() == WorkInfo.State.FAILED) {
+                    } else if (workInfo.getState() == WorkInfo.State.FAILED ||
+                               workInfo.getState() == WorkInfo.State.CANCELLED ||
+                               workInfo.getState() == WorkInfo.State.BLOCKED) {
                         showLoading(false);
                         String error = workInfo.getOutputData().getString("ERROR_MSG");
-                        if (error == null) error = "Đồng bộ thất bại, vui lòng kiểm tra lại link hoặc mạng.";
+                        if (error == null) error = "Lỗi: Không thể đọc file lịch từ trường, hãy kiểm tra lại link";
                         Toast.makeText(this, error, Toast.LENGTH_LONG).show();
                     }
                 }

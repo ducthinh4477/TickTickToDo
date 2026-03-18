@@ -53,45 +53,51 @@
             app:tint="@color/text_secondary" />
     </LinearLayout>
 
-    <FrameLayout
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshMoodle"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-        
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerViewMoodle"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="16dp"
-            android:clipToPadding="false" />
 
-        <LinearLayout
-            android:id="@+id/emptyStateLayout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:visibility="gone">
-            <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:src="@drawable/ic_study"
-                app:tint="@color/divider" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Hiện tại không có bài tập"
-                android:textColor="@color/text_hint" />
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
             
-            <Button
-                android:id="@+id/btnConnectMoodle"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerViewMoodle"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="16dp"
+                android:clipToPadding="false" />
+
+            <LinearLayout
+                android:id="@+id/emptyStateLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Đồng bộ Moodle"
-                style="@style/Widget.MaterialComponents.Button" />
-        </LinearLayout>
-    </FrameLayout>
+                android:layout_gravity="center"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone">
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:src="@drawable/ic_study"
+                    app:tint="@color/divider" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Hiện tại không có bài tập"
+                    android:textColor="@color/text_hint" />
+                
+                <Button
+                    android:id="@+id/btnConnectMoodle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Đồng bộ Moodle"
+                    style="@style/Widget.MaterialComponents.Button" />
+            </LinearLayout>
+        </FrameLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </LinearLayout>

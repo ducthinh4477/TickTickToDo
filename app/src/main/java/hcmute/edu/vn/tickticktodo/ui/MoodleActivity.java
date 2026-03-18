@@ -14,15 +14,20 @@ import androidx.core.view.WindowCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.adapter.TaskAdapter;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
+import hcmute.edu.vn.tickticktodo.worker.SchoolSyncWorker;
 
 public class MoodleActivity extends BaseActivity {
 
@@ -34,6 +39,7 @@ public class MoodleActivity extends BaseActivity {
     private TextView tvNewTaskWarning;
     private Button btnConnectMoodle;
     private ImageView btnSettings;
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -47,8 +53,26 @@ public class MoodleActivity extends BaseActivity {
         tvNewTaskWarning = findViewById(R.id.tvNewTaskWarning);
         btnConnectMoodle = findViewById(R.id.btnConnectMoodle);
         btnSettings = findViewById(R.id.btnSettings);
+        swipeRefreshLayout = findViewById(R.id.swipeRefreshMoodle);
 
         toolbar.setNavigationOnClickListener(v -> finish());
+        
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            SharedPreferences settings = getSharedPreferences(SchoolLoginActivity.PREFS_NAME, 0);
+            String url = settings.getString(SchoolLoginActivity.KEY_ICAL_URL, "");
+            if (!url.isEmpty()) {
+                UUID workId = SchoolSyncWorker.triggerManualSync(this);
+                WorkManager.getInstance(this).getWorkInfoByIdLiveData(workId)
+                        .observe(this, workInfo -> {
+                            if (workInfo != null && workInfo.getState().isFinished()) {
+                                swipeRefreshLayout.setRefreshing(false);
+                            }
+                        });
+            } else {
+                swipeRefreshLayout.setRefreshing(false);
+                launchSchoolLogin();
+            }
+        });
 
         // Sử dụng lại TaskAdapter để giữ tính nhất quán
         adapter = new TaskAdapter(
