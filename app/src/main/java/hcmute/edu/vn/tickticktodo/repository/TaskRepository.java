@@ -63,9 +63,15 @@ public class TaskRepository {
     }
 
     public LiveData<List<Task>> getTasksForNext7Days() {
-        long now = System.currentTimeMillis();
-        long next7Days = now + (7 * 24 * 60 * 60 * 1000L);
-        return taskDao.getTasksForNext7Days(now, next7Days);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        long startOfDay = cal.getTimeInMillis();
+        cal.add(java.util.Calendar.DAY_OF_MONTH, 8); 
+        long endOf7thDay = cal.getTimeInMillis();
+        return taskDao.getTasksForNext7Days(startOfDay, endOf7thDay);
     }
 
     public LiveData<List<Task>> getOverdueTasks() {

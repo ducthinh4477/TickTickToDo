@@ -148,8 +148,8 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE title = :title AND due_date = :dueDate LIMIT 1")
     Task findTaskByTitleAndDate(String title, Long dueDate);
 
-    @Query("SELECT * FROM tasks WHERE due_date >= :now AND due_date < :next7Days ORDER BY due_date ASC")
-    LiveData<List<Task>> getTasksForNext7Days(long now, long next7Days);
+    @Query("SELECT * FROM tasks WHERE is_completed = 0 AND due_date >= :startOfDay AND due_date < :endOfDay ORDER BY due_date ASC")
+    LiveData<List<Task>> getTasksForNext7Days(long startOfDay, long endOfDay);
 
     @Query("SELECT * FROM tasks WHERE due_date < :now AND is_completed = 0 AND due_date IS NOT NULL ORDER BY due_date ASC")
     LiveData<List<Task>> getOverdueTasks(long now);

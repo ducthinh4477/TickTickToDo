@@ -29,6 +29,8 @@ public class TaskViewModel extends AndroidViewModel {
     private final TaskRepository repository;
     private final LiveData<List<Task>> todayIncompleteTasks;
     private final LiveData<List<Task>> todayCompletedTasks;
+    private final LiveData<List<Task>> next7DaysTasks;
+    private final LiveData<List<Task>> overdueTasks;
 
     // Sort: MutableLiveData giữ chế độ Sort hiện tại, switchMap tự cập nhật danh sách
     private final MutableLiveData<Integer> sortMode = new MutableLiveData<>(SORT_BY_DATE_ASC);
@@ -55,6 +57,8 @@ public class TaskViewModel extends AndroidViewModel {
 
         todayIncompleteTasks = repository.getIncompleteTasks(startOfDay, endOfDay);
         todayCompletedTasks = repository.getCompletedTasks(startOfDay, endOfDay);
+        next7DaysTasks = repository.getTasksForNext7Days();
+        overdueTasks = repository.getOverdueTasks();
 
         // switchMap: mỗi khi sortMode thay đổi, tự động chuyển LiveData source
         sortedAllTasks = Transformations.switchMap(sortMode, mode -> {
@@ -100,11 +104,11 @@ public class TaskViewModel extends AndroidViewModel {
     }
 
     public LiveData<List<Task>> getNext7DaysTasks() {
-        return repository.getTasksForNext7Days();
+        return next7DaysTasks;
     }
 
     public LiveData<List<Task>> getOverdueTasks() {
-        return repository.getOverdueTasks();
+        return overdueTasks;
     }
 
     // ─── Observe ─────────────────────────────────────────────────────────────────

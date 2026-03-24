@@ -1,6 +1,7 @@
 package hcmute.edu.vn.tickticktodo;
 
 import android.content.Intent;
+import hcmute.edu.vn.tickticktodo.ui.EisenhowerActivity;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -290,6 +291,10 @@ public class MainActivity extends BaseActivity {
             updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
         findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected(getString(R.string.panel_inbox)));
+        findViewById(R.id.nav_item_eisenhower).setOnClickListener(v -> {
+            closeMenu();
+            startActivity(new Intent(MainActivity.this, EisenhowerActivity.class));
+        });
         findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_completed)));
         findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_trash)));
         findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {

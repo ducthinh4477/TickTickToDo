@@ -101,6 +101,11 @@
             android:name=".receiver.SchoolSyncReceiver"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.EisenhowerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo" />
+
     </application>
 
 </manifest>
