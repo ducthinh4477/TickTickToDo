@@ -85,9 +85,9 @@ public class MainActivity extends BaseActivity {
     private FloatingActionButton fabAddTask;
 
     // UI — Nav Rail items
-    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemProfile;
-    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconProfile;
-    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelProfile;
+    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemSettings;
+    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings;
+    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings;
 
     // Adapters
     private TaskAdapter overdueAdapter;
@@ -152,17 +152,17 @@ public class MainActivity extends BaseActivity {
         navItemCalendar = findViewById(R.id.nav_item_calendar);
         navItemFocus    = findViewById(R.id.nav_item_focus);
         navItemSchool   = findViewById(R.id.nav_item_school);
-        navItemProfile  = findViewById(R.id.nav_item_profile);
+        navItemSettings  = findViewById(R.id.nav_item_settings);
         navIconHome     = findViewById(R.id.nav_icon_home);
         navIconCalendar = findViewById(R.id.nav_icon_calendar);
         navIconFocus    = findViewById(R.id.nav_icon_focus);
         navIconSchool   = findViewById(R.id.nav_icon_school);
-        navIconProfile  = findViewById(R.id.nav_icon_profile);
+        navIconSettings  = findViewById(R.id.nav_icon_settings);
         navLabelHome    = findViewById(R.id.nav_label_home);
         navLabelCalendar= findViewById(R.id.nav_label_calendar);
         navLabelFocus   = findViewById(R.id.nav_label_focus);
         navLabelSchool  = findViewById(R.id.nav_label_school);
-        navLabelProfile = findViewById(R.id.nav_label_profile);
+        navLabelSettings = findViewById(R.id.nav_label_settings);
 
         // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
         FrameLayout contentFrame = findViewById(R.id.content_frame);
@@ -266,7 +266,7 @@ public class MainActivity extends BaseActivity {
         rvListsPanel.setLayoutManager(new LinearLayoutManager(this));
         rvListsPanel.setAdapter(listPanelAdapter);
 
-        navAvatar.setOnClickListener(this::showUserPopupMenu);
+        navAvatar.setOnClickListener(v -> showLoginDialog());
         btnAddList.setOnClickListener(v -> AddListDialog.show(this, taskViewModel));
 
         // Tapping backdrop closes menu
@@ -302,23 +302,32 @@ public class MainActivity extends BaseActivity {
         tvHeaderTitle.setText(label);
     }
 
-    private void showUserPopupMenu(View anchor) {
-        PopupMenu popup = new PopupMenu(this, anchor);
-        popup.getMenuInflater().inflate(R.menu.popup_user_menu, popup.getMenu());
-        popup.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.menu_settings) {
-                LanguageSelectionDialog.show(this);
-            } else if (id == R.id.menu_theme) {
-                ThemeSelectionDialog.show(this);
-            } else if (id == R.id.menu_statistics) {
-                startActivity(StatisticsActivity.newIntent(this));
-            } else if (id == R.id.menu_sign_out) {
-                Toast.makeText(this, R.string.toast_signout_wip, Toast.LENGTH_SHORT).show();
-            }
-            return true;
+    private void showLoginDialog() {
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        dialog.setContentView(R.layout.dialog_login);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+
+        android.widget.Button btnGoogle = dialog.findViewById(R.id.btnLoginGoogle);
+        android.widget.Button btnFacebook = dialog.findViewById(R.id.btnLoginFacebook);
+
+        btnGoogle.setOnClickListener(v -> {
+            // TODO: Tích hợp Google Sign-In hoặc Firebase Auth tại đây
+            Toast.makeText(this, "Google Login Clicked", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
         });
-        popup.show();
+
+        btnFacebook.setOnClickListener(v -> {
+            // TODO: Tích hợp Facebook Login hoặc Firebase Auth tại đây
+            Toast.makeText(this, "Facebook Login Clicked", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        // Điều chỉnh width nếu cần
+        dialog.getWindow().setLayout(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        dialog.show();
     }
 
     /**
@@ -380,19 +389,62 @@ public class MainActivity extends BaseActivity {
             startActivity(intent);
         });
 
-        navItemProfile.setOnClickListener(v -> {
-            selectNavItem(R.id.nav_item_profile);
-            showUserPopupMenu(navItemProfile);
+        navItemSettings.setOnClickListener(v -> {
+            selectNavItem(R.id.nav_item_settings);
+            showSettingsDialog();
         });
 
         // Highlight Home by default
         selectNavItem(R.id.nav_item_home);
     }
 
+    private void showSettingsDialog() {
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        dialog.setContentView(R.layout.dialog_settings);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        
+        // Cập nhật kích thước Dialog chiếm 75% màn hình
+        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int width = (int) (displayMetrics.widthPixels * 0.75);
+        int height = (int) (displayMetrics.heightPixels * 0.75);
+        dialog.getWindow().setLayout(width, height);
+
+        // Ánh xạ các nút góc
+        dialog.findViewById(R.id.btn_close_settings).setOnClickListener(v -> dialog.dismiss());
+        dialog.findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
+            // TODO: Xử lý lưu các thay đổi nếu cần
+            dialog.dismiss();
+        });
+
+        // Ánh xạ các mục trong Body của Settings
+        dialog.findViewById(R.id.layout_settings_language).setOnClickListener(v -> {
+            dialog.dismiss();
+            LanguageSelectionDialog.show(this);
+        });
+
+        dialog.findViewById(R.id.layout_settings_theme).setOnClickListener(v -> {
+            dialog.dismiss();
+            ThemeSelectionDialog.show(this);
+        });
+
+        dialog.findViewById(R.id.layout_settings_statistics).setOnClickListener(v -> {
+            dialog.dismiss();
+            startActivity(StatisticsActivity.newIntent(this));
+        });
+
+        dialog.findViewById(R.id.layout_settings_sign_out).setOnClickListener(v -> {
+            dialog.dismiss();
+            Toast.makeText(this, R.string.toast_signout_wip, Toast.LENGTH_SHORT).show();
+        });
+
+        dialog.show();
+    }
+
     private void selectNavItem(int selectedId) {
-        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_profile};
-        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconProfile};
-        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelProfile};
+        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_settings};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings};
 
         int accent    = getResources().getColor(R.color.accent_primary, getTheme());
         int secondary = getResources().getColor(R.color.text_secondary, getTheme());
