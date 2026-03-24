@@ -133,13 +133,9 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
             }
 
             // ── Strikethrough nếu đã hoàn thành ─────────────────────────────
-            if (task.isCompleted()) {
-                tvTitle.setPaintFlags(tvTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-                tvTitle.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.text_completed));
-            } else {
-                tvTitle.setPaintFlags(tvTitle.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-                tvTitle.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.text_primary));
-            }
+            // Bỏ hiệu ứng gạch ngang và không làm mờ theo yêu cầu
+            tvTitle.setPaintFlags(tvTitle.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            tvTitle.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.text_primary));
 
             // ── Subtitle (description + due time) ───────────────────────────
             String subtitle = buildSubtitle(task);

@@ -26,20 +26,20 @@
         <!-- Checkbox -->
         <CheckBox
             android:id="@+id/cb_task_completed"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:button="@drawable/checkbox_circle_selector"
-            android:background="@android:color/transparent"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:button="@null"
+            android:background="@drawable/checkbox_square_selector"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@id/tv_task_title"
-            app:layout_constraintBottom_toBottomOf="@id/tv_task_title" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
 
         <!-- Title -->
         <TextView
             android:id="@+id/tv_task_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="16dp"
             android:layout_marginEnd="8dp"
             android:ellipsize="end"
             android:maxLines="2"
@@ -55,7 +55,7 @@
             android:id="@+id/tv_task_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="16dp"
             android:layout_marginTop="4dp"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
