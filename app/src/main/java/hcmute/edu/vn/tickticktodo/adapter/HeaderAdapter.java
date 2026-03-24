@@ -18,28 +18,31 @@ import hcmute.edu.vn.tickticktodo.R;
  */
 public class HeaderAdapter extends RecyclerView.Adapter<HeaderAdapter.HeaderViewHolder> {
 
-    private int completedCount = 0;
+    private String title = "";
+    private int itemCount = 0;
     private boolean visible = false;
 
     /**
-     * Cập nhật số lượng task đã hoàn thành.
-     * Header chỉ hiện khi count > 0.
+     * Cập nhật thông tin header.
      */
-    public void setCompletedCount(int count) {
+    public void setHeader(String titleText, int count) {
         boolean wasVisible = visible;
-        this.completedCount = count;
+        this.title = titleText;
+        this.itemCount = count;
         this.visible = count > 0;
 
         if (wasVisible && visible) {
-            // Chỉ thay đổi text
             notifyItemChanged(0);
         } else if (!wasVisible && visible) {
-            // Hiện header
             notifyItemInserted(0);
         } else if (wasVisible && !visible) {
-            // Ẩn header
             notifyItemRemoved(0);
         }
+    }
+    
+    // Giữ lại hàm cũ để không vỡ MainActivity hiện tại
+    public void setCompletedCount(int count) {
+        setHeader("Completed", count);
     }
 
     @Override
@@ -57,8 +60,7 @@ public class HeaderAdapter extends RecyclerView.Adapter<HeaderAdapter.HeaderView
 
     @Override
     public void onBindViewHolder(@NonNull HeaderViewHolder holder, int position) {
-        String text = holder.itemView.getContext()
-                .getString(R.string.section_completed, completedCount);
+        String text = title + " (" + itemCount + ")";
         holder.tvSectionHeader.setText(text);
     }
 

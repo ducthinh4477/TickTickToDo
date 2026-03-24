@@ -91,40 +91,6 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <View
-            android:layout_width="8dp"
-            android:layout_height="0dp" />
-
-        <!-- Timeline View -->
-        <LinearLayout
-            android:id="@+id/btn_view_timeline"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-
-            <ImageView
-                android:id="@+id/icon_view_timeline"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/ic_view_timeline"
-                android:contentDescription="@string/view_mode_timeline"
-                tools:tint="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/label_view_timeline"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/view_mode_timeline"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
     </LinearLayout>
 
     <!-- ══════ Divider 1 ══════ -->

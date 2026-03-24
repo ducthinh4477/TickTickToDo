@@ -22,7 +22,7 @@ import hcmute.edu.vn.tickticktodo.R;
  * BottomSheet hiển thị các tùy chọn xem (View Options) — phong cách TickTick.
  *
  * Bao gồm:
- *   - View Mode: List / Kanban / Timeline
+ *   - View Mode: List / Kanban
  *   - Hide Completed, Show Details, View Options (Sort/Group), Add Section, List Activities
  *
  * Cách sử dụng:
@@ -32,7 +32,7 @@ public class ViewOptionsBottomSheet extends BottomSheetDialogFragment {
 
     /** Callback interface cho các sự kiện từ bottom sheet */
     public interface OnOptionSelectedListener {
-        void onViewModeSelected(int viewMode);    // 0 = List, 1 = Kanban, 2 = Timeline
+        void onViewModeSelected(int viewMode);    // 0 = List, 1 = Kanban
         void onHideCompletedToggled();
         void onShowDetailsToggled();
         void onViewOptionsClicked();              // Mở Sort/Group sub-menu
@@ -42,15 +42,14 @@ public class ViewOptionsBottomSheet extends BottomSheetDialogFragment {
 
     public static final int VIEW_MODE_LIST     = 0;
     public static final int VIEW_MODE_KANBAN   = 1;
-    public static final int VIEW_MODE_TIMELINE = 2;
 
     private int currentViewMode = VIEW_MODE_LIST;
     private @Nullable OnOptionSelectedListener listener;
 
     // View Mode buttons
-    private LinearLayout btnViewList, btnViewKanban, btnViewTimeline;
-    private ImageView iconViewList, iconViewKanban, iconViewTimeline;
-    private TextView labelViewList, labelViewKanban, labelViewTimeline;
+    private LinearLayout btnViewList, btnViewKanban;
+    private ImageView iconViewList, iconViewKanban;
+    private TextView labelViewList, labelViewKanban;
 
     // Menu items
     private LinearLayout itemHideCompleted, itemShowDetails, itemViewOptions;
@@ -92,15 +91,12 @@ public class ViewOptionsBottomSheet extends BottomSheetDialogFragment {
     private void initViews(View view) {
         btnViewList     = view.findViewById(R.id.btn_view_list);
         btnViewKanban   = view.findViewById(R.id.btn_view_kanban);
-        btnViewTimeline = view.findViewById(R.id.btn_view_timeline);
 
         iconViewList     = view.findViewById(R.id.icon_view_list);
         iconViewKanban   = view.findViewById(R.id.icon_view_kanban);
-        iconViewTimeline = view.findViewById(R.id.icon_view_timeline);
 
         labelViewList     = view.findViewById(R.id.label_view_list);
         labelViewKanban   = view.findViewById(R.id.label_view_kanban);
-        labelViewTimeline = view.findViewById(R.id.label_view_timeline);
 
         itemHideCompleted  = view.findViewById(R.id.item_hide_completed);
         itemShowDetails    = view.findViewById(R.id.item_show_details);
@@ -123,12 +119,6 @@ public class ViewOptionsBottomSheet extends BottomSheetDialogFragment {
             updateViewModeUI();
             if (listener != null) listener.onViewModeSelected(VIEW_MODE_KANBAN);
         });
-
-        btnViewTimeline.setOnClickListener(v -> {
-            currentViewMode = VIEW_MODE_TIMELINE;
-            updateViewModeUI();
-            if (listener != null) listener.onViewModeSelected(VIEW_MODE_TIMELINE);
-        });
     }
 
     /**
@@ -144,13 +134,10 @@ public class ViewOptionsBottomSheet extends BottomSheetDialogFragment {
         // Reset all
         btnViewList.setBackgroundResource(0);
         btnViewKanban.setBackgroundResource(0);
-        btnViewTimeline.setBackgroundResource(0);
         iconViewList.setImageTintList(ColorStateList.valueOf(secondary));
         iconViewKanban.setImageTintList(ColorStateList.valueOf(secondary));
-        iconViewTimeline.setImageTintList(ColorStateList.valueOf(secondary));
         labelViewList.setTextColor(secondary);
         labelViewKanban.setTextColor(secondary);
-        labelViewTimeline.setTextColor(secondary);
 
         // Highlight selected
         LinearLayout selectedBtn;
@@ -161,11 +148,6 @@ public class ViewOptionsBottomSheet extends BottomSheetDialogFragment {
                 selectedBtn   = btnViewKanban;
                 selectedIcon  = iconViewKanban;
                 selectedLabel = labelViewKanban;
-                break;
-            case VIEW_MODE_TIMELINE:
-                selectedBtn   = btnViewTimeline;
-                selectedIcon  = iconViewTimeline;
-                selectedLabel = labelViewTimeline;
                 break;
             default:
                 selectedBtn   = btnViewList;

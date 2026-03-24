@@ -29,6 +29,7 @@ public class TaskRepository {
     private final TodoListDao todoListDao;
     private final ExecutorService executor;
     private final Application application; // giữ để pass Context cho ReminderScheduler
+    private final ActivityLogRepository logRepository;
 
     public TaskRepository(Application application) {
         TaskDatabase db = TaskDatabase.getInstance(application);
@@ -36,6 +37,7 @@ public class TaskRepository {
         todoListDao = db.todoListDao();
         executor = Executors.newSingleThreadExecutor();
         this.application = application;
+        this.logRepository = new ActivityLogRepository(application);
     }
 
     // ─── READ ────────────────────────────────────────────────────────────────────
@@ -60,6 +62,17 @@ public class TaskRepository {
         return taskDao.getAllTasks();
     }
 
+    public LiveData<List<Task>> getTasksForNext7Days() {
+        long now = System.currentTimeMillis();
+        long next7Days = now + (7 * 24 * 60 * 60 * 1000L);
+        return taskDao.getTasksForNext7Days(now, next7Days);
+    }
+
+    public LiveData<List<Task>> getOverdueTasks() {
+        long now = System.currentTimeMillis();
+        return taskDao.getOverdueTasks(now);
+    }
+
     public LiveData<Task> getTaskById(long taskId) {
         return taskDao.getTaskById(taskId);
     }
@@ -72,6 +85,9 @@ public class TaskRepository {
             // Set alarm: gán id vừa insert rồi schedule
             task.setId(newId);
             ReminderScheduler.scheduleReminder(application, task);
+            
+            // Nhật ký
+            logRepository.insertLog("TẠO MỚI", task.getTitle());
 
             // Notification if due today
             checkAndNotifyIfToday(task);
@@ -104,6 +120,10 @@ public class TaskRepository {
     public void update(Task task) {
         executor.execute(() -> {
             taskDao.update(task);
+            
+            // Nhật ký
+            logRepository.insertLog("CẬP NHẬT", task.getTitle());
+            
             // Đặt lại alarm (dueDate có thể thay đổi), hoặc cancel nếu đã hoàn thành
             if (task.isCompleted()) {
                 ReminderScheduler.cancelReminder(application, task.getId());
@@ -116,6 +136,10 @@ public class TaskRepository {
     public void delete(Task task) {
         executor.execute(() -> {
             taskDao.delete(task);
+            
+            // Nhật ký
+            logRepository.insertLog("XÓA", task.getTitle());
+            
             ReminderScheduler.cancelReminder(application, task.getId()); // huỷ alarm
         });
     }
@@ -123,6 +147,10 @@ public class TaskRepository {
     public void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate) {
         executor.execute(() -> {
             taskDao.markTaskAsCompletedWithDate(taskId, isCompleted, completedDate);
+            
+            // Nhật ký
+            logRepository.insertLog(isCompleted ? "HOÀN THÀNH" : "CHƯA HOÀN THÀNH", "Task ID: " + taskId);
+            
             if (isCompleted) {
                 ReminderScheduler.cancelReminder(application, taskId); // hoàn thành → huỷ alarm
             }

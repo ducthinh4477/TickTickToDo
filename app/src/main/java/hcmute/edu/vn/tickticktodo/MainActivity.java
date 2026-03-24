@@ -90,10 +90,18 @@ public class MainActivity extends BaseActivity {
     private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelProfile;
 
     // Adapters
+    private TaskAdapter overdueAdapter;
+    private HeaderAdapter overdueHeaderAdapter;
+    private HeaderAdapter todayHeaderAdapter;
     private TaskAdapter incompleteAdapter;
-    private HeaderAdapter headerAdapter;
+    private HeaderAdapter completedHeaderAdapter;
     private TaskAdapter completedAdapter;
     private ConcatAdapter concatAdapter;
+    
+    // View Options State
+    private boolean isHideCompleted = false;
+    private boolean isShowDetails = true;
+    private int currentMode = 0; // 0 = Today, 1 = 7 Days
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -183,6 +191,42 @@ public class MainActivity extends BaseActivity {
 
         btnMore.setOnClickListener(v -> {
             ViewOptionsBottomSheet bottomSheet = ViewOptionsBottomSheet.newInstance();
+            bottomSheet.setOnOptionSelectedListener(new ViewOptionsBottomSheet.OnOptionSelectedListener() {
+                @Override
+                public void onViewModeSelected(int viewMode) { }
+
+                @Override
+                public void onHideCompletedToggled() {
+                    isHideCompleted = !isHideCompleted;
+                    if (isHideCompleted) {
+                        concatAdapter.removeAdapter(completedHeaderAdapter);
+                        concatAdapter.removeAdapter(completedAdapter);
+                    } else {
+                        concatAdapter.addAdapter(completedHeaderAdapter);
+                        concatAdapter.addAdapter(completedAdapter);
+                    }
+                    updateEmptyStateCheck();
+                }
+
+                @Override
+                public void onShowDetailsToggled() {
+                    isShowDetails = !isShowDetails;
+                    overdueAdapter.setShowDetails(isShowDetails);
+                    incompleteAdapter.setShowDetails(isShowDetails);
+                    completedAdapter.setShowDetails(isShowDetails);
+                }
+
+                @Override
+                public void onViewOptionsClicked() { }
+
+                @Override
+                public void onAddSectionClicked() { }
+
+                @Override
+                public void onListActivitiesClicked() {
+                    startActivity(new android.content.Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.ActivityLogActivity.class));
+                }
+            });
             bottomSheet.show(getSupportFragmentManager(), "ViewOptions");
         });
     }
@@ -228,10 +272,17 @@ public class MainActivity extends BaseActivity {
         // Tapping backdrop closes menu
         menuBackdrop.setOnClickListener(v -> closeMenu());
 
-        findViewById(R.id.panel_item_today).setOnClickListener(v -> onPanelItemSelected(getString(R.string.header_today)));
+        findViewById(R.id.panel_item_today).setOnClickListener(v -> {
+            closeMenu();
+            currentMode = 0;
+            tvHeaderTitle.setText(R.string.header_today);
+            updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
+        });
         findViewById(R.id.panel_item_next7days).setOnClickListener(v -> {
             closeMenu();
-            startActivity(CalendarActivity.newIntent(this));
+            currentMode = 1;
+            tvHeaderTitle.setText("7 Ngày tới");
+            updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
         findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected(getString(R.string.panel_inbox)));
         findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_completed)));
@@ -283,10 +334,6 @@ public class MainActivity extends BaseActivity {
                 taskViewModel.setSortMode(TaskViewModel.SORT_BY_DATE_ASC);
             } else if (id == R.id.sort_priority) {
                 taskViewModel.setSortMode(TaskViewModel.SORT_BY_PRIORITY);
-            } else if (id == R.id.sort_title) {
-                taskViewModel.setSortMode(TaskViewModel.SORT_BY_TITLE);
-            } else if (id == R.id.sort_custom) {
-                taskViewModel.setSortMode(TaskViewModel.SORT_BY_CUSTOM);
             }
             return true;
         });
@@ -367,19 +414,32 @@ public class MainActivity extends BaseActivity {
     // ─── Adapters ───────────────────────────────────────────────────────────
 
     private void initAdapters() {
+        // Overdue
+        overdueAdapter = new TaskAdapter(
+                (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
+                task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
+        );
+        overdueHeaderAdapter = new HeaderAdapter();
+
+        // Incomplete
+        todayHeaderAdapter = new HeaderAdapter();
         incompleteAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
                 task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
         );
 
-        headerAdapter = new HeaderAdapter();
-
+        // Completed
+        completedHeaderAdapter = new HeaderAdapter();
         completedAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
                 task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
         );
 
-        concatAdapter = new ConcatAdapter(incompleteAdapter, headerAdapter, completedAdapter);
+        concatAdapter = new ConcatAdapter(
+                overdueHeaderAdapter, overdueAdapter,
+                todayHeaderAdapter, incompleteAdapter,
+                completedHeaderAdapter, completedAdapter
+        );
     }
 
     private void setupRecyclerView() {
@@ -391,20 +451,30 @@ public class MainActivity extends BaseActivity {
     }
 
     private void handleSwipeDelete(int position) {
-        int incompleteCount = incompleteAdapter.getItemCount();
-        int headerCount = headerAdapter.getItemCount();
+        int overdueHead = overdueHeaderAdapter.getItemCount();
+        int overdue = overdueAdapter.getItemCount();
+        int todayHead = todayHeaderAdapter.getItemCount();
+        int incomplete = incompleteAdapter.getItemCount();
+        int compHead = isHideCompleted ? 0 : completedHeaderAdapter.getItemCount();
+        int comp = isHideCompleted ? 0 : completedAdapter.getItemCount();
 
-        Task deletedTask;
-        if (position < incompleteCount) {
-            deletedTask = incompleteAdapter.getCurrentList().get(position);
-        } else if (position < incompleteCount + headerCount) {
+        Task deletedTask = null;
+        if (position < overdueHead) {
             return;
-        } else {
-            int localPos = position - incompleteCount - headerCount;
-            List<Task> completedList = completedAdapter.getCurrentList();
-            if (localPos < 0 || localPos >= completedList.size()) return;
-            deletedTask = completedList.get(localPos);
+        } else if (position < overdueHead + overdue) {
+            deletedTask = overdueAdapter.getCurrentList().get(position - overdueHead);
+        } else if (position < overdueHead + overdue + todayHead) {
+            return;
+        } else if (position < overdueHead + overdue + todayHead + incomplete) {
+            deletedTask = incompleteAdapter.getCurrentList().get(position - overdueHead - overdue - todayHead);
+        } else if (position < overdueHead + overdue + todayHead + incomplete + compHead) {
+            return;
+        } else if (position < overdueHead + overdue + todayHead + incomplete + compHead + comp) {
+            int localPos = position - overdueHead - overdue - todayHead - incomplete - compHead;
+            deletedTask = completedAdapter.getCurrentList().get(localPos);
         }
+
+        if (deletedTask == null) return;
 
         final Task finalDeleted = deletedTask;
         taskViewModel.delete(finalDeleted);
@@ -469,17 +539,31 @@ public class MainActivity extends BaseActivity {
     // ─── ViewModel / LiveData ───────────────────────────────────────────────
 
     private void setupViewModel() {
+        taskViewModel.getSortModeLiveData().observe(this, mode -> {
+            if (currentMode == 0) updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
+            else if (currentMode == 1) updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
+        });
+
+        taskViewModel.getOverdueTasks().observe(this, overdueTasks -> {
+            List<Task> list = overdueTasks != null ? overdueTasks : new ArrayList<>();
+            overdueAdapter.submitList(new ArrayList<>(list));
+            overdueHeaderAdapter.setHeader("Đã quá hạn", list.size());
+            updateEmptyStateCheck();
+        });
+
         taskViewModel.getTodayIncompleteTasks().observe(this, incompleteTasks -> {
-            List<Task> list = incompleteTasks != null ? incompleteTasks : new ArrayList<>();
-            incompleteAdapter.submitList(new ArrayList<>(list));
-            updateEmptyState(list, taskViewModel.getTodayCompletedTasks().getValue());
+            if (currentMode == 0) updateIncompleteList(incompleteTasks);
+        });
+
+        taskViewModel.getNext7DaysTasks().observe(this, nextTasks -> {
+            if (currentMode == 1) updateIncompleteList(nextTasks);
         });
 
         taskViewModel.getTodayCompletedTasks().observe(this, completedTasks -> {
             List<Task> list = completedTasks != null ? completedTasks : new ArrayList<>();
             completedAdapter.submitList(new ArrayList<>(list));
-            headerAdapter.setCompletedCount(list.size());
-            updateEmptyState(taskViewModel.getTodayIncompleteTasks().getValue(), list);
+            completedHeaderAdapter.setHeader("Hoàn thành", list.size());
+            updateEmptyStateCheck();
         });
 
         taskViewModel.getAllLists().observe(this, lists -> {
@@ -487,9 +571,31 @@ public class MainActivity extends BaseActivity {
         });
     }
 
-    private void updateEmptyState(List<Task> incomplete, List<Task> completed) {
-        int total = (incomplete != null ? incomplete.size() : 0)
-                  + (completed  != null ? completed.size()  : 0);
+    private void updateIncompleteList(List<Task> tasks) {
+        List<Task> list = tasks != null ? new ArrayList<>(tasks) : new ArrayList<>();
+        
+        int sortMode = taskViewModel.getCurrentSortMode();
+        if (sortMode == TaskViewModel.SORT_BY_PRIORITY) {
+            java.util.Collections.sort(list, (t1, t2) -> Integer.compare(t2.getPriority(), t1.getPriority()));
+        } else if (sortMode == TaskViewModel.SORT_BY_DATE_DESC) {
+            java.util.Collections.sort(list, (t1, t2) -> {
+                Long d1 = t1.getDueDate();
+                Long d2 = t2.getDueDate();
+                if (d1 == null && d2 == null) return 0;
+                if (d1 == null) return 1;
+                if (d2 == null) return -1;
+                return d2.compareTo(d1);
+            });
+        }
+
+        incompleteAdapter.submitList(list);
+        todayHeaderAdapter.setHeader(currentMode == 0 ? "Hôm nay" : "7 ngày tới", list.size());
+        updateEmptyStateCheck();
+    }
+
+    private void updateEmptyStateCheck() {
+        int total = incompleteAdapter.getItemCount() + overdueAdapter.getItemCount() + 
+                    (isHideCompleted ? 0 : completedAdapter.getItemCount());
         boolean isEmpty = total == 0;
         layoutEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         rvTasks.setVisibility(isEmpty ? View.GONE : View.VISIBLE);

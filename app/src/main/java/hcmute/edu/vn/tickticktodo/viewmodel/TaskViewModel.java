@@ -25,8 +25,6 @@ public class TaskViewModel extends AndroidViewModel {
     public static final int SORT_BY_DATE_ASC  = 0;
     public static final int SORT_BY_DATE_DESC = 1;
     public static final int SORT_BY_PRIORITY  = 2;
-    public static final int SORT_BY_TITLE     = 3;
-    public static final int SORT_BY_CUSTOM    = 4;
 
     private final TaskRepository repository;
     private final LiveData<List<Task>> todayIncompleteTasks;
@@ -65,10 +63,6 @@ public class TaskViewModel extends AndroidViewModel {
                     return repository.getAllTasksSortByDateDesc();
                 case SORT_BY_PRIORITY:
                     return repository.getAllTasksSortByPriority();
-                case SORT_BY_TITLE:
-                    return repository.getAllTasksSortByTitle();
-                case SORT_BY_CUSTOM:
-                    return repository.getAllTasksSortByCustom();
                 case SORT_BY_DATE_ASC:
                 default:
                     return repository.getAllTasksSortByDateAsc();
@@ -93,12 +87,24 @@ public class TaskViewModel extends AndroidViewModel {
         return mode != null ? mode : SORT_BY_DATE_ASC;
     }
 
+    public LiveData<Integer> getSortModeLiveData() {
+        return sortMode;
+    }
+
     /**
      * LiveData danh sách tất cả task đã được sắp xếp theo chế độ hiện tại.
      * Tự động thay đổi khi gọi setSortMode().
      */
     public LiveData<List<Task>> getSortedAllTasks() {
         return sortedAllTasks;
+    }
+
+    public LiveData<List<Task>> getNext7DaysTasks() {
+        return repository.getTasksForNext7Days();
+    }
+
+    public LiveData<List<Task>> getOverdueTasks() {
+        return repository.getOverdueTasks();
     }
 
     // ─── Observe ─────────────────────────────────────────────────────────────────

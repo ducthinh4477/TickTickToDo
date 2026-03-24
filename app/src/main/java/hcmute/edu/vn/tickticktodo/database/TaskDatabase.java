@@ -11,6 +11,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
+import hcmute.edu.vn.tickticktodo.dao.ActivityLogDao;
+import hcmute.edu.vn.tickticktodo.model.ActivityLog;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
 
@@ -24,8 +26,9 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
  *   v3 → v4: Thêm cột order_index, completed_date vào bảng tasks
  *   v4 → v5: Thêm cột location, duration, recurrence vào bảng tasks (Calendar event)
  *   v5 → v6: Thêm cột source vào bảng tasks (chứa nguồn như 'Moodle')
+ *   v6 → v7: Thêm bảng activity_logs
  */
-@Database(entities = {Task.class, TodoList.class}, version = 6, exportSchema = false)
+@Database(entities = {Task.class, TodoList.class, ActivityLog.class}, version = 7, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -33,6 +36,7 @@ public abstract class TaskDatabase extends RoomDatabase {
 
     public abstract TaskDao taskDao();
     public abstract TodoListDao todoListDao();
+    public abstract ActivityLogDao activityLogDao();
 
     // ─── Migration v2 → v3 ───────────────────────────────────────────────────────
     // Thêm cột icon_res_id (INTEGER, default 0) vào bảng todo_lists.
@@ -92,6 +96,17 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    // ─── Migration v6 → v7 ───────────────────────────────────────────────────────
+    // Thêm bảng activity_logs để lưu nhật ký
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                "CREATE TABLE IF NOT EXISTS `activity_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `action` TEXT, `timestamp` INTEGER NOT NULL, `task_title` TEXT)"
+            );
+        }
+    };
+
     // ─── Singleton ───────────────────────────────────────────────────────────────
     public static TaskDatabase getInstance(Context context) {
         if (INSTANCE == null) {
@@ -102,7 +117,7 @@ public abstract class TaskDatabase extends RoomDatabase {
                             TaskDatabase.class,
                             DATABASE_NAME
                     )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6) // Migration an toàn (giữ data)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();
                 }
