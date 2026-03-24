@@ -401,19 +401,24 @@ public class MainActivity extends BaseActivity {
     private void showSettingsDialog() {
         android.app.Dialog dialog = new android.app.Dialog(this);
         dialog.setContentView(R.layout.dialog_settings);
-        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        
-        // Cập nhật kích thước Dialog chiếm 75% màn hình
-        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        int width = (int) (displayMetrics.widthPixels * 0.75);
-        int height = (int) (displayMetrics.heightPixels * 0.75);
-        dialog.getWindow().setLayout(width, height);
+
+        android.view.Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            
+            // Cập nhật kích thước Dialog chiếm 75% màn hình
+            android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            int width = (int) (displayMetrics.widthPixels * 0.75);
+            int height = (int) (displayMetrics.heightPixels * 0.75);
+            
+            window.setLayout(width, height);
+        }
 
         // Ánh xạ các nút góc
         dialog.findViewById(R.id.btn_close_settings).setOnClickListener(v -> dialog.dismiss());
         dialog.findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
-            // TODO: Xử lý lưu các thay đổi nếu cần
+            // TODO: Xử lý lưu các thay đổi cấu hình nếu cần thiết
             dialog.dismiss();
         });
 
