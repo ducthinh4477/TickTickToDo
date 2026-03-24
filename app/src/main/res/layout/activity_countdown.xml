@@ -39,51 +39,6 @@
 
     </RelativeLayout>
 
-    <!-- Mode selector tabs -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="12dp"
-        android:background="#22FFFFFF"
-        android:orientation="horizontal"
-        android:padding="4dp">
-
-        <TextView
-            android:id="@+id/tab_pomodoro"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@drawable/bg_tab_selected"
-            android:gravity="center"
-            android:text="@string/countdown_mode_pomodoro"
-            android:textColor="#FFFFFFFF"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tab_short_break"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:gravity="center"
-            android:text="@string/countdown_mode_short_break"
-            android:textColor="#AAFFFFFF"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/tab_long_break"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:gravity="center"
-            android:text="@string/countdown_mode_long_break"
-            android:textColor="#AAFFFFFF"
-            android:textSize="13sp" />
-
-    </LinearLayout>
-
     <!-- Spacer -->
     <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
 
@@ -119,6 +74,9 @@
                     android:id="@+id/tv_countdown"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:fontFamily="monospace"
                     android:text="25:00"
                     android:textColor="#FFFFFFFF"

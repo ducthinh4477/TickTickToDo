@@ -224,9 +224,7 @@ public class TimerService extends Service {
     private void onTimerFinished() {
         timerState = TimerState.IDLE;
 
-        if (currentModeMins == 25) {   // Pomodoro
-            sessionCount++;
-        }
+        sessionCount++;
 
         millisRemaining = totalMillis;
         playAlarmSound();

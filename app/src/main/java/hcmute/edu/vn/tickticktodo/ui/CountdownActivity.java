@@ -28,6 +28,8 @@ import java.util.Locale;
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.service.TimerService;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import android.widget.NumberPicker;
 
 /**
  * CountdownActivity — Giao diện Pomodoro Timer.
@@ -39,11 +41,6 @@ import hcmute.edu.vn.tickticktodo.service.TimerService;
  * Activity KHÔNG còn chứa CountDownTimer — toàn bộ logic nằm trong TimerService.
  */
 public class CountdownActivity extends BaseActivity {
-
-    // Timer modes (minutes)
-    private static final int MODE_POMODORO    = 25;
-    private static final int MODE_SHORT_BREAK = 5;
-    private static final int MODE_LONG_BREAK  = 15;
 
     // ── Service binding ──────────────────────────────────────────────────────────
     private TimerService timerService;
@@ -75,11 +72,6 @@ public class CountdownActivity extends BaseActivity {
 
         updateTimerDisplay(millis);
         updateButtonsState(state);
-
-        // Update tabs selection based on mode
-        if (mode == MODE_POMODORO) selectTab(tabPomodoro);
-        else if (mode == MODE_SHORT_BREAK) selectTab(tabShortBreak);
-        else if (mode == MODE_LONG_BREAK) selectTab(tabLongBreak);
 
         // Update session count
         int session = timerService.getSessionCount();
@@ -120,9 +112,6 @@ public class CountdownActivity extends BaseActivity {
     private TextView tvSessionCount;
     private Button   btnStartPause;
     private Button   btnStop;
-    private TextView tabPomodoro;
-    private TextView tabShortBreak;
-    private TextView tabLongBreak;
 
     // ── Factory ──────────────────────────────────────────────────────────────────
     public static Intent newIntent(Context context) {
@@ -177,9 +166,6 @@ public class CountdownActivity extends BaseActivity {
         tvSessionCount = findViewById(R.id.tv_session_count);
         btnStartPause  = findViewById(R.id.btn_start_pause);
         btnStop        = findViewById(R.id.btn_stop);
-        tabPomodoro    = findViewById(R.id.tab_pomodoro);
-        tabShortBreak  = findViewById(R.id.tab_short_break);
-        tabLongBreak   = findViewById(R.id.tab_long_break);
 
         ImageButton btnBack = findViewById(R.id.btn_countdown_back);
         btnBack.setOnClickListener(v -> finish());
@@ -219,20 +205,14 @@ public class CountdownActivity extends BaseActivity {
     // ── Listeners ────────────────────────────────────────────────────────────────
 
     private void setupListeners() {
-        tabPomodoro.setOnClickListener(v -> {
-            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
-            selectTab(tabPomodoro);
-            timerService.setMode(MODE_POMODORO);
-        });
-        tabShortBreak.setOnClickListener(v -> {
-            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
-            selectTab(tabShortBreak);
-            timerService.setMode(MODE_SHORT_BREAK);
-        });
-        tabLongBreak.setOnClickListener(v -> {
-            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
-            selectTab(tabLongBreak);
-            timerService.setMode(MODE_LONG_BREAK);
+        tvCountdown.setOnClickListener(v -> {
+            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) {
+                if (timerService != null && timerService.getTimerState() != TimerService.TimerState.IDLE) {
+                    Toast.makeText(this, "Chỉ có thể đổi thời gian khi đang dừng", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+            showTimePickerDialog();
         });
 
         btnStartPause.setOnClickListener(v -> {
@@ -282,27 +262,32 @@ public class CountdownActivity extends BaseActivity {
             tvSessionCount.setText(String.valueOf(timerService.getSessionCount()));
         }
 
-        Toast.makeText(this,
-                modeMins == MODE_POMODORO
-                        ? getString(R.string.countdown_toast_done)
-                        : getString(R.string.countdown_toast_break_done),
-                Toast.LENGTH_LONG).show();
+        Toast.makeText(this, getString(R.string.countdown_toast_done), Toast.LENGTH_LONG).show();
     }
 
-    // ── Tab UI helper ─────────────────────────────────────────────────────────────
+    private void showTimePickerDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        android.view.View view = getLayoutInflater().inflate(R.layout.bottom_sheet_time_picker, null);
+        dialog.setContentView(view);
+        
+        NumberPicker npMinutes = view.findViewById(R.id.np_minutes);
+        npMinutes.setMinValue(1);
+        npMinutes.setMaxValue(180);
+        if (timerService != null) {
+            npMinutes.setValue(timerService.getCurrentModeMins());
+        } else {
+            npMinutes.setValue(25);
+        }
 
-    private void selectTab(TextView selected) {
-        int white    = ContextCompat.getColor(this, android.R.color.white);
-        int dimWhite = 0xAAFFFFFF;
+        Button btnSave = view.findViewById(R.id.btn_save_time);
+        btnSave.setOnClickListener(v -> {
+            int selectedMinutes = npMinutes.getValue();
+            if (timerService != null) {
+                timerService.setMode(selectedMinutes);
+            }
+            dialog.dismiss();
+        });
 
-        tabPomodoro.setBackground(null);
-        tabShortBreak.setBackground(null);
-        tabLongBreak.setBackground(null);
-        tabPomodoro.setTextColor(dimWhite);
-        tabShortBreak.setTextColor(dimWhite);
-        tabLongBreak.setTextColor(dimWhite);
-
-        selected.setBackgroundResource(R.drawable.bg_tab_selected);
-        selected.setTextColor(white);
+        dialog.show();
     }
 }
