@@ -55,15 +55,20 @@ public class TimerService extends Service {
 
     // ── Timer state (mirror của Activity) ────────────────────────────────────────
     public enum TimerState { IDLE, RUNNING, PAUSED }
+    public enum TimerMode { COUNTDOWN, STOPWATCH }
 
     // ── Internal state ───────────────────────────────────────────────────────────
     private TimerState timerState   = TimerState.IDLE;
+    private TimerMode  timerMode    = TimerMode.COUNTDOWN;
     private int   currentModeMins   = 25;          // mặc định Pomodoro
     private long  totalMillis       = 25 * 60 * 1000L;
     private long  millisRemaining   = totalMillis;
+    private long  stopwatchMillis   = 0L;
     private int   sessionCount      = 1;
 
     private CountDownTimer countDownTimer;
+    private Handler stopwatchHandler;
+    private Runnable stopwatchRunnable;
     private MediaPlayer    mediaPlayer;
 
     private LocalBroadcastManager lbm;
@@ -149,12 +154,25 @@ public class TimerService extends Service {
 
     /** Lấy trạng thái hiện tại để Activity sync UI khi vừa bind */
     public TimerState getTimerState()    { return timerState; }
-    public long  getMillisRemaining()    { return millisRemaining; }
+    public TimerMode  getTimerMode()     { return timerMode; }
+    public long  getMillisRemaining()    { return timerMode == TimerMode.COUNTDOWN ? millisRemaining : stopwatchMillis; }
     public long  getTotalMillis()        { return totalMillis; }
     public int   getCurrentModeMins()    { return currentModeMins; }
     public int   getSessionCount()       { return sessionCount; }
 
-    /** Đặt chế độ (Pomodoro / Short Break / Long Break) — chỉ khi IDLE */
+    public void setTimerMode(TimerMode mode) {
+        if (timerState != TimerState.IDLE) return;
+        this.timerMode = mode;
+        if (mode == TimerMode.COUNTDOWN) {
+            millisRemaining = totalMillis;
+            broadcastTick(millisRemaining);
+        } else {
+            stopwatchMillis = 0L;
+            broadcastTick(stopwatchMillis);
+        }
+    }
+
+    /** Đặt thời gian (Pomodoro / Short Break / Long Break) — chỉ khi IDLE */
     public void setMode(int minutes) {
         if (timerState != TimerState.IDLE) return;
         currentModeMins = minutes;
@@ -168,7 +186,11 @@ public class TimerService extends Service {
     public void startTimer() {
         if (timerState == TimerState.IDLE || timerState == TimerState.PAUSED) {
             timerState = TimerState.RUNNING;
-            runCountdown(millisRemaining);
+            if (timerMode == TimerMode.COUNTDOWN) {
+                runCountdown(millisRemaining);
+            } else {
+                runStopwatch();
+            }
             startForegroundServiceNotification(); // Start foreground
         }
     }
@@ -184,7 +206,11 @@ public class TimerService extends Service {
     public void resumeTimer() {
         if (timerState == TimerState.PAUSED) {
             timerState = TimerState.RUNNING;
-            runCountdown(millisRemaining);
+            if (timerMode == TimerMode.COUNTDOWN) {
+                runCountdown(millisRemaining);
+            } else {
+                runStopwatch();
+            }
             updateNotification(); // Update to show "Running"
         }
     }
@@ -221,6 +247,24 @@ public class TimerService extends Service {
         }.start();
     }
 
+    private void runStopwatch() {
+        if (stopwatchHandler == null) {
+            stopwatchHandler = new Handler(Looper.getMainLooper());
+        }
+        stopwatchRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (timerState == TimerState.RUNNING) {
+                    stopwatchMillis += 1000;
+                    broadcastTick(stopwatchMillis);
+                    updateNotification();
+                    stopwatchHandler.postDelayed(this, 1000);
+                }
+            }
+        };
+        stopwatchHandler.postDelayed(stopwatchRunnable, 1000);
+    }
+
     private void onTimerFinished() {
         timerState = TimerState.IDLE;
 
@@ -239,6 +283,9 @@ public class TimerService extends Service {
         if (countDownTimer != null) {
             countDownTimer.cancel();
             countDownTimer = null;
+        }
+        if (stopwatchHandler != null && stopwatchRunnable != null) {
+            stopwatchHandler.removeCallbacks(stopwatchRunnable);
         }
     }
 
@@ -260,7 +307,7 @@ public class TimerService extends Service {
 
     private void startForegroundServiceNotification() {
         Notification notification = NotificationHelper.buildTimerNotification(
-            this, millisRemaining, timerState == TimerState.RUNNING
+            this, getMillisRemaining(), timerState == TimerState.RUNNING
         );
 
         // For Android 14, need to specify type in logic if possible,
@@ -305,7 +352,7 @@ public class TimerService extends Service {
         // If the service is running, update the notification
         if (timerState != TimerState.IDLE) {
             Notification notification = NotificationHelper.buildTimerNotification(
-                this, millisRemaining, timerState == TimerState.RUNNING
+                this, getMillisRemaining(), timerState == TimerState.RUNNING
             );
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {

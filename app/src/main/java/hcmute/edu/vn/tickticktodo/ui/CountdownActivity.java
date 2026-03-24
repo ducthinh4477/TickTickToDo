@@ -70,6 +70,18 @@ public class CountdownActivity extends BaseActivity {
         int mode = timerService.getCurrentModeMins();
         TimerService.TimerState state = timerService.getTimerState();
 
+        if (timerService.getTimerMode() == TimerService.TimerMode.STOPWATCH) {
+            toggleTimerMode.check(R.id.btn_mode_stopwatch);
+            vRingOuter.setVisibility(android.view.View.GONE);
+            vRingDashed.setVisibility(android.view.View.VISIBLE);
+            tvCountdown.setClickable(false);
+        } else {
+            toggleTimerMode.check(R.id.btn_mode_countdown);
+            vRingOuter.setVisibility(android.view.View.VISIBLE);
+            vRingDashed.setVisibility(android.view.View.GONE);
+            tvCountdown.setClickable(true);
+        }
+
         updateTimerDisplay(millis);
         updateButtonsState(state);
 
@@ -82,12 +94,48 @@ public class CountdownActivity extends BaseActivity {
         if (state == TimerService.TimerState.RUNNING) {
             btnStartPause.setText(getString(R.string.countdown_btn_pause));
             tvTimerStatus.setText(getString(R.string.countdown_status_focus));
+            btnStop.setEnabled(true);
+            setToggleEnabled(false);
+            
+            // Handle animation for stopwatch
+            if (timerService != null && timerService.getTimerMode() == TimerService.TimerMode.STOPWATCH) {
+                if (rotationAnimator == null) {
+                    rotationAnimator = android.animation.ObjectAnimator.ofFloat(vRingDashed, "rotation", 0f, 360f);
+                    rotationAnimator.setDuration(10000);
+                    rotationAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+                    rotationAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
+                }
+                if (rotationAnimator.isPaused()) {
+                    rotationAnimator.resume();
+                } else if (!rotationAnimator.isStarted()) {
+                    rotationAnimator.start();
+                }
+            }
         } else if (state == TimerService.TimerState.PAUSED) {
             btnStartPause.setText(getString(R.string.countdown_btn_resume));
             tvTimerStatus.setText(getString(R.string.countdown_status_paused));
+            btnStop.setEnabled(true);
+            setToggleEnabled(false);
+            
+            if (rotationAnimator != null) {
+                rotationAnimator.pause();
+            }
         } else {
             btnStartPause.setText(getString(R.string.countdown_btn_start));
             tvTimerStatus.setText(getString(R.string.countdown_status_ready));
+            btnStop.setEnabled(false);
+            setToggleEnabled(true); // Allow toggle only when idle
+            
+            if (rotationAnimator != null) {
+                rotationAnimator.cancel();
+            }
+            vRingDashed.setRotation(0f);
+        }
+    }
+
+    private void setToggleEnabled(boolean enabled) {
+        for (int i = 0; i < toggleTimerMode.getChildCount(); i++) {
+            toggleTimerMode.getChildAt(i).setEnabled(enabled);
         }
     }
 
@@ -112,6 +160,10 @@ public class CountdownActivity extends BaseActivity {
     private TextView tvSessionCount;
     private Button   btnStartPause;
     private Button   btnStop;
+    private com.google.android.material.button.MaterialButtonToggleGroup toggleTimerMode;
+    private android.view.View vRingOuter;
+    private android.view.View vRingDashed;
+    private android.animation.ObjectAnimator rotationAnimator;
 
     // ── Factory ──────────────────────────────────────────────────────────────────
     public static Intent newIntent(Context context) {
@@ -166,6 +218,9 @@ public class CountdownActivity extends BaseActivity {
         tvSessionCount = findViewById(R.id.tv_session_count);
         btnStartPause  = findViewById(R.id.btn_start_pause);
         btnStop        = findViewById(R.id.btn_stop);
+        toggleTimerMode = findViewById(R.id.toggle_timer_mode);
+        vRingOuter      = findViewById(R.id.v_ring_outer);
+        vRingDashed     = findViewById(R.id.v_ring_dashed);
 
         ImageButton btnBack = findViewById(R.id.btn_countdown_back);
         btnBack.setOnClickListener(v -> finish());
@@ -205,6 +260,31 @@ public class CountdownActivity extends BaseActivity {
     // ── Listeners ────────────────────────────────────────────────────────────────
 
     private void setupListeners() {
+        toggleTimerMode.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            if (timerService != null && timerService.getTimerState() != TimerService.TimerState.IDLE) {
+                Toast.makeText(this, "Vui lòng dừng trước khi đổi chế độ", Toast.LENGTH_SHORT).show();
+                // Revert UI change visually
+                if (timerService.getTimerMode() == TimerService.TimerMode.COUNTDOWN) {
+                    group.check(R.id.btn_mode_countdown);
+                } else {
+                    group.check(R.id.btn_mode_stopwatch);
+                }
+                return;
+            }
+            if (checkedId == R.id.btn_mode_countdown) {
+                if (timerService != null) timerService.setTimerMode(TimerService.TimerMode.COUNTDOWN);
+                vRingOuter.setVisibility(android.view.View.VISIBLE);
+                vRingDashed.setVisibility(android.view.View.GONE);
+                tvCountdown.setClickable(true);
+            } else if (checkedId == R.id.btn_mode_stopwatch) {
+                if (timerService != null) timerService.setTimerMode(TimerService.TimerMode.STOPWATCH);
+                vRingOuter.setVisibility(android.view.View.GONE);
+                vRingDashed.setVisibility(android.view.View.VISIBLE);
+                tvCountdown.setClickable(false); // Do not let user pick time for stopwatch
+            }
+        });
+
         tvCountdown.setOnClickListener(v -> {
             if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) {
                 if (timerService != null && timerService.getTimerState() != TimerService.TimerState.IDLE) {
