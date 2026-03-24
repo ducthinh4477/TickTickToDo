@@ -77,7 +77,7 @@ public class MoodleActivity extends BaseActivity {
         // Sử dụng lại TaskAdapter để giữ tính nhất quán
         adapter = new TaskAdapter(
             (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-            task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
+            task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getSupportFragmentManager(), "TaskDetail")
         );
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));

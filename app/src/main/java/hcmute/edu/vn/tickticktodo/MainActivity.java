@@ -52,7 +52,7 @@ import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
 import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.StatisticsActivity;
 import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
-import hcmute.edu.vn.tickticktodo.ui.TaskDetailActivity;
+import hcmute.edu.vn.tickticktodo.ui.TaskDetailBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.ViewOptionsBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.SchoolLoginActivity;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
@@ -474,7 +474,7 @@ public class MainActivity extends BaseActivity {
         // Overdue
         overdueAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
+                task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getSupportFragmentManager(), "TaskDetail")
         );
         overdueHeaderAdapter = new HeaderAdapter();
 
@@ -482,14 +482,14 @@ public class MainActivity extends BaseActivity {
         todayHeaderAdapter = new HeaderAdapter();
         incompleteAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
+                task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getSupportFragmentManager(), "TaskDetail")
         );
 
         // Completed
         completedHeaderAdapter = new HeaderAdapter();
         completedAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
+                task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getSupportFragmentManager(), "TaskDetail")
         );
 
         concatAdapter = new ConcatAdapter(
