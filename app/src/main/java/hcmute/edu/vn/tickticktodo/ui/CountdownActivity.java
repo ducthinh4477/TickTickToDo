@@ -28,6 +28,8 @@ import java.util.Locale;
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.service.TimerService;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import android.widget.NumberPicker;
 
 /**
  * CountdownActivity — Giao diện Pomodoro Timer.
@@ -39,11 +41,6 @@ import hcmute.edu.vn.tickticktodo.service.TimerService;
  * Activity KHÔNG còn chứa CountDownTimer — toàn bộ logic nằm trong TimerService.
  */
 public class CountdownActivity extends BaseActivity {
-
-    // Timer modes (minutes)
-    private static final int MODE_POMODORO    = 25;
-    private static final int MODE_SHORT_BREAK = 5;
-    private static final int MODE_LONG_BREAK  = 15;
 
     // ── Service binding ──────────────────────────────────────────────────────────
     private TimerService timerService;
@@ -73,13 +70,20 @@ public class CountdownActivity extends BaseActivity {
         int mode = timerService.getCurrentModeMins();
         TimerService.TimerState state = timerService.getTimerState();
 
+        if (timerService.getTimerMode() == TimerService.TimerMode.STOPWATCH) {
+            toggleTimerMode.check(R.id.btn_mode_stopwatch);
+            vRingOuter.setVisibility(android.view.View.GONE);
+            vRingDashed.setVisibility(android.view.View.VISIBLE);
+            tvCountdown.setClickable(false);
+        } else {
+            toggleTimerMode.check(R.id.btn_mode_countdown);
+            vRingOuter.setVisibility(android.view.View.VISIBLE);
+            vRingDashed.setVisibility(android.view.View.GONE);
+            tvCountdown.setClickable(true);
+        }
+
         updateTimerDisplay(millis);
         updateButtonsState(state);
-
-        // Update tabs selection based on mode
-        if (mode == MODE_POMODORO) selectTab(tabPomodoro);
-        else if (mode == MODE_SHORT_BREAK) selectTab(tabShortBreak);
-        else if (mode == MODE_LONG_BREAK) selectTab(tabLongBreak);
 
         // Update session count
         int session = timerService.getSessionCount();
@@ -90,12 +94,48 @@ public class CountdownActivity extends BaseActivity {
         if (state == TimerService.TimerState.RUNNING) {
             btnStartPause.setText(getString(R.string.countdown_btn_pause));
             tvTimerStatus.setText(getString(R.string.countdown_status_focus));
+            btnStop.setEnabled(true);
+            setToggleEnabled(false);
+            
+            // Handle animation for stopwatch
+            if (timerService != null && timerService.getTimerMode() == TimerService.TimerMode.STOPWATCH) {
+                if (rotationAnimator == null) {
+                    rotationAnimator = android.animation.ObjectAnimator.ofFloat(vRingDashed, "rotation", 0f, 360f);
+                    rotationAnimator.setDuration(10000);
+                    rotationAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+                    rotationAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
+                }
+                if (rotationAnimator.isPaused()) {
+                    rotationAnimator.resume();
+                } else if (!rotationAnimator.isStarted()) {
+                    rotationAnimator.start();
+                }
+            }
         } else if (state == TimerService.TimerState.PAUSED) {
             btnStartPause.setText(getString(R.string.countdown_btn_resume));
             tvTimerStatus.setText(getString(R.string.countdown_status_paused));
+            btnStop.setEnabled(true);
+            setToggleEnabled(false);
+            
+            if (rotationAnimator != null) {
+                rotationAnimator.pause();
+            }
         } else {
             btnStartPause.setText(getString(R.string.countdown_btn_start));
             tvTimerStatus.setText(getString(R.string.countdown_status_ready));
+            btnStop.setEnabled(false);
+            setToggleEnabled(true); // Allow toggle only when idle
+            
+            if (rotationAnimator != null) {
+                rotationAnimator.cancel();
+            }
+            vRingDashed.setRotation(0f);
+        }
+    }
+
+    private void setToggleEnabled(boolean enabled) {
+        for (int i = 0; i < toggleTimerMode.getChildCount(); i++) {
+            toggleTimerMode.getChildAt(i).setEnabled(enabled);
         }
     }
 
@@ -120,9 +160,10 @@ public class CountdownActivity extends BaseActivity {
     private TextView tvSessionCount;
     private Button   btnStartPause;
     private Button   btnStop;
-    private TextView tabPomodoro;
-    private TextView tabShortBreak;
-    private TextView tabLongBreak;
+    private com.google.android.material.button.MaterialButtonToggleGroup toggleTimerMode;
+    private android.view.View vRingOuter;
+    private android.view.View vRingDashed;
+    private android.animation.ObjectAnimator rotationAnimator;
 
     // ── Factory ──────────────────────────────────────────────────────────────────
     public static Intent newIntent(Context context) {
@@ -177,9 +218,9 @@ public class CountdownActivity extends BaseActivity {
         tvSessionCount = findViewById(R.id.tv_session_count);
         btnStartPause  = findViewById(R.id.btn_start_pause);
         btnStop        = findViewById(R.id.btn_stop);
-        tabPomodoro    = findViewById(R.id.tab_pomodoro);
-        tabShortBreak  = findViewById(R.id.tab_short_break);
-        tabLongBreak   = findViewById(R.id.tab_long_break);
+        toggleTimerMode = findViewById(R.id.toggle_timer_mode);
+        vRingOuter      = findViewById(R.id.v_ring_outer);
+        vRingDashed     = findViewById(R.id.v_ring_dashed);
 
         ImageButton btnBack = findViewById(R.id.btn_countdown_back);
         btnBack.setOnClickListener(v -> finish());
@@ -219,20 +260,39 @@ public class CountdownActivity extends BaseActivity {
     // ── Listeners ────────────────────────────────────────────────────────────────
 
     private void setupListeners() {
-        tabPomodoro.setOnClickListener(v -> {
-            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
-            selectTab(tabPomodoro);
-            timerService.setMode(MODE_POMODORO);
+        toggleTimerMode.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            if (timerService != null && timerService.getTimerState() != TimerService.TimerState.IDLE) {
+                Toast.makeText(this, "Vui lòng dừng trước khi đổi chế độ", Toast.LENGTH_SHORT).show();
+                // Revert UI change visually
+                if (timerService.getTimerMode() == TimerService.TimerMode.COUNTDOWN) {
+                    group.check(R.id.btn_mode_countdown);
+                } else {
+                    group.check(R.id.btn_mode_stopwatch);
+                }
+                return;
+            }
+            if (checkedId == R.id.btn_mode_countdown) {
+                if (timerService != null) timerService.setTimerMode(TimerService.TimerMode.COUNTDOWN);
+                vRingOuter.setVisibility(android.view.View.VISIBLE);
+                vRingDashed.setVisibility(android.view.View.GONE);
+                tvCountdown.setClickable(true);
+            } else if (checkedId == R.id.btn_mode_stopwatch) {
+                if (timerService != null) timerService.setTimerMode(TimerService.TimerMode.STOPWATCH);
+                vRingOuter.setVisibility(android.view.View.GONE);
+                vRingDashed.setVisibility(android.view.View.VISIBLE);
+                tvCountdown.setClickable(false); // Do not let user pick time for stopwatch
+            }
         });
-        tabShortBreak.setOnClickListener(v -> {
-            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
-            selectTab(tabShortBreak);
-            timerService.setMode(MODE_SHORT_BREAK);
-        });
-        tabLongBreak.setOnClickListener(v -> {
-            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) return;
-            selectTab(tabLongBreak);
-            timerService.setMode(MODE_LONG_BREAK);
+
+        tvCountdown.setOnClickListener(v -> {
+            if (!isBound || timerService.getTimerState() != TimerService.TimerState.IDLE) {
+                if (timerService != null && timerService.getTimerState() != TimerService.TimerState.IDLE) {
+                    Toast.makeText(this, "Chỉ có thể đổi thời gian khi đang dừng", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+            showTimePickerDialog();
         });
 
         btnStartPause.setOnClickListener(v -> {
@@ -282,27 +342,32 @@ public class CountdownActivity extends BaseActivity {
             tvSessionCount.setText(String.valueOf(timerService.getSessionCount()));
         }
 
-        Toast.makeText(this,
-                modeMins == MODE_POMODORO
-                        ? getString(R.string.countdown_toast_done)
-                        : getString(R.string.countdown_toast_break_done),
-                Toast.LENGTH_LONG).show();
+        Toast.makeText(this, getString(R.string.countdown_toast_done), Toast.LENGTH_LONG).show();
     }
 
-    // ── Tab UI helper ─────────────────────────────────────────────────────────────
+    private void showTimePickerDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        android.view.View view = getLayoutInflater().inflate(R.layout.bottom_sheet_time_picker, null);
+        dialog.setContentView(view);
+        
+        NumberPicker npMinutes = view.findViewById(R.id.np_minutes);
+        npMinutes.setMinValue(1);
+        npMinutes.setMaxValue(180);
+        if (timerService != null) {
+            npMinutes.setValue(timerService.getCurrentModeMins());
+        } else {
+            npMinutes.setValue(25);
+        }
 
-    private void selectTab(TextView selected) {
-        int white    = ContextCompat.getColor(this, android.R.color.white);
-        int dimWhite = 0xAAFFFFFF;
+        Button btnSave = view.findViewById(R.id.btn_save_time);
+        btnSave.setOnClickListener(v -> {
+            int selectedMinutes = npMinutes.getValue();
+            if (timerService != null) {
+                timerService.setMode(selectedMinutes);
+            }
+            dialog.dismiss();
+        });
 
-        tabPomodoro.setBackground(null);
-        tabShortBreak.setBackground(null);
-        tabLongBreak.setBackground(null);
-        tabPomodoro.setTextColor(dimWhite);
-        tabShortBreak.setTextColor(dimWhite);
-        tabLongBreak.setTextColor(dimWhite);
-
-        selected.setBackgroundResource(R.drawable.bg_tab_selected);
-        selected.setTextColor(white);
+        dialog.show();
     }
 }

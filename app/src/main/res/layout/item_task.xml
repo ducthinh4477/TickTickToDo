@@ -7,37 +7,39 @@
     android:id="@+id/item_task_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
     android:layout_marginBottom="8dp"
+    android:layout_marginHorizontal="16dp"
     android:clickable="true"
     android:focusable="true"
     app:cardBackgroundColor="@color/background_card"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="0dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
     app:strokeWidth="0dp"
     app:rippleColor="#1AFFFFFF">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="14dp">
+        android:padding="16dp">
 
         <!-- Checkbox -->
         <CheckBox
             android:id="@+id/cb_task_completed"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:button="@drawable/checkbox_circle_selector"
-            android:background="@android:color/transparent"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:button="@null"
+            android:background="@drawable/checkbox_square_selector"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@id/tv_task_title"
-            app:layout_constraintBottom_toBottomOf="@id/tv_task_title" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
 
         <!-- Title -->
         <TextView
             android:id="@+id/tv_task_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="16dp"
             android:layout_marginEnd="8dp"
             android:ellipsize="end"
             android:maxLines="2"
@@ -48,13 +50,26 @@
             app:layout_constraintTop_toTopOf="parent"
             tools:text="Design meeting with team" />
 
+        <!-- Time -->
+        <TextView
+            android:id="@+id/tv_task_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            app:layout_constraintTop_toBottomOf="@id/tv_task_title"
+            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
+            tools:text="14:00" />
+
         <!-- Subtitle -->
         <TextView
             android:id="@+id/tv_task_subtitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginTop="3dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="4dp"
             android:layout_marginEnd="8dp"
             android:ellipsize="end"
             android:maxLines="1"
@@ -62,9 +77,10 @@
             android:textSize="12sp"
             android:visibility="gone"
             app:layout_constraintEnd_toStartOf="@id/iv_priority_flag"
-            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
+            app:layout_constraintStart_toEndOf="@id/tv_task_time"
             app:layout_constraintTop_toBottomOf="@id/tv_task_title"
-            tools:text="Discuss Room Database ∙ 14:00"
+            app:layout_constraintBottom_toBottomOf="@id/tv_task_time"
+            tools:text="Discuss Room Database"
             tools:visibility="visible" />
 
         <!-- Priority flag -->

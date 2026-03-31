@@ -115,7 +115,7 @@ public class DayDetailBottomSheet extends BottomSheetDialogFragment {
     private void setupTaskList() {
         taskAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                task -> startActivity(TaskDetailActivity.newIntent(requireContext(), task.getId()))
+                task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getParentFragmentManager(), "TaskDetail")
         );
         rvDayTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvDayTasks.setAdapter(taskAdapter);

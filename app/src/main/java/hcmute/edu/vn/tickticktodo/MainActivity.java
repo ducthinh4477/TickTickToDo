@@ -1,6 +1,7 @@
 package hcmute.edu.vn.tickticktodo;
 
 import android.content.Intent;
+import hcmute.edu.vn.tickticktodo.ui.EisenhowerActivity;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -52,7 +53,7 @@ import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
 import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.StatisticsActivity;
 import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
-import hcmute.edu.vn.tickticktodo.ui.TaskDetailActivity;
+import hcmute.edu.vn.tickticktodo.ui.TaskDetailBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.ViewOptionsBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.SchoolLoginActivity;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
@@ -85,15 +86,28 @@ public class MainActivity extends BaseActivity {
     private FloatingActionButton fabAddTask;
 
     // UI — Nav Rail items
-    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemProfile;
-    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconProfile;
-    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelProfile;
+    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemSettings;
+    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings;
+    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings;
 
     // Adapters
+    private TaskAdapter overdueAdapter;
+    private HeaderAdapter overdueHeaderAdapter;
+    private HeaderAdapter todayHeaderAdapter;
     private TaskAdapter incompleteAdapter;
-    private HeaderAdapter headerAdapter;
+    private HeaderAdapter completedHeaderAdapter;
     private TaskAdapter completedAdapter;
     private ConcatAdapter concatAdapter;
+    
+    // View Options State
+    private boolean isHideCompleted = false;
+    private boolean isShowDetails = true;
+    private int currentMode = 0; // 0 = Today, 1 = 7 Days
+
+    // Cache list cho Expand/Collapse
+    private List<Task> currentOverdueTasks = new ArrayList<>();
+    private List<Task> currentIncompleteTasks = new ArrayList<>();
+    private List<Task> currentCompletedTasks = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -144,17 +158,17 @@ public class MainActivity extends BaseActivity {
         navItemCalendar = findViewById(R.id.nav_item_calendar);
         navItemFocus    = findViewById(R.id.nav_item_focus);
         navItemSchool   = findViewById(R.id.nav_item_school);
-        navItemProfile  = findViewById(R.id.nav_item_profile);
+        navItemSettings  = findViewById(R.id.nav_item_settings);
         navIconHome     = findViewById(R.id.nav_icon_home);
         navIconCalendar = findViewById(R.id.nav_icon_calendar);
         navIconFocus    = findViewById(R.id.nav_icon_focus);
         navIconSchool   = findViewById(R.id.nav_icon_school);
-        navIconProfile  = findViewById(R.id.nav_icon_profile);
+        navIconSettings  = findViewById(R.id.nav_icon_settings);
         navLabelHome    = findViewById(R.id.nav_label_home);
         navLabelCalendar= findViewById(R.id.nav_label_calendar);
         navLabelFocus   = findViewById(R.id.nav_label_focus);
         navLabelSchool  = findViewById(R.id.nav_label_school);
-        navLabelProfile = findViewById(R.id.nav_label_profile);
+        navLabelSettings = findViewById(R.id.nav_label_settings);
 
         // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
         FrameLayout contentFrame = findViewById(R.id.content_frame);
@@ -183,6 +197,42 @@ public class MainActivity extends BaseActivity {
 
         btnMore.setOnClickListener(v -> {
             ViewOptionsBottomSheet bottomSheet = ViewOptionsBottomSheet.newInstance();
+            bottomSheet.setOnOptionSelectedListener(new ViewOptionsBottomSheet.OnOptionSelectedListener() {
+                @Override
+                public void onViewModeSelected(int viewMode) { }
+
+                @Override
+                public void onHideCompletedToggled() {
+                    isHideCompleted = !isHideCompleted;
+                    if (isHideCompleted) {
+                        concatAdapter.removeAdapter(completedHeaderAdapter);
+                        concatAdapter.removeAdapter(completedAdapter);
+                    } else {
+                        concatAdapter.addAdapter(completedHeaderAdapter);
+                        concatAdapter.addAdapter(completedAdapter);
+                    }
+                    updateEmptyStateCheck();
+                }
+
+                @Override
+                public void onShowDetailsToggled() {
+                    isShowDetails = !isShowDetails;
+                    overdueAdapter.setShowDetails(isShowDetails);
+                    incompleteAdapter.setShowDetails(isShowDetails);
+                    completedAdapter.setShowDetails(isShowDetails);
+                }
+
+                @Override
+                public void onViewOptionsClicked() { }
+
+                @Override
+                public void onAddSectionClicked() { }
+
+                @Override
+                public void onListActivitiesClicked() {
+                    startActivity(new android.content.Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.ActivityLogActivity.class));
+                }
+            });
             bottomSheet.show(getSupportFragmentManager(), "ViewOptions");
         });
     }
@@ -222,18 +272,29 @@ public class MainActivity extends BaseActivity {
         rvListsPanel.setLayoutManager(new LinearLayoutManager(this));
         rvListsPanel.setAdapter(listPanelAdapter);
 
-        navAvatar.setOnClickListener(this::showUserPopupMenu);
+        navAvatar.setOnClickListener(v -> showLoginDialog());
         btnAddList.setOnClickListener(v -> AddListDialog.show(this, taskViewModel));
 
         // Tapping backdrop closes menu
         menuBackdrop.setOnClickListener(v -> closeMenu());
 
-        findViewById(R.id.panel_item_today).setOnClickListener(v -> onPanelItemSelected(getString(R.string.header_today)));
+        findViewById(R.id.panel_item_today).setOnClickListener(v -> {
+            closeMenu();
+            currentMode = 0;
+            tvHeaderTitle.setText(R.string.header_today);
+            updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
+        });
         findViewById(R.id.panel_item_next7days).setOnClickListener(v -> {
             closeMenu();
-            startActivity(CalendarActivity.newIntent(this));
+            currentMode = 1;
+            tvHeaderTitle.setText("7 Ngày tới");
+            updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
         findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected(getString(R.string.panel_inbox)));
+        findViewById(R.id.nav_item_eisenhower).setOnClickListener(v -> {
+            closeMenu();
+            startActivity(new Intent(MainActivity.this, EisenhowerActivity.class));
+        });
         findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_completed)));
         findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_trash)));
         findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {
@@ -251,23 +312,32 @@ public class MainActivity extends BaseActivity {
         tvHeaderTitle.setText(label);
     }
 
-    private void showUserPopupMenu(View anchor) {
-        PopupMenu popup = new PopupMenu(this, anchor);
-        popup.getMenuInflater().inflate(R.menu.popup_user_menu, popup.getMenu());
-        popup.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.menu_settings) {
-                LanguageSelectionDialog.show(this);
-            } else if (id == R.id.menu_theme) {
-                ThemeSelectionDialog.show(this);
-            } else if (id == R.id.menu_statistics) {
-                startActivity(StatisticsActivity.newIntent(this));
-            } else if (id == R.id.menu_sign_out) {
-                Toast.makeText(this, R.string.toast_signout_wip, Toast.LENGTH_SHORT).show();
-            }
-            return true;
+    private void showLoginDialog() {
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        dialog.setContentView(R.layout.dialog_login);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+
+        android.widget.Button btnGoogle = dialog.findViewById(R.id.btnLoginGoogle);
+        android.widget.Button btnFacebook = dialog.findViewById(R.id.btnLoginFacebook);
+
+        btnGoogle.setOnClickListener(v -> {
+            // TODO: Tích hợp Google Sign-In hoặc Firebase Auth tại đây
+            Toast.makeText(this, "Google Login Clicked", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
         });
-        popup.show();
+
+        btnFacebook.setOnClickListener(v -> {
+            // TODO: Tích hợp Facebook Login hoặc Firebase Auth tại đây
+            Toast.makeText(this, "Facebook Login Clicked", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        // Điều chỉnh width nếu cần
+        dialog.getWindow().setLayout(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        dialog.show();
     }
 
     /**
@@ -283,10 +353,6 @@ public class MainActivity extends BaseActivity {
                 taskViewModel.setSortMode(TaskViewModel.SORT_BY_DATE_ASC);
             } else if (id == R.id.sort_priority) {
                 taskViewModel.setSortMode(TaskViewModel.SORT_BY_PRIORITY);
-            } else if (id == R.id.sort_title) {
-                taskViewModel.setSortMode(TaskViewModel.SORT_BY_TITLE);
-            } else if (id == R.id.sort_custom) {
-                taskViewModel.setSortMode(TaskViewModel.SORT_BY_CUSTOM);
             }
             return true;
         });
@@ -329,23 +395,71 @@ public class MainActivity extends BaseActivity {
 
         navItemSchool.setOnClickListener(v -> {
             selectNavItem(R.id.nav_item_school);
-            Intent intent = new Intent(this, SchoolLoginActivity.class);
+            Intent intent = new Intent(this, hcmute.edu.vn.tickticktodo.ui.MoodleActivity.class);
             startActivity(intent);
         });
 
-        navItemProfile.setOnClickListener(v -> {
-            selectNavItem(R.id.nav_item_profile);
-            showUserPopupMenu(navItemProfile);
+        navItemSettings.setOnClickListener(v -> {
+            selectNavItem(R.id.nav_item_settings);
+            showSettingsDialog();
         });
 
         // Highlight Home by default
         selectNavItem(R.id.nav_item_home);
     }
 
+    private void showSettingsDialog() {
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        dialog.setContentView(R.layout.dialog_settings);
+
+        android.view.Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            
+            // Cập nhật kích thước Dialog chiếm 75% màn hình
+            android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            int width = (int) (displayMetrics.widthPixels * 0.75);
+            int height = (int) (displayMetrics.heightPixels * 0.75);
+            
+            window.setLayout(width, height);
+        }
+
+        // Ánh xạ các nút góc
+        dialog.findViewById(R.id.btn_close_settings).setOnClickListener(v -> dialog.dismiss());
+        dialog.findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
+            // TODO: Xử lý lưu các thay đổi cấu hình nếu cần thiết
+            dialog.dismiss();
+        });
+
+        // Ánh xạ các mục trong Body của Settings
+        dialog.findViewById(R.id.layout_settings_language).setOnClickListener(v -> {
+            dialog.dismiss();
+            LanguageSelectionDialog.show(this);
+        });
+
+        dialog.findViewById(R.id.layout_settings_theme).setOnClickListener(v -> {
+            dialog.dismiss();
+            ThemeSelectionDialog.show(this);
+        });
+
+        dialog.findViewById(R.id.layout_settings_statistics).setOnClickListener(v -> {
+            dialog.dismiss();
+            startActivity(StatisticsActivity.newIntent(this));
+        });
+
+        dialog.findViewById(R.id.layout_settings_sign_out).setOnClickListener(v -> {
+            dialog.dismiss();
+            Toast.makeText(this, R.string.toast_signout_wip, Toast.LENGTH_SHORT).show();
+        });
+
+        dialog.show();
+    }
+
     private void selectNavItem(int selectedId) {
-        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_profile};
-        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconProfile};
-        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelProfile};
+        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_settings};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings};
 
         int accent    = getResources().getColor(R.color.accent_primary, getTheme());
         int secondary = getResources().getColor(R.color.text_secondary, getTheme());
@@ -367,19 +481,41 @@ public class MainActivity extends BaseActivity {
     // ─── Adapters ───────────────────────────────────────────────────────────
 
     private void initAdapters() {
+        // Overdue
+        overdueAdapter = new TaskAdapter(
+                (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
+                task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getSupportFragmentManager(), "TaskDetail")
+        );
+        overdueHeaderAdapter = new HeaderAdapter();
+        overdueHeaderAdapter.setOnHeaderClickListener(isExpanded -> {
+            overdueAdapter.submitList(isExpanded ? new ArrayList<>(currentOverdueTasks) : new ArrayList<>());
+        });
+
+        // Incomplete
+        todayHeaderAdapter = new HeaderAdapter();
         incompleteAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
+                task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getSupportFragmentManager(), "TaskDetail")
         );
+        todayHeaderAdapter.setOnHeaderClickListener(isExpanded -> {
+            incompleteAdapter.submitList(isExpanded ? new ArrayList<>(currentIncompleteTasks) : new ArrayList<>());
+        });
 
-        headerAdapter = new HeaderAdapter();
-
+        // Completed
+        completedHeaderAdapter = new HeaderAdapter();
         completedAdapter = new TaskAdapter(
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
-                task -> startActivity(TaskDetailActivity.newIntent(this, task.getId()))
+                task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getSupportFragmentManager(), "TaskDetail")
         );
+        completedHeaderAdapter.setOnHeaderClickListener(isExpanded -> {
+            completedAdapter.submitList(isExpanded ? new ArrayList<>(currentCompletedTasks) : new ArrayList<>());
+        });
 
-        concatAdapter = new ConcatAdapter(incompleteAdapter, headerAdapter, completedAdapter);
+        concatAdapter = new ConcatAdapter(
+                overdueHeaderAdapter, overdueAdapter,
+                todayHeaderAdapter, incompleteAdapter,
+                completedHeaderAdapter, completedAdapter
+        );
     }
 
     private void setupRecyclerView() {
@@ -391,20 +527,30 @@ public class MainActivity extends BaseActivity {
     }
 
     private void handleSwipeDelete(int position) {
-        int incompleteCount = incompleteAdapter.getItemCount();
-        int headerCount = headerAdapter.getItemCount();
+        int overdueHead = overdueHeaderAdapter.getItemCount();
+        int overdue = overdueAdapter.getItemCount();
+        int todayHead = todayHeaderAdapter.getItemCount();
+        int incomplete = incompleteAdapter.getItemCount();
+        int compHead = isHideCompleted ? 0 : completedHeaderAdapter.getItemCount();
+        int comp = isHideCompleted ? 0 : completedAdapter.getItemCount();
 
-        Task deletedTask;
-        if (position < incompleteCount) {
-            deletedTask = incompleteAdapter.getCurrentList().get(position);
-        } else if (position < incompleteCount + headerCount) {
+        Task deletedTask = null;
+        if (position < overdueHead) {
             return;
-        } else {
-            int localPos = position - incompleteCount - headerCount;
-            List<Task> completedList = completedAdapter.getCurrentList();
-            if (localPos < 0 || localPos >= completedList.size()) return;
-            deletedTask = completedList.get(localPos);
+        } else if (position < overdueHead + overdue) {
+            deletedTask = overdueAdapter.getCurrentList().get(position - overdueHead);
+        } else if (position < overdueHead + overdue + todayHead) {
+            return;
+        } else if (position < overdueHead + overdue + todayHead + incomplete) {
+            deletedTask = incompleteAdapter.getCurrentList().get(position - overdueHead - overdue - todayHead);
+        } else if (position < overdueHead + overdue + todayHead + incomplete + compHead) {
+            return;
+        } else if (position < overdueHead + overdue + todayHead + incomplete + compHead + comp) {
+            int localPos = position - overdueHead - overdue - todayHead - incomplete - compHead;
+            deletedTask = completedAdapter.getCurrentList().get(localPos);
         }
+
+        if (deletedTask == null) return;
 
         final Task finalDeleted = deletedTask;
         taskViewModel.delete(finalDeleted);
@@ -469,17 +615,35 @@ public class MainActivity extends BaseActivity {
     // ─── ViewModel / LiveData ───────────────────────────────────────────────
 
     private void setupViewModel() {
+        taskViewModel.getSortModeLiveData().observe(this, mode -> {
+            if (currentMode == 0) updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
+            else if (currentMode == 1) updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
+        });
+
+        taskViewModel.getOverdueTasks().observe(this, overdueTasks -> {
+            currentOverdueTasks = overdueTasks != null ? overdueTasks : new ArrayList<>();
+            if (overdueHeaderAdapter.isExpanded()) {
+                overdueAdapter.submitList(new ArrayList<>(currentOverdueTasks));
+            }
+            overdueHeaderAdapter.setHeader("Đã quá hạn", currentOverdueTasks.size());
+            updateEmptyStateCheck();
+        });
+
         taskViewModel.getTodayIncompleteTasks().observe(this, incompleteTasks -> {
-            List<Task> list = incompleteTasks != null ? incompleteTasks : new ArrayList<>();
-            incompleteAdapter.submitList(new ArrayList<>(list));
-            updateEmptyState(list, taskViewModel.getTodayCompletedTasks().getValue());
+            if (currentMode == 0) updateIncompleteList(incompleteTasks);
+        });
+
+        taskViewModel.getNext7DaysTasks().observe(this, nextTasks -> {
+            if (currentMode == 1) updateIncompleteList(nextTasks);
         });
 
         taskViewModel.getTodayCompletedTasks().observe(this, completedTasks -> {
-            List<Task> list = completedTasks != null ? completedTasks : new ArrayList<>();
-            completedAdapter.submitList(new ArrayList<>(list));
-            headerAdapter.setCompletedCount(list.size());
-            updateEmptyState(taskViewModel.getTodayIncompleteTasks().getValue(), list);
+            currentCompletedTasks = completedTasks != null ? completedTasks : new ArrayList<>();
+            if (completedHeaderAdapter.isExpanded()) {
+                completedAdapter.submitList(new ArrayList<>(currentCompletedTasks));
+            }
+            completedHeaderAdapter.setHeader("Hoàn thành", currentCompletedTasks.size());
+            updateEmptyStateCheck();
         });
 
         taskViewModel.getAllLists().observe(this, lists -> {
@@ -487,9 +651,33 @@ public class MainActivity extends BaseActivity {
         });
     }
 
-    private void updateEmptyState(List<Task> incomplete, List<Task> completed) {
-        int total = (incomplete != null ? incomplete.size() : 0)
-                  + (completed  != null ? completed.size()  : 0);
+    private void updateIncompleteList(List<Task> tasks) {
+        currentIncompleteTasks = tasks != null ? new ArrayList<>(tasks) : new ArrayList<>();
+        
+        int sortMode = taskViewModel.getCurrentSortMode();
+        if (sortMode == TaskViewModel.SORT_BY_PRIORITY) {
+            java.util.Collections.sort(currentIncompleteTasks, (t1, t2) -> Integer.compare(t2.getPriority(), t1.getPriority()));
+        } else if (sortMode == TaskViewModel.SORT_BY_DATE_DESC) {
+            java.util.Collections.sort(currentIncompleteTasks, (t1, t2) -> {
+                Long d1 = t1.getDueDate();
+                Long d2 = t2.getDueDate();
+                if (d1 == null && d2 == null) return 0;
+                if (d1 == null) return 1;
+                if (d2 == null) return -1;
+                return d2.compareTo(d1);
+            });
+        }
+
+        if (todayHeaderAdapter.isExpanded()) {
+            incompleteAdapter.submitList(new ArrayList<>(currentIncompleteTasks));
+        }
+        todayHeaderAdapter.setHeader(currentMode == 0 ? "Hôm nay" : "7 ngày tới", currentIncompleteTasks.size());
+        updateEmptyStateCheck();
+    }
+
+    private void updateEmptyStateCheck() {
+        int total = currentIncompleteTasks.size() + currentOverdueTasks.size() + 
+                    (isHideCompleted ? 0 : currentCompletedTasks.size());
         boolean isEmpty = total == 0;
         layoutEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         rvTasks.setVisibility(isEmpty ? View.GONE : View.VISIBLE);

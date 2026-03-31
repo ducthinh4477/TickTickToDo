@@ -29,6 +29,7 @@ public class TaskRepository {
     private final TodoListDao todoListDao;
     private final ExecutorService executor;
     private final Application application; // giữ để pass Context cho ReminderScheduler
+    private final ActivityLogRepository logRepository;
 
     public TaskRepository(Application application) {
         TaskDatabase db = TaskDatabase.getInstance(application);
@@ -36,6 +37,7 @@ public class TaskRepository {
         todoListDao = db.todoListDao();
         executor = Executors.newSingleThreadExecutor();
         this.application = application;
+        this.logRepository = new ActivityLogRepository(application);
     }
 
     // ─── READ ────────────────────────────────────────────────────────────────────
@@ -60,6 +62,23 @@ public class TaskRepository {
         return taskDao.getAllTasks();
     }
 
+    public LiveData<List<Task>> getTasksForNext7Days() {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        long startOfDay = cal.getTimeInMillis();
+        cal.add(java.util.Calendar.DAY_OF_MONTH, 8); 
+        long endOf7thDay = cal.getTimeInMillis();
+        return taskDao.getTasksForNext7Days(startOfDay, endOf7thDay);
+    }
+
+    public LiveData<List<Task>> getOverdueTasks() {
+        long now = System.currentTimeMillis();
+        return taskDao.getOverdueTasks(now);
+    }
+
     public LiveData<Task> getTaskById(long taskId) {
         return taskDao.getTaskById(taskId);
     }
@@ -72,6 +91,9 @@ public class TaskRepository {
             // Set alarm: gán id vừa insert rồi schedule
             task.setId(newId);
             ReminderScheduler.scheduleReminder(application, task);
+            
+            // Nhật ký
+            logRepository.insertLog("TẠO MỚI", task.getTitle());
 
             // Notification if due today
             checkAndNotifyIfToday(task);
@@ -104,6 +126,10 @@ public class TaskRepository {
     public void update(Task task) {
         executor.execute(() -> {
             taskDao.update(task);
+            
+            // Nhật ký
+            logRepository.insertLog("CẬP NHẬT", task.getTitle());
+            
             // Đặt lại alarm (dueDate có thể thay đổi), hoặc cancel nếu đã hoàn thành
             if (task.isCompleted()) {
                 ReminderScheduler.cancelReminder(application, task.getId());
@@ -116,6 +142,10 @@ public class TaskRepository {
     public void delete(Task task) {
         executor.execute(() -> {
             taskDao.delete(task);
+            
+            // Nhật ký
+            logRepository.insertLog("XÓA", task.getTitle());
+            
             ReminderScheduler.cancelReminder(application, task.getId()); // huỷ alarm
         });
     }
@@ -123,6 +153,10 @@ public class TaskRepository {
     public void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate) {
         executor.execute(() -> {
             taskDao.markTaskAsCompletedWithDate(taskId, isCompleted, completedDate);
+            
+            // Nhật ký
+            logRepository.insertLog(isCompleted ? "HOÀN THÀNH" : "CHƯA HOÀN THÀNH", "Task ID: " + taskId);
+            
             if (isCompleted) {
                 ReminderScheduler.cancelReminder(application, taskId); // hoàn thành → huỷ alarm
             }
@@ -146,6 +180,16 @@ public class TaskRepository {
 
     public LiveData<List<Task>> getAllTasksSortByPriority() {
         return taskDao.getAllTasksSortByPriority();
+    }
+
+    // ─── Moodle ──────────────────────────────────────────────────────────────────
+
+    public LiveData<List<Task>> getUpcomingMoodleTasks(long currentTime) {
+        return taskDao.getUpcomingMoodleTasks(currentTime);
+    }
+
+    public LiveData<Integer> getUnreadMoodleTasksCount() {
+        return taskDao.getUnreadMoodleTasksCount();
     }
 
     public LiveData<List<Task>> getAllTasksSortByTitle() {

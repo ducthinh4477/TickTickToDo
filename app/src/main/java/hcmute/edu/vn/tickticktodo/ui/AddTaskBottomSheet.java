@@ -49,7 +49,12 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private EditText etDescription;
     private Chip chipDueDate;
     private ImageButton btnPriority;
+    private ImageButton btnMoreOptions;
     private MaterialButton btnSave;
+    private View layoutExtraOptions;
+    private View btnAddImage;
+    private View btnAddAudio;
+    private View btnAddFile;
 
     // State
     private TaskViewModel taskViewModel;
@@ -107,6 +112,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         setupTitleWatcher();
         setupDueDateChip();
         setupPriorityButton();
+        setupMoreOptions();
         setupSaveButton();
         expandAndShowKeyboard();
     }
@@ -118,7 +124,12 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         etDescription = view.findViewById(R.id.et_task_description);
         chipDueDate = view.findViewById(R.id.chip_due_date);
         btnPriority = view.findViewById(R.id.btn_priority);
+        btnMoreOptions = view.findViewById(R.id.btn_more_options);
         btnSave = view.findViewById(R.id.btn_save_task);
+        layoutExtraOptions = view.findViewById(R.id.layout_extra_options);
+        btnAddImage = view.findViewById(R.id.btn_add_image);
+        btnAddAudio = view.findViewById(R.id.btn_add_audio);
+        btnAddFile = view.findViewById(R.id.btn_add_file);
     }
 
     /**
@@ -250,6 +261,30 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             default: colorRes = R.color.priority_none;    break;
         }
         btnPriority.setColorFilter(ContextCompat.getColor(requireContext(), colorRes));
+    }
+
+    // ─── More options (Image, Audio, File) ───────────────────────────────────────
+
+    private void setupMoreOptions() {
+        btnMoreOptions.setOnClickListener(v -> {
+            if (layoutExtraOptions.getVisibility() == View.GONE) {
+                layoutExtraOptions.setVisibility(View.VISIBLE);
+            } else {
+                layoutExtraOptions.setVisibility(View.GONE);
+            }
+        });
+
+        btnAddImage.setOnClickListener(v -> {
+            // TODO: Tích hợp logic upload hình ảnh
+        });
+
+        btnAddAudio.setOnClickListener(v -> {
+            // TODO: Tích hợp logic thu âm / upload âm thanh
+        });
+
+        btnAddFile.setOnClickListener(v -> {
+            // TODO: Tích hợp logic đính kèm tệp
+        });
     }
 
     // ─── Save ────────────────────────────────────────────────────────────────────

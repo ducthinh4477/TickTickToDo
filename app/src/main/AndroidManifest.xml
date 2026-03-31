@@ -42,6 +42,10 @@
         <activity
             android:name=".MainActivity"
             android:exported="false" />
+            
+        <activity
+            android:name=".ui.ActivityLogActivity"
+            android:exported="false" />
 
         <activity
             android:name=".ui.TaskDetailActivity"
@@ -80,6 +84,8 @@
             android:exported="false" />
 
         <activity android:name=".ui.SchoolLoginActivity" android:exported="false"/>
+        
+        <activity android:name=".ui.MoodleActivity" android:exported="false"/>
 
         <!-- BootReceiver: restore tất cả alarm sau khi thiết bị khởi động lại -->
         <receiver
@@ -89,6 +95,16 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Receiver đảm nhiệm việc buộc cập nhật Moodle ngay tức thì -->
+        <receiver
+            android:name=".receiver.SchoolSyncReceiver"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.EisenhowerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo" />
 
     </application>
 

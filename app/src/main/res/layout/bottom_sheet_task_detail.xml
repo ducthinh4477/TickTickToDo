@@ -4,35 +4,39 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@drawable/bg_bottom_sheet"
     android:orientation="vertical"
-    tools:context=".ui.TaskDetailActivity">
+    tools:context=".ui.TaskDetailBottomSheet">
 
-    <!-- ══════ Toolbar: Back + Tiêu đề + Nút Save (dấu tick) ══════ -->
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
+    <!-- ══════ Drag handle ══════ -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_drag_handle" />
+
+    <!-- ══════ Nút Mở rộng (Expand) ══════ -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/white"
-        android:elevation="0dp"
-        app:navigationIcon="@drawable/ic_close"
-        app:navigationContentDescription="@string/detail_back_desc">
+        android:layout_height="48dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <ImageButton
-            android:id="@+id/btn_save"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="end"
-            android:layout_marginEnd="8dp"
+            android:id="@+id/btn_expand_collapse"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/detail_save_desc"
+            android:contentDescription="Expand"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_save"
-            android:tint="@color/priority_low" />
+            android:src="@drawable/ic_expand"
+            app:tint="@color/text_secondary" />
 
-    </androidx.appcompat.widget.Toolbar>
+    </LinearLayout>
 
-    <!-- Đường kẻ dưới Toolbar -->
+    <!-- Đường kẻ dưới nút Expand -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"

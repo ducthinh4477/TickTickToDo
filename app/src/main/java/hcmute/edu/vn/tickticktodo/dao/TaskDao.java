@@ -148,6 +148,12 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE title = :title AND due_date = :dueDate LIMIT 1")
     Task findTaskByTitleAndDate(String title, Long dueDate);
 
+    @Query("SELECT * FROM tasks WHERE is_completed = 0 AND due_date >= :startOfDay AND due_date < :endOfDay ORDER BY due_date ASC")
+    LiveData<List<Task>> getTasksForNext7Days(long startOfDay, long endOfDay);
+
+    @Query("SELECT * FROM tasks WHERE due_date < :now AND is_completed = 0 AND due_date IS NOT NULL ORDER BY due_date ASC")
+    LiveData<List<Task>> getOverdueTasks(long now);
+
     // Xóa các task đã hoàn thành cũ hơn thời gian cho trước (Auto-archive)
     @Query("DELETE FROM tasks WHERE is_completed = 1 AND completed_date < :threshold")
     int deleteOldCompletedTasks(long threshold);
@@ -168,4 +174,14 @@ public interface TaskDao {
            "AND due_date < :now " +
            "ORDER BY due_date ASC")
     List<Task> getOverdueIncompleteTasksSync(long now);
+
+    // ─── Moodle Queries ─────────────────────────────────────────────────────────
+
+    // Lấy bài tập Moodle sắp đến hạn (chưa hoàn thành)
+    @Query("SELECT * FROM tasks WHERE source = 'Moodle' AND is_completed = 0 AND due_date >= :currentTime ORDER BY due_date ASC")
+    LiveData<List<Task>> getUpcomingMoodleTasks(long currentTime);
+
+    // Đếm tổng số bài Moodle chưa hoàn thành làm cảnh báo
+    @Query("SELECT COUNT(*) FROM tasks WHERE source = 'Moodle' AND is_completed = 0")
+    LiveData<Integer> getUnreadMoodleTasksCount();
 }

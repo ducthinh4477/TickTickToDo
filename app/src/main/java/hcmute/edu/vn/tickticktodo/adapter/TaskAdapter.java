@@ -50,6 +50,7 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
     private final OnTaskCheckedChangeListener checkedChangeListener;
     private final OnTaskClickListener clickListener;
     private final SimpleDateFormat timeFormat;
+    private boolean showDetails = true;
 
     // ─── Constructor ─────────────────────────────────────────────────────────────
 
@@ -59,6 +60,11 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
         this.checkedChangeListener = checkedChangeListener;
         this.clickListener = clickListener;
         this.timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+    }
+    
+    public void setShowDetails(boolean showDetails) {
+        this.showDetails = showDetails;
+        notifyDataSetChanged();
     }
 
     // ─── DiffUtil ────────────────────────────────────────────────────────────────
@@ -101,6 +107,7 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
 
         private final CheckBox cbCompleted;
         private final TextView tvTitle;
+        private final TextView tvTime;
         private final TextView tvSubtitle;
         private final ImageView ivPriorityFlag;
 
@@ -108,6 +115,7 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
             super(itemView);
             cbCompleted = itemView.findViewById(R.id.cb_task_completed);
             tvTitle = itemView.findViewById(R.id.tv_task_title);
+            tvTime = itemView.findViewById(R.id.tv_task_time);
             tvSubtitle = itemView.findViewById(R.id.tv_task_subtitle);
             ivPriorityFlag = itemView.findViewById(R.id.iv_priority_flag);
         }
@@ -116,18 +124,22 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
             // ── Title ────────────────────────────────────────────────────────
             tvTitle.setText(task.getTitle());
 
-            // ── Strikethrough nếu đã hoàn thành ─────────────────────────────
-            if (task.isCompleted()) {
-                tvTitle.setPaintFlags(tvTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-                tvTitle.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.text_completed));
+            // ── Time ─────────────────────────────────────────────────────────
+            if (task.getDueDate() != null) {
+                tvTime.setVisibility(View.VISIBLE);
+                tvTime.setText(timeFormat.format(new Date(task.getDueDate())));
             } else {
-                tvTitle.setPaintFlags(tvTitle.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-                tvTitle.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.text_primary));
+                tvTime.setVisibility(View.GONE);
             }
+
+            // ── Strikethrough nếu đã hoàn thành ─────────────────────────────
+            // Bỏ hiệu ứng gạch ngang và không làm mờ theo yêu cầu
+            tvTitle.setPaintFlags(tvTitle.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+            tvTitle.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.text_primary));
 
             // ── Subtitle (description + due time) ───────────────────────────
             String subtitle = buildSubtitle(task);
-            if (subtitle.isEmpty()) {
+            if (!showDetails || subtitle.isEmpty()) {
                 tvSubtitle.setVisibility(View.GONE);
             } else {
                 tvSubtitle.setVisibility(View.VISIBLE);

@@ -25,12 +25,12 @@ public class TaskViewModel extends AndroidViewModel {
     public static final int SORT_BY_DATE_ASC  = 0;
     public static final int SORT_BY_DATE_DESC = 1;
     public static final int SORT_BY_PRIORITY  = 2;
-    public static final int SORT_BY_TITLE     = 3;
-    public static final int SORT_BY_CUSTOM    = 4;
 
     private final TaskRepository repository;
     private final LiveData<List<Task>> todayIncompleteTasks;
     private final LiveData<List<Task>> todayCompletedTasks;
+    private final LiveData<List<Task>> next7DaysTasks;
+    private final LiveData<List<Task>> overdueTasks;
 
     // Sort: MutableLiveData giữ chế độ Sort hiện tại, switchMap tự cập nhật danh sách
     private final MutableLiveData<Integer> sortMode = new MutableLiveData<>(SORT_BY_DATE_ASC);
@@ -57,6 +57,8 @@ public class TaskViewModel extends AndroidViewModel {
 
         todayIncompleteTasks = repository.getIncompleteTasks(startOfDay, endOfDay);
         todayCompletedTasks = repository.getCompletedTasks(startOfDay, endOfDay);
+        next7DaysTasks = repository.getTasksForNext7Days();
+        overdueTasks = repository.getOverdueTasks();
 
         // switchMap: mỗi khi sortMode thay đổi, tự động chuyển LiveData source
         sortedAllTasks = Transformations.switchMap(sortMode, mode -> {
@@ -65,10 +67,6 @@ public class TaskViewModel extends AndroidViewModel {
                     return repository.getAllTasksSortByDateDesc();
                 case SORT_BY_PRIORITY:
                     return repository.getAllTasksSortByPriority();
-                case SORT_BY_TITLE:
-                    return repository.getAllTasksSortByTitle();
-                case SORT_BY_CUSTOM:
-                    return repository.getAllTasksSortByCustom();
                 case SORT_BY_DATE_ASC:
                 default:
                     return repository.getAllTasksSortByDateAsc();
@@ -93,12 +91,24 @@ public class TaskViewModel extends AndroidViewModel {
         return mode != null ? mode : SORT_BY_DATE_ASC;
     }
 
+    public LiveData<Integer> getSortModeLiveData() {
+        return sortMode;
+    }
+
     /**
      * LiveData danh sách tất cả task đã được sắp xếp theo chế độ hiện tại.
      * Tự động thay đổi khi gọi setSortMode().
      */
     public LiveData<List<Task>> getSortedAllTasks() {
         return sortedAllTasks;
+    }
+
+    public LiveData<List<Task>> getNext7DaysTasks() {
+        return next7DaysTasks;
+    }
+
+    public LiveData<List<Task>> getOverdueTasks() {
+        return overdueTasks;
     }
 
     // ─── Observe ─────────────────────────────────────────────────────────────────
@@ -140,6 +150,16 @@ public class TaskViewModel extends AndroidViewModel {
 
     public LiveData<Task> getTaskById(long taskId) {
         return repository.getTaskById(taskId);
+    }
+
+    // ─── Moodle ──────────────────────────────────────────────────────────────────
+
+    public LiveData<List<Task>> getUpcomingMoodleTasks(long currentTime) {
+        return repository.getUpcomingMoodleTasks(currentTime);
+    }
+
+    public LiveData<Integer> getUnreadMoodleTasksCount() {
+        return repository.getUnreadMoodleTasksCount();
     }
 
     // ─── Actions ─────────────────────────────────────────────────────────────────

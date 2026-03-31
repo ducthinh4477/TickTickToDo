@@ -16,11 +16,13 @@ public class TaskReminderReceiver extends BroadcastReceiver {
     // ── Intent Extras (dùng chung với ReminderScheduler) ────────────────────────
     public static final String EXTRA_TASK_ID    = "reminder_task_id";
     public static final String EXTRA_TASK_TITLE = "reminder_task_title";
+    public static final String EXTRA_TIME_LEFT  = "reminder_time_left";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         long   taskId    = intent.getLongExtra(EXTRA_TASK_ID, -1L);
         String taskTitle = intent.getStringExtra(EXTRA_TASK_TITLE);
+        String timeLeft  = intent.getStringExtra(EXTRA_TIME_LEFT);
 
         if (taskId == -1L || taskTitle == null) return; // dữ liệu không hợp lệ
 
@@ -28,9 +30,14 @@ public class TaskReminderReceiver extends BroadcastReceiver {
         // Create channels (safe to call multiple times)
         NotificationHelper.createNotificationChannels(context);
 
+        String title = context.getString(R.string.reminder_notification_title);
+        if (timeLeft != null && !timeLeft.isEmpty()) {
+            title = "Sắp đến hạn (" + timeLeft + ")";
+        }
+
         NotificationHelper.showTaskNotification(
             context,
-            context.getString(R.string.reminder_notification_title), // Use resource string
+            title, 
             taskTitle,
             (int) taskId
         );

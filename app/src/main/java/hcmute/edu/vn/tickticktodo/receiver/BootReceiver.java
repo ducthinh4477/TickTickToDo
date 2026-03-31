@@ -42,6 +42,10 @@ public class BootReceiver extends BroadcastReceiver {
                         ReminderScheduler.scheduleReminder(context, task);
                     }
                 }
+                
+                // Khôi phục lại quá trình theo dõi background (Moodle) khi khởi động lại máy
+                SchoolSyncReceiver.scheduleExact(context);
+                
             } finally {
                 pendingResult.finish();
             }

@@ -3,6 +3,7 @@ package hcmute.edu.vn.tickticktodo.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -18,28 +19,45 @@ import hcmute.edu.vn.tickticktodo.R;
  */
 public class HeaderAdapter extends RecyclerView.Adapter<HeaderAdapter.HeaderViewHolder> {
 
-    private int completedCount = 0;
+    public interface OnHeaderClickListener {
+        void onHeaderClick(boolean isExpanded);
+    }
+
+    private String title = "";
+    private int itemCount = 0;
     private boolean visible = false;
+    private boolean isExpanded = true;
+    private OnHeaderClickListener listener;
+
+    public void setOnHeaderClickListener(OnHeaderClickListener listener) {
+        this.listener = listener;
+    }
+
+    public boolean isExpanded() {
+        return isExpanded;
+    }
 
     /**
-     * Cập nhật số lượng task đã hoàn thành.
-     * Header chỉ hiện khi count > 0.
+     * Cập nhật thông tin header.
      */
-    public void setCompletedCount(int count) {
+    public void setHeader(String titleText, int count) {
         boolean wasVisible = visible;
-        this.completedCount = count;
+        this.title = titleText;
+        this.itemCount = count;
         this.visible = count > 0;
 
         if (wasVisible && visible) {
-            // Chỉ thay đổi text
             notifyItemChanged(0);
         } else if (!wasVisible && visible) {
-            // Hiện header
             notifyItemInserted(0);
         } else if (wasVisible && !visible) {
-            // Ẩn header
             notifyItemRemoved(0);
         }
+    }
+    
+    // Giữ lại hàm cũ để không vỡ MainActivity hiện tại
+    public void setCompletedCount(int count) {
+        setHeader("Completed", count);
     }
 
     @Override
@@ -57,17 +75,30 @@ public class HeaderAdapter extends RecyclerView.Adapter<HeaderAdapter.HeaderView
 
     @Override
     public void onBindViewHolder(@NonNull HeaderViewHolder holder, int position) {
-        String text = holder.itemView.getContext()
-                .getString(R.string.section_completed, completedCount);
+        String text = title + " (" + itemCount + ")";
         holder.tvSectionHeader.setText(text);
+        
+        float rotation = isExpanded ? 0f : -90f;
+        holder.ivExpandCollapse.setRotation(rotation);
+
+        holder.itemView.setOnClickListener(v -> {
+            isExpanded = !isExpanded;
+            // Xoay icon mượt
+            holder.ivExpandCollapse.animate().rotation(isExpanded ? 0f : -90f).setDuration(200).start();
+            if (listener != null) {
+                listener.onHeaderClick(isExpanded);
+            }
+        });
     }
 
     static class HeaderViewHolder extends RecyclerView.ViewHolder {
         final TextView tvSectionHeader;
+        final ImageView ivExpandCollapse;
 
         HeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             tvSectionHeader = itemView.findViewById(R.id.tv_section_header);
+            ivExpandCollapse = itemView.findViewById(R.id.iv_expand_collapse);
         }
     }
 }
