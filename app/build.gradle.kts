@@ -29,6 +29,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    buildFeatures {
+        viewBinding = true
+    }
 }
 
 dependencies {
@@ -55,6 +59,11 @@ dependencies {
 
     // Biweekly for parsing iCal / iCalendar (.ics) files
     implementation("net.sf.biweekly:biweekly:0.6.6")
+
+    // Google Gemini SDK (Java Support)
+    implementation("com.google.ai.client.generativeai:generativeai:0.8.0")
+    implementation("com.google.guava:guava:32.1.3-android")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

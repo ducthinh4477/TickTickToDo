@@ -31,6 +31,15 @@ public class TaskRepository {
     private final Application application; // giữ để pass Context cho ReminderScheduler
     private final ActivityLogRepository logRepository;
 
+    public LiveData<List<Task>> getAllCompletedTasksLog() {
+        return taskDao.getAllCompletedTasksLog();
+    }
+
+    public LiveData<List<Task>> getAllOverdueTasksLog() {
+        long now = System.currentTimeMillis();
+        return taskDao.getAllOverdueTasksLog(now);
+    }
+
     public TaskRepository(Application application) {
         TaskDatabase db = TaskDatabase.getInstance(application);
         taskDao = db.taskDao();
@@ -76,7 +85,8 @@ public class TaskRepository {
 
     public LiveData<List<Task>> getOverdueTasks() {
         long now = System.currentTimeMillis();
-        return taskDao.getOverdueTasks(now);
+        long h24 = now - (24 * 60 * 60 * 1000L);
+        return taskDao.getOverdueTasks(now, h24);
     }
 
     public LiveData<Task> getTaskById(long taskId) {

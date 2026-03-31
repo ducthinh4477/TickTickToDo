@@ -21,6 +21,14 @@ import hcmute.edu.vn.tickticktodo.model.Task;
 @Dao
 public interface TaskDao {
 
+    // --- Lịch sử/Nhật ký (Logs) ---
+    @Query("SELECT * FROM tasks WHERE is_completed = 1 ORDER BY completed_date DESC")
+    LiveData<List<Task>> getAllCompletedTasksLog();
+
+    @Query("SELECT * FROM tasks WHERE due_date < :now AND is_completed = 0 AND due_date IS NOT NULL ORDER BY due_date DESC")
+    LiveData<List<Task>> getAllOverdueTasksLog(long now);
+
+
     // ─── Lấy task chưa hoàn thành trong ngày (sắp xếp theo priority giảm dần) ───
     @Query("SELECT * FROM tasks " +
            "WHERE is_completed = 0 " +
@@ -34,6 +42,9 @@ public interface TaskDao {
            "AND due_date >= :startOfDay AND due_date < :endOfDay " +
            "ORDER BY due_date ASC")
     LiveData<List<Task>> getCompletedTasks(long startOfDay, long endOfDay);
+
+    @Query("SELECT * FROM tasks WHERE is_completed = 1 AND completed_date >= :twentyFourHoursAgo ORDER BY completed_date DESC")
+    LiveData<List<Task>> getRecentCompletedTasksForHome(long twentyFourHoursAgo);
 
     // ─── Lấy tất cả task (không lọc ngày) ───────────────────────────────────────
     @Query("SELECT * FROM tasks ORDER BY due_date ASC")
@@ -151,8 +162,8 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE is_completed = 0 AND due_date >= :startOfDay AND due_date < :endOfDay ORDER BY due_date ASC")
     LiveData<List<Task>> getTasksForNext7Days(long startOfDay, long endOfDay);
 
-    @Query("SELECT * FROM tasks WHERE due_date < :now AND is_completed = 0 AND due_date IS NOT NULL ORDER BY due_date ASC")
-    LiveData<List<Task>> getOverdueTasks(long now);
+    @Query("SELECT * FROM tasks WHERE due_date < :now AND due_date >= :twentyFourHoursAgo AND is_completed = 0 AND due_date IS NOT NULL ORDER BY due_date ASC")
+    LiveData<List<Task>> getOverdueTasks(long now, long twentyFourHoursAgo);
 
     // Xóa các task đã hoàn thành cũ hơn thời gian cho trước (Auto-archive)
     @Query("DELETE FROM tasks WHERE is_completed = 1 AND completed_date < :threshold")

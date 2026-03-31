@@ -194,6 +194,26 @@ public class Task {
         this.duration = duration;
     }
 
+    
+    // --- Attachments ---
+    @ColumnInfo(name = "image_attachment")
+    private String imageAttachment;
+    
+    @ColumnInfo(name = "voice_attachment")
+    private String voiceAttachment;
+    
+    @ColumnInfo(name = "file_attachment")
+    private String fileAttachment;
+    
+    public String getImageAttachment() { return imageAttachment; }
+    public void setImageAttachment(String imageAttachment) { this.imageAttachment = imageAttachment; }
+    
+    public String getVoiceAttachment() { return voiceAttachment; }
+    public void setVoiceAttachment(String voiceAttachment) { this.voiceAttachment = voiceAttachment; }
+    
+    public String getFileAttachment() { return fileAttachment; }
+    public void setFileAttachment(String fileAttachment) { this.fileAttachment = fileAttachment; }
+
     public int getRecurrence() {
         return recurrence;
     }

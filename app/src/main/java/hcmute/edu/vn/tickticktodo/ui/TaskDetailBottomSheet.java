@@ -10,6 +10,8 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -54,6 +56,16 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
     // State
     private Task currentTask;       // task đang chỉnh sửa
+
+    private LinearLayout llAttachments, llVoicePlayer;
+    private ImageView ivAttachmentImage, ivPlayPause;
+    private TextView tvAttachmentFile, tvVoiceDuration;
+    private android.widget.SeekBar sbVoiceProgress;
+    
+    private android.media.MediaPlayer mediaPlayer;
+    private boolean isPlaying = false;
+    private android.os.Handler handler = new android.os.Handler();
+    private Runnable runnable;
     private Long selectedDueDate;   // timestamp ngày được chọn (null = không có)
     private int selectedPriority;   // 0..3
     private boolean hasTimeSelected; // user đã chọn giờ chưa
@@ -139,6 +151,14 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         btnPriorityLow    = view.findViewById(R.id.btn_priority_low);
         btnPriorityMedium = view.findViewById(R.id.btn_priority_medium);
         btnPriorityHigh   = view.findViewById(R.id.btn_priority_high);
+
+        llAttachments = view.findViewById(R.id.ll_attachments);
+        llVoicePlayer = view.findViewById(R.id.ll_voice_player);
+        ivAttachmentImage = view.findViewById(R.id.iv_attachment_image);
+        ivPlayPause = view.findViewById(R.id.iv_play_pause);
+        tvAttachmentFile = view.findViewById(R.id.tv_attachment_file);
+        tvVoiceDuration = view.findViewById(R.id.tv_voice_duration);
+        sbVoiceProgress = view.findViewById(R.id.sb_voice_progress);
 
         // Auto expand khi focus hoặc click
         View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {

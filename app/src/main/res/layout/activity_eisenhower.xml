@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -106,13 +106,17 @@
                     android:textSize="13sp"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
-            <TextView
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="Không có Nhiệm vụ"
-                android:textColor="@color/text_secondary"
-                android:gravity="center"
-                android:textSize="12sp"/>
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="8dp">
+                <LinearLayout
+                    android:id="@+id/ll_tasks_urgent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </androidx.core.widget.NestedScrollView>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
@@ -161,13 +165,17 @@
                     android:textSize="13sp"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
-            <TextView
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="Không có Nhiệm vụ"
-                android:textColor="@color/text_secondary"
-                android:gravity="center"
-                android:textSize="12sp"/>
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="8dp">
+                <LinearLayout
+                    android:id="@+id/ll_tasks_not_urgent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </androidx.core.widget.NestedScrollView>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
@@ -216,13 +224,17 @@
                     android:textSize="13sp"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
-            <TextView
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="Không có Nhiệm vụ"
-                android:textColor="@color/text_secondary"
-                android:gravity="center"
-                android:textSize="12sp"/>
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="8dp">
+                <LinearLayout
+                    android:id="@+id/ll_tasks_normal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </androidx.core.widget.NestedScrollView>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
@@ -271,28 +283,17 @@
                     android:textSize="13sp"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
-            
-            <LinearLayout
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="16dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="8dp">
-                    <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@drawable/ic_checkbox_square_checked" app:tint="@color/text_secondary" android:contentDescription="@null" />
-                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="8dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Y" android:textColor="@color/text_secondary" android:textSize="14sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Hôm nay" android:textColor="@color/text_secondary" android:textSize="10sp" />
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-                    <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@drawable/ic_checkbox_square_checked" app:tint="@color/text_secondary" android:contentDescription="@null" />
-                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="8dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Học 2" android:textColor="@color/text_secondary" android:textSize="14sp" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Hôm nay" android:textColor="@color/text_secondary" android:textSize="10sp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-            
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="8dp">
+                <LinearLayout
+                    android:id="@+id/ll_tasks_slow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </androidx.core.widget.NestedScrollView>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

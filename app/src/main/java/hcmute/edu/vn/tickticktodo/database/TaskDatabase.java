@@ -28,7 +28,7 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
  *   v5 → v6: Thêm cột source vào bảng tasks (chứa nguồn như 'Moodle')
  *   v6 → v7: Thêm bảng activity_logs
  */
-@Database(entities = {Task.class, TodoList.class, ActivityLog.class}, version = 7, exportSchema = false)
+@Database(entities = {Task.class, TodoList.class, ActivityLog.class, hcmute.edu.vn.tickticktodo.model.CountdownEvent.class}, version = 9, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -37,6 +37,8 @@ public abstract class TaskDatabase extends RoomDatabase {
     public abstract TaskDao taskDao();
     public abstract TodoListDao todoListDao();
     public abstract ActivityLogDao activityLogDao();
+    public abstract hcmute.edu.vn.tickticktodo.dao.CountdownEventDao countdownEventDao();
+
 
     // ─── Migration v2 → v3 ───────────────────────────────────────────────────────
     // Thêm cột icon_res_id (INTEGER, default 0) vào bảng todo_lists.
@@ -108,6 +110,24 @@ public abstract class TaskDatabase extends RoomDatabase {
     };
 
     // ─── Singleton ───────────────────────────────────────────────────────────────
+    
+    
+    static final Migration MIGRATION_8_9 = new Migration(8, 9) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `countdown_events` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT, `dateMillis` INTEGER NOT NULL)");
+        }
+    };
+
+    static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE tasks ADD COLUMN image_attachment TEXT");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN voice_attachment TEXT");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN file_attachment TEXT");
+        }
+    };
+
     public static TaskDatabase getInstance(Context context) {
         if (INSTANCE == null) {
             synchronized (TaskDatabase.class) {
@@ -117,7 +137,7 @@ public abstract class TaskDatabase extends RoomDatabase {
                             TaskDatabase.class,
                             DATABASE_NAME
                     )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7) // Migration an toàn (giữ data)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();
                 }

@@ -2,6 +2,20 @@ package hcmute.edu.vn.tickticktodo.ui;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+
+import android.media.MediaPlayer;
+import android.net.Uri;
+import android.os.Handler;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.SeekBar;
+import android.widget.TextView;
+import java.io.File;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
+
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -56,6 +70,25 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private View btnAddAudio;
     private View btnAddFile;
 
+    private LinearLayout llAttachments, llVoicePlayer;
+    private ImageView ivAttachmentImage, ivPlayPause;
+    private TextView tvAttachmentFile, tvVoiceDuration;
+    private SeekBar sbVoiceProgress;
+
+    private String imagePath = null;
+    private String voicePath = null;
+    private String filePath = null;
+
+    private MediaPlayer mediaPlayer;
+    private boolean isPlaying = false;
+    private Handler handler = new Handler();
+    private Runnable runnable;
+
+    private ActivityResultLauncher<String> imagePickerLauncher;
+    private ActivityResultLauncher<String> audioPickerLauncher;
+    private ActivityResultLauncher<String> filePickerLauncher;
+
+
     // State
     private TaskViewModel taskViewModel;
     private final Calendar selectedDate = Calendar.getInstance(); // mặc định = today
@@ -89,6 +122,14 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
     @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
+
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Lấy ViewModel của Activity (share giữa Activity và Fragment)
@@ -113,6 +154,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         setupDueDateChip();
         setupPriorityButton();
         setupMoreOptions();
+        setupPickers();
         setupSaveButton();
         expandAndShowKeyboard();
     }
@@ -130,6 +172,15 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         btnAddImage = view.findViewById(R.id.btn_add_image);
         btnAddAudio = view.findViewById(R.id.btn_add_audio);
         btnAddFile = view.findViewById(R.id.btn_add_file);
+
+        llAttachments = view.findViewById(R.id.ll_attachments);
+        llVoicePlayer = view.findViewById(R.id.ll_voice_player);
+        ivAttachmentImage = view.findViewById(R.id.iv_attachment_image);
+        ivPlayPause = view.findViewById(R.id.iv_play_pause);
+        tvAttachmentFile = view.findViewById(R.id.tv_attachment_file);
+        tvVoiceDuration = view.findViewById(R.id.tv_voice_duration);
+        sbVoiceProgress = view.findViewById(R.id.sb_voice_progress);
+
     }
 
     /**
@@ -252,6 +303,107 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         });
     }
 
+    
+    private void setupPickers() {
+        imagePickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null) {
+                imagePath = uri.toString();
+                llAttachments.setVisibility(View.VISIBLE);
+                ivAttachmentImage.setVisibility(View.VISIBLE);
+                ivAttachmentImage.setImageURI(uri);
+            }
+        });
+        
+        audioPickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null) {
+                voicePath = uri.toString();
+                llAttachments.setVisibility(View.VISIBLE);
+                llVoicePlayer.setVisibility(View.VISIBLE);
+                setupAudioPlayer(uri);
+            }
+        });
+        
+        filePickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null) {
+                filePath = uri.toString();
+                llAttachments.setVisibility(View.VISIBLE);
+                tvAttachmentFile.setVisibility(View.VISIBLE);
+                String fileName = getFileName(uri);
+                tvAttachmentFile.setText(fileName);
+            }
+        });
+    }
+
+    private void setupAudioPlayer(Uri uri) {
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+        }
+        try {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource(requireContext(), uri);
+            mediaPlayer.prepare();
+            
+            sbVoiceProgress.setMax(mediaPlayer.getDuration());
+            
+            int duration = mediaPlayer.getDuration() / 1000;
+            tvVoiceDuration.setText(String.format("%02d:%02d", duration / 60, duration % 60));
+            
+            ivPlayPause.setOnClickListener(v -> {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.pause();
+                    ivPlayPause.setImageResource(R.drawable.ic_play);
+                } else {
+                    mediaPlayer.start();
+                    ivPlayPause.setImageResource(R.drawable.ic_pause);
+                    updateSeekBar();
+                }
+            });
+            
+            mediaPlayer.setOnCompletionListener(mp -> {
+                ivPlayPause.setImageResource(R.drawable.ic_play);
+                sbVoiceProgress.setProgress(0);
+            });
+            
+            sbVoiceProgress.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser && mediaPlayer != null) mediaPlayer.seekTo(progress);
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateSeekBar() {
+        if (mediaPlayer != null) {
+            sbVoiceProgress.setProgress(mediaPlayer.getCurrentPosition());
+            if (mediaPlayer.isPlaying()) {
+                runnable = this::updateSeekBar;
+                handler.postDelayed(runnable, 100);
+            }
+        }
+    }
+
+    private String getFileName(Uri uri) {
+        String result = null;
+        if (uri.getScheme().equals("content")) {
+            try (Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (idx >= 0) result = cursor.getString(idx);
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.getPath();
+            int cut = result.lastIndexOf('/');
+            if (cut != -1) result = result.substring(cut + 1);
+        }
+        return result;
+    }
+
     private void updatePriorityIcon() {
         int colorRes;
         switch (selectedPriority) {
@@ -274,17 +426,11 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
-        btnAddImage.setOnClickListener(v -> {
-            // TODO: Tích hợp logic upload hình ảnh
-        });
+        btnAddImage.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
 
-        btnAddAudio.setOnClickListener(v -> {
-            // TODO: Tích hợp logic thu âm / upload âm thanh
-        });
+        btnAddAudio.setOnClickListener(v -> audioPickerLauncher.launch("audio/*"));
 
-        btnAddFile.setOnClickListener(v -> {
-            // TODO: Tích hợp logic đính kèm tệp
-        });
+        btnAddFile.setOnClickListener(v -> filePickerLauncher.launch("*/*"));
     }
 
     // ─── Save ────────────────────────────────────────────────────────────────────

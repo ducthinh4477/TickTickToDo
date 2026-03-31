@@ -19,6 +19,24 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
+
+import android.widget.LinearLayout;
+import android.widget.ImageView;
+import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.LayoutInflater;
+import androidx.lifecycle.ViewModelProvider;
+import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
+import hcmute.edu.vn.tickticktodo.model.Task;
+import java.util.Calendar;
+import java.util.List;
+import java.util.ArrayList;
+
 import hcmute.edu.vn.tickticktodo.R;
 
 public class EisenhowerActivity extends BaseActivity {
@@ -27,6 +45,8 @@ public class EisenhowerActivity extends BaseActivity {
     private View quadrantUrgent, quadrantNotUrgent, quadrantNormal, quadrantSlow;
     private View appBar;
     private ImageButton btnBack;
+    private LinearLayout llTasksUrgent, llTasksNotUrgent, llTasksNormal, llTasksSlow;
+    private TaskViewModel taskViewModel;
 
     private float dX, dY;
     private float initialX, initialY;
@@ -52,6 +72,16 @@ public class EisenhowerActivity extends BaseActivity {
         btnBack = findViewById(R.id.btn_back);
 
         btnBack.setOnClickListener(v -> finish());
+
+        llTasksUrgent = findViewById(R.id.ll_tasks_urgent);
+        llTasksNotUrgent = findViewById(R.id.ll_tasks_not_urgent);
+        llTasksNormal = findViewById(R.id.ll_tasks_normal);
+        llTasksSlow = findViewById(R.id.ll_tasks_slow);
+
+        taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
+        taskViewModel.getTodayIncompleteTasks().observe(this, this::updateMatrixes);
+        fab.setOnClickListener(v -> showAddTaskDialog(-1));
+
     }
 
     private void applyWindowInsets() {
@@ -99,20 +129,20 @@ public class EisenhowerActivity extends BaseActivity {
     }
 
     private void handleDrop(float rawX, float rawY) {
-        String quadrantName = "";
+        int quadrantIndex = -1;
         
         if (isViewContains(quadrantUrgent, rawX, rawY)) {
-            quadrantName = "Khẩn cấp";
+            quadrantIndex = 0;
         } else if (isViewContains(quadrantNotUrgent, rawX, rawY)) {
-            quadrantName = "Không gấp";
+            quadrantIndex = 1;
         } else if (isViewContains(quadrantNormal, rawX, rawY)) {
-            quadrantName = "Bình thường";
+            quadrantIndex = 2;
         } else if (isViewContains(quadrantSlow, rawX, rawY)) {
-            quadrantName = "Từ từ làm";
+            quadrantIndex = 3;
         }
 
-        if (!quadrantName.isEmpty()) {
-            Toast.makeText(this, "Đã thả vào ô: " + quadrantName, Toast.LENGTH_SHORT).show();
+        if (quadrantIndex != -1) {
+            showAddTaskDialog(quadrantIndex);
         }
     }
 
@@ -136,5 +166,111 @@ public class EisenhowerActivity extends BaseActivity {
         animator.setDuration(300);
         animator.setInterpolator(new android.view.animation.OvershootInterpolator());
         animator.start();
+    }
+
+    private void updateMatrixes(List<Task> tasks) {
+        if (tasks == null) return;
+        
+        llTasksUrgent.removeAllViews();
+        llTasksNotUrgent.removeAllViews();
+        llTasksNormal.removeAllViews();
+        llTasksSlow.removeAllViews();
+
+        for (Task task : tasks) {
+            View taskView = LayoutInflater.from(this).inflate(R.layout.item_eisenhower_task, null);
+            TextView title = taskView.findViewById(R.id.tv_eisenhower_title);
+            title.setText(task.getTitle());
+            
+            TextView desc = taskView.findViewById(R.id.tv_eisenhower_desc);
+            if (task.getDescription() != null && !task.getDescription().isEmpty()) {
+                desc.setVisibility(View.VISIBLE);
+                desc.setText(task.getDescription());
+            }
+
+            ImageView check = taskView.findViewById(R.id.iv_eisenhower_check);
+            
+            if (task.isCompleted()) {
+                check.setImageResource(R.drawable.ic_checkbox_square_checked);
+                title.setPaintFlags(title.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+                title.setTextColor(Color.parseColor("#808080"));
+                desc.setTextColor(Color.parseColor("#808080"));
+            } else {
+                check.setImageResource(R.drawable.ic_checkbox_square_unchecked);
+                title.setPaintFlags(title.getPaintFlags() & (~android.graphics.Paint.STRIKE_THRU_TEXT_FLAG));
+                // Do not change default text colors to keeping it readable based on light/dark mode if not overriding
+            }
+
+            check.setOnClickListener(v -> {
+                boolean isNowCompleted = !task.isCompleted();
+                check.setImageResource(isNowCompleted ? R.drawable.ic_checkbox_square_checked : R.drawable.ic_checkbox_square_unchecked);
+                check.postDelayed(() -> {
+                    task.setCompleted(isNowCompleted);
+                    task.setCompletedDate(isNowCompleted ? System.currentTimeMillis() : null);
+                    taskViewModel.update(task);
+                }, 300);
+            });
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            
+            taskView.setLayoutParams(params);
+
+            switch (task.getPriority()) {
+                case 3: llTasksUrgent.addView(taskView); break;
+                case 2: llTasksNotUrgent.addView(taskView); break;
+                case 1: llTasksNormal.addView(taskView); break;
+                case 0: llTasksSlow.addView(taskView); break;
+            }
+        }
+    }
+
+    private void showAddTaskDialog(int quadrantIndex) {
+        Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.dialog_eisenhower_add);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+        EditText etTitle = dialog.findViewById(R.id.et_eisenhower_title);
+        EditText etDesc = dialog.findViewById(R.id.et_eisenhower_desc);
+        Spinner spinner = dialog.findViewById(R.id.spinner_eisenhower_quadrant);
+        Button btnCancel = dialog.findViewById(R.id.btn_eisenhower_cancel);
+        Button btnSave = dialog.findViewById(R.id.btn_eisenhower_save);
+
+        String[] options = {"1. Khẩn cấp & Quan trọng", "2. Quan trọng, ko gắp", "3. Gấp, ko quan trọng", "4. Ko gấp, ko quan trọng"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, options);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        if (quadrantIndex >= 0 && quadrantIndex <= 3) {
+            spinner.setSelection(quadrantIndex);
+        }
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnSave.setOnClickListener(v -> {
+            String title = etTitle.getText().toString().trim();
+            if (title.isEmpty()) return;
+            
+            int priority = 0; // mapping from spinner to priority
+            switch (spinner.getSelectedItemPosition()) {
+                case 0: priority = 3; break;
+                case 1: priority = 2; break;
+                case 2: priority = 1; break;
+                case 3: priority = 0; break;
+            }
+
+            Calendar cal = Calendar.getInstance();
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            
+            Task t = new Task(title, etDesc.getText().toString().trim(), cal.getTimeInMillis(), false, 0);
+            t.setPriority(priority);
+            taskViewModel.insert(t);
+            
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 }

@@ -171,6 +171,64 @@
           </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/nav_item_countdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
+
+            <ImageView
+                android:id="@+id/nav_icon_countdown"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:contentDescription="Đếm ngược"
+                android:src="@drawable/ic_timer"
+                app:tint="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/nav_label_countdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Đếm ngược"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/nav_item_ai_assistant"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
+            <ImageView
+                android:id="@+id/nav_icon_ai_assistant"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:contentDescription="AI Assistant"
+                android:src="@drawable/ic_user"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:id="@+id/nav_label_ai_assistant"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Trợ lý AI"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+          <LinearLayout
             android:id="@+id/nav_item_settings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

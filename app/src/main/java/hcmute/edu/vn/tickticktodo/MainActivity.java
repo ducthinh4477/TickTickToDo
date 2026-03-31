@@ -86,9 +86,9 @@ public class MainActivity extends BaseActivity {
     private FloatingActionButton fabAddTask;
 
     // UI — Nav Rail items
-    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemSettings;
-    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings;
-    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings;
+    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemSettings, navItemAiAssistant;
+    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings, navIconAiAssistant;
+    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings, navLabelAiAssistant;
 
     // Adapters
     private TaskAdapter overdueAdapter;
@@ -164,11 +164,14 @@ public class MainActivity extends BaseActivity {
         navIconFocus    = findViewById(R.id.nav_icon_focus);
         navIconSchool   = findViewById(R.id.nav_icon_school);
         navIconSettings  = findViewById(R.id.nav_icon_settings);
+        navIconAiAssistant = findViewById(R.id.nav_icon_ai_assistant);
         navLabelHome    = findViewById(R.id.nav_label_home);
         navLabelCalendar= findViewById(R.id.nav_label_calendar);
         navLabelFocus   = findViewById(R.id.nav_label_focus);
         navLabelSchool  = findViewById(R.id.nav_label_school);
-        navLabelSettings = findViewById(R.id.nav_label_settings);
+        if (findViewById(R.id.nav_label_settings) != null) navLabelSettings = findViewById(R.id.nav_label_settings);
+        navLabelAiAssistant = findViewById(R.id.nav_label_ai_assistant);
+        navItemAiAssistant = findViewById(R.id.nav_item_ai_assistant);
 
         // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
         FrameLayout contentFrame = findViewById(R.id.content_frame);
@@ -290,13 +293,17 @@ public class MainActivity extends BaseActivity {
             tvHeaderTitle.setText("7 Ngày tới");
             updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
-        findViewById(R.id.panel_item_inbox).setOnClickListener(v -> onPanelItemSelected(getString(R.string.panel_inbox)));
+        findViewById(R.id.panel_item_inbox).setOnClickListener(v -> showDeveloperMessageDialog());
         findViewById(R.id.nav_item_eisenhower).setOnClickListener(v -> {
             closeMenu();
             startActivity(new Intent(MainActivity.this, EisenhowerActivity.class));
         });
-        findViewById(R.id.panel_item_completed).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_completed)));
-        findViewById(R.id.panel_item_trash).setOnClickListener(v -> onPanelItemSelected(getString(R.string.menu_trash)));
+        findViewById(R.id.nav_item_countdown).setOnClickListener(v -> {
+            closeMenu();
+            startActivity(new Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.EventCountdownActivity.class));
+        });
+        findViewById(R.id.panel_item_completed).setOnClickListener(v -> showHistoryDialog("Nhật ký: Đã hoàn thành", taskViewModel.getAllCompletedTasksLog()));
+        findViewById(R.id.panel_item_trash).setOnClickListener(v -> showHistoryDialog("Nhật ký: Quá hạn", taskViewModel.getAllOverdueTasksLog()));
         findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {
             closeMenu();
             Toast.makeText(this, R.string.toast_notifications_wip, Toast.LENGTH_SHORT).show();
@@ -310,6 +317,51 @@ public class MainActivity extends BaseActivity {
     private void onPanelItemSelected(String label) {
         closeMenu();
         tvHeaderTitle.setText(label);
+    }
+
+    
+    private void showHistoryDialog(String title, androidx.lifecycle.LiveData<java.util.List<hcmute.edu.vn.tickticktodo.model.Task>> liveData) {
+        closeMenu();
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        dialog.setContentView(R.layout.dialog_history_log);
+        
+        android.util.DisplayMetrics metrics = getResources().getDisplayMetrics();
+        int width = (int) (metrics.widthPixels * 0.75);
+        int height = (int) (metrics.heightPixels * 0.75);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(width, height);
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        
+        android.widget.TextView tvTitle = dialog.findViewById(R.id.tv_dialog_title);
+        tvTitle.setText(title);
+        
+        androidx.recyclerview.widget.RecyclerView rv = dialog.findViewById(R.id.rv_history_log);
+        rv.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        
+        hcmute.edu.vn.tickticktodo.adapter.TaskAdapter adapter = new hcmute.edu.vn.tickticktodo.adapter.TaskAdapter(
+            (task, isChecked) -> {}, 
+            task -> {}
+        );
+        rv.setAdapter(adapter);
+        
+        liveData.observe(this, tasks -> {
+            if (tasks != null) {
+                adapter.submitList(tasks);
+            }
+        });
+        
+        dialog.findViewById(R.id.btn_close_dialog).setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    private void showDeveloperMessageDialog() {
+        closeMenu();
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Tin nhắn từ nhà phát triển")
+            .setMessage("Cảm ơn bạn đã sử dụng TickTickToDo! Phiên bản này đang trong quá trình thử nghiệm. Các tính năng mở rộng sẽ sớm ra mắt.")
+            .setPositiveButton("Đóng", (d, w) -> d.dismiss())
+            .show();
     }
 
     private void showLoginDialog() {
@@ -404,6 +456,13 @@ public class MainActivity extends BaseActivity {
             showSettingsDialog();
         });
 
+        if (navItemAiAssistant != null) {
+            navItemAiAssistant.setOnClickListener(v -> {
+                selectNavItem(R.id.nav_item_ai_assistant);
+                startActivity(new Intent(this, hcmute.edu.vn.tickticktodo.ui.AiAssistantActivity.class));
+            });
+        }
+
         // Highlight Home by default
         selectNavItem(R.id.nav_item_home);
     }
@@ -457,17 +516,18 @@ public class MainActivity extends BaseActivity {
     }
 
     private void selectNavItem(int selectedId) {
-        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_settings};
-        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings};
-        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings};
+        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_settings, R.id.nav_item_ai_assistant};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings, navIconAiAssistant};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings, navLabelAiAssistant};
 
-        int accent    = getResources().getColor(R.color.accent_primary, getTheme());
-        int secondary = getResources().getColor(R.color.text_secondary, getTheme());
+        int accent    = super.getResources().getColor(hcmute.edu.vn.tickticktodo.R.color.accent_primary, getTheme());
+        int secondary = super.getResources().getColor(hcmute.edu.vn.tickticktodo.R.color.text_secondary, getTheme());
 
         for (int i = 0; i < ids.length; i++) {
+            if (icons[i] == null || labels[i] == null) continue;
             boolean selected = ids[i] == selectedId;
             int color = selected ? accent : secondary;
-            icons[i].setImageTintList(ColorStateList.valueOf(color));
+            icons[i].setImageTintList(android.content.res.ColorStateList.valueOf(color));
             labels[i].setTextColor(color);
         }
     }
