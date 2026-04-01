@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.helper.UserStatsManager;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
 /**
@@ -39,6 +40,12 @@ public class StatisticsActivity extends BaseActivity {
     // Card 3
     private TextView tvCompleted7Days;
 
+    // Card 4: Gamification
+    private TextView tvGamificationLevel;
+    private TextView tvGamificationXp;
+    private TextView tvGamificationStreak;
+    private ProgressBar progressGamificationXp;
+
     // Lưu giá trị để tính Completion Rate
     private int completedTodayCount = 0;
     private int totalTodayCount = 0;
@@ -59,6 +66,13 @@ public class StatisticsActivity extends BaseActivity {
         initViews();
         setupToolbar();
         setupViewModel();
+        updateGamificationUi();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateGamificationUi();
     }
 
     // ─── View binding ────────────────────────────────────────────────────────────
@@ -69,6 +83,11 @@ public class StatisticsActivity extends BaseActivity {
         progressCompletionRate = findViewById(R.id.progress_completion_rate);
         tvCompletionDetail   = findViewById(R.id.tv_completion_detail);
         tvCompleted7Days     = findViewById(R.id.tv_completed_7_days);
+
+        tvGamificationLevel = findViewById(R.id.tv_gamification_level);
+        tvGamificationXp = findViewById(R.id.tv_gamification_xp);
+        tvGamificationStreak = findViewById(R.id.tv_gamification_streak);
+        progressGamificationXp = findViewById(R.id.progress_gamification_xp);
     }
 
     private void setupToolbar() {
@@ -123,6 +142,14 @@ public class StatisticsActivity extends BaseActivity {
             tvCompletionDetail.setText(getString(R.string.statistics_completion_detail,
                     completedTodayCount, totalTodayCount, tasksLabel));
         }
+    }
+
+    private void updateGamificationUi() {
+        UserStatsManager.Stats stats = UserStatsManager.getInstance(this).getStats();
+        tvGamificationLevel.setText("Lv. " + stats.level);
+        progressGamificationXp.setProgress(stats.getXpInCurrentLevel());
+        tvGamificationXp.setText(getString(R.string.statistics_xp_progress, stats.getXpInCurrentLevel()));
+        tvGamificationStreak.setText(getString(R.string.statistics_streak_days, stats.currentStreak));
     }
 }
 

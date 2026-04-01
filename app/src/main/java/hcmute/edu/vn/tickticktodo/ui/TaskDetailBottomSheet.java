@@ -9,8 +9,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,13 +23,17 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.helper.AiTaskBreakdownHelper;
+import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
@@ -47,6 +52,8 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     private EditText etTitle;
     private EditText etDescription;
     private Chip chipDueDate;
+    private MaterialButton btnAiBreakdown;
+    private ProgressBar progressAiBreakdown;
     private LinearLayout btnPriorityNone;
     private LinearLayout btnPriorityLow;
     private LinearLayout btnPriorityMedium;
@@ -136,6 +143,7 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         setupToolbar();
         setupPriorityButtons();
         setupDueDateChip();
+        setupAiBreakdown();
         loadTaskFromArgs();
     }
 
@@ -147,6 +155,8 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         etTitle           = view.findViewById(R.id.et_title);
         etDescription     = view.findViewById(R.id.et_description);
         chipDueDate       = view.findViewById(R.id.chip_due_date);
+        btnAiBreakdown    = view.findViewById(R.id.btn_ai_breakdown);
+        progressAiBreakdown = view.findViewById(R.id.progress_ai_breakdown);
         btnPriorityNone   = view.findViewById(R.id.btn_priority_none);
         btnPriorityLow    = view.findViewById(R.id.btn_priority_low);
         btnPriorityMedium = view.findViewById(R.id.btn_priority_medium);
@@ -249,6 +259,73 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
             expandBottomSheet();
             showDatePicker();
         });
+    }
+
+    private void setupAiBreakdown() {
+        if (btnAiBreakdown == null) {
+            return;
+        }
+        btnAiBreakdown.setOnClickListener(v -> requestAiBreakdown());
+    }
+
+    private void requestAiBreakdown() {
+        String title = etTitle.getText().toString().trim();
+        if (title.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.ai_breakdown_title_empty, Toast.LENGTH_SHORT).show();
+            etTitle.requestFocus();
+            return;
+        }
+
+        setAiBreakdownLoading(true);
+        GeminiManager.getInstance().generateResponse(
+                AiTaskBreakdownHelper.buildPrompt(title),
+                new GeminiManager.ResponseCallback() {
+                    @Override
+                    public void onSuccess(String responseText) {
+                        try {
+                            List<String> steps = AiTaskBreakdownHelper.parseSteps(responseText);
+                            String mergedDescription = AiTaskBreakdownHelper.mergeChecklistIntoDescription(
+                                    etDescription.getText().toString(),
+                                    steps
+                            );
+                            etDescription.setText(mergedDescription);
+                            etDescription.setSelection(mergedDescription.length());
+
+                            if (currentTask != null) {
+                                currentTask.setTitle(etTitle.getText().toString().trim());
+                                currentTask.setDescription(mergedDescription);
+                                currentTask.setDueDate(selectedDueDate);
+                                currentTask.setPriority(selectedPriority);
+                                currentTask.setCompleted(cbCompleted.isChecked());
+                                taskViewModel.update(currentTask);
+                            }
+                            Toast.makeText(requireContext(), R.string.ai_breakdown_success, Toast.LENGTH_SHORT).show();
+                        } catch (Exception parseError) {
+                            Toast.makeText(requireContext(), R.string.ai_breakdown_parse_error, Toast.LENGTH_SHORT).show();
+                        } finally {
+                            setAiBreakdownLoading(false);
+                        }
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        setAiBreakdownLoading(false);
+                        Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+    }
+
+    private void setAiBreakdownLoading(boolean loading) {
+        if (btnAiBreakdown != null) {
+            btnAiBreakdown.setEnabled(!loading);
+            btnAiBreakdown.setText(loading
+                    ? getString(R.string.ai_breakdown_loading)
+                    : getString(R.string.ai_breakdown_button));
+        }
+        if (progressAiBreakdown != null) {
+            progressAiBreakdown.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void showDatePicker() {

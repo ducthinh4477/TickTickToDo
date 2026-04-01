@@ -54,9 +54,15 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
     LiveData<Task> getTaskById(long taskId);
 
+       @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
+       Task getTaskByIdSync(long taskId);
+
     // ─── Thêm task ──────────────────────────────────────────────────────────────
     @Insert
     long insert(Task task);
+
+       @Insert
+       List<Long> insertAll(List<Task> tasks);
 
     // ─── Cập nhật task ──────────────────────────────────────────────────────────
     @Update
@@ -155,6 +161,9 @@ public interface TaskDao {
            "WHERE id = :taskId")
     void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate);
 
+    @Query("UPDATE tasks SET due_date = :newDueDate WHERE id IN (:taskIds) AND is_completed = 0")
+    void updateDueDateForTaskIds(List<Long> taskIds, long newDueDate);
+
     // Mới: Tìm unique task đã sync từ trường
     @Query("SELECT * FROM tasks WHERE title = :title AND due_date = :dueDate LIMIT 1")
     Task findTaskByTitleAndDate(String title, Long dueDate);
@@ -177,6 +186,12 @@ public interface TaskDao {
            "AND due_date >= :startOfDay AND due_date < :endOfDay " +
            "ORDER BY priority DESC, due_date ASC")
     List<Task> getIncompleteTasksForDaySync(long startOfDay, long endOfDay);
+
+    @Query("SELECT * FROM tasks " +
+           "WHERE is_completed = 1 " +
+           "AND completed_date >= :startOfDay AND completed_date < :endOfDay " +
+           "ORDER BY completed_date ASC")
+    List<Task> getCompletedTasksForDaySync(long startOfDay, long endOfDay);
 
     // Lấy task quá hạn chưa hoàn thành (đồng bộ) — cho OverdueCheckWorker
     @Query("SELECT * FROM tasks " +

@@ -68,6 +68,10 @@
             android:name=".ui.StatisticsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.HabitTrackerActivity"
+            android:exported="false" />
+
         <!-- TimerService: chạy logic đếm ngược Pomodoro, giao tiếp qua Binder + LocalBroadcast -->
         <service
             android:name=".service.TimerService"
@@ -91,7 +95,13 @@
         
         <activity android:name=".ui.MoodleActivity" android:exported="false"/>  
 
-        <activity android:name=".ui.AiAssistantActivity" android:exported="false"/>
+        <activity android:name=".ui.AiAssistantActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+
+        <activity
+            android:name=".ui.VoicePromptActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo.Translucent" />
+
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true">
@@ -119,7 +129,49 @@
             android:name=".service.FloatingAssistantService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_ai_assistant" />
+        </service>
+
+        <service
+            android:name=".service.VoiceTaskTileService"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@drawable/ic_add"
+            android:label="@string/qs_voice_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <service
+            android:name=".widget.TodoWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <receiver
+            android:name=".widget.TodoWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/todo_widget_info" />
+        </receiver>
 
     </application>
 

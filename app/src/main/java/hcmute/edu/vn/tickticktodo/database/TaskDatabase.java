@@ -9,10 +9,13 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
+import hcmute.edu.vn.tickticktodo.dao.HabitDao;
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.dao.ActivityLogDao;
 import hcmute.edu.vn.tickticktodo.model.ActivityLog;
+import hcmute.edu.vn.tickticktodo.model.Habit;
+import hcmute.edu.vn.tickticktodo.model.HabitLog;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
 
@@ -28,7 +31,14 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
  *   v5 → v6: Thêm cột source vào bảng tasks (chứa nguồn như 'Moodle')
  *   v6 → v7: Thêm bảng activity_logs
  */
-@Database(entities = {Task.class, TodoList.class, ActivityLog.class, hcmute.edu.vn.tickticktodo.model.CountdownEvent.class}, version = 9, exportSchema = false)
+@Database(entities = {
+    Task.class,
+    TodoList.class,
+    ActivityLog.class,
+    hcmute.edu.vn.tickticktodo.model.CountdownEvent.class,
+    Habit.class,
+    HabitLog.class
+}, version = 10, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -38,6 +48,7 @@ public abstract class TaskDatabase extends RoomDatabase {
     public abstract TodoListDao todoListDao();
     public abstract ActivityLogDao activityLogDao();
     public abstract hcmute.edu.vn.tickticktodo.dao.CountdownEventDao countdownEventDao();
+    public abstract HabitDao habitDao();
 
 
     // ─── Migration v2 → v3 ───────────────────────────────────────────────────────
@@ -119,6 +130,16 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_9_10 = new Migration(9, 10) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `habits` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `icon` TEXT)");
+            database.execSQL("CREATE TABLE IF NOT EXISTS `habit_logs` (`habit_id` INTEGER NOT NULL, `date_millis` INTEGER NOT NULL, `is_completed` INTEGER NOT NULL, PRIMARY KEY(`habit_id`, `date_millis`), FOREIGN KEY(`habit_id`) REFERENCES `habits`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_habit_logs_habit_id` ON `habit_logs` (`habit_id`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_habit_logs_date_millis` ON `habit_logs` (`date_millis`)");
+        }
+    };
+
     static final Migration MIGRATION_7_8 = new Migration(7, 8) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -137,7 +158,16 @@ public abstract class TaskDatabase extends RoomDatabase {
                             TaskDatabase.class,
                             DATABASE_NAME
                     )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8) // Migration an toàn (giữ data)
+                        .addMigrations(
+                            MIGRATION_2_3,
+                            MIGRATION_3_4,
+                            MIGRATION_4_5,
+                            MIGRATION_5_6,
+                            MIGRATION_6_7,
+                            MIGRATION_7_8,
+                            MIGRATION_8_9,
+                            MIGRATION_9_10
+                        ) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();
                 }

@@ -5,12 +5,15 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -42,6 +45,9 @@ import android.widget.NumberPicker;
  */
 public class CountdownActivity extends BaseActivity {
 
+    private static final String PREFS_NAME = "countdown_settings";
+    private static final String KEY_AMBIENT_SOUND_MODE = "ambient_sound_mode";
+
     // ── Service binding ──────────────────────────────────────────────────────────
     private TimerService timerService;
     private boolean      isBound = false;
@@ -52,6 +58,7 @@ public class CountdownActivity extends BaseActivity {
             TimerService.TimerBinder tb = (TimerService.TimerBinder) binder;
             timerService = tb.getService();
             isBound = true;
+            timerService.setAmbientSoundMode(getSavedAmbientSoundMode());
             // Sync lại UI với trạng thái hiện tại của Service
             syncUiWithService();
         }
@@ -92,6 +99,7 @@ public class CountdownActivity extends BaseActivity {
 
     private void updateButtonsState(TimerService.TimerState state) {
         if (state == TimerService.TimerState.RUNNING) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             btnStartPause.setText(getString(R.string.countdown_btn_pause));
             tvTimerStatus.setText(getString(R.string.countdown_status_focus));
             btnStop.setEnabled(true);
@@ -112,6 +120,7 @@ public class CountdownActivity extends BaseActivity {
                 }
             }
         } else if (state == TimerService.TimerState.PAUSED) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             btnStartPause.setText(getString(R.string.countdown_btn_resume));
             tvTimerStatus.setText(getString(R.string.countdown_status_paused));
             btnStop.setEnabled(true);
@@ -121,6 +130,7 @@ public class CountdownActivity extends BaseActivity {
                 rotationAnimator.pause();
             }
         } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             btnStartPause.setText(getString(R.string.countdown_btn_start));
             tvTimerStatus.setText(getString(R.string.countdown_status_ready));
             btnStop.setEnabled(false);
@@ -164,6 +174,7 @@ public class CountdownActivity extends BaseActivity {
     private android.view.View vRingOuter;
     private android.view.View vRingDashed;
     private android.animation.ObjectAnimator rotationAnimator;
+    private ImageButton btnAmbientSound;
 
     // ── Factory ──────────────────────────────────────────────────────────────────
     public static Intent newIntent(Context context) {
@@ -200,6 +211,7 @@ public class CountdownActivity extends BaseActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         // Huỷ đăng ký broadcast
         LocalBroadcastManager.getInstance(this).unregisterReceiver(timerReceiver);
 
@@ -221,9 +233,13 @@ public class CountdownActivity extends BaseActivity {
         toggleTimerMode = findViewById(R.id.toggle_timer_mode);
         vRingOuter      = findViewById(R.id.v_ring_outer);
         vRingDashed     = findViewById(R.id.v_ring_dashed);
+        btnAmbientSound = findViewById(R.id.btn_ambient_sound);
 
         ImageButton btnBack = findViewById(R.id.btn_countdown_back);
         btnBack.setOnClickListener(v -> finish());
+        if (btnAmbientSound != null) {
+            btnAmbientSound.setOnClickListener(v -> showAmbientSoundDialog());
+        }
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -369,5 +385,74 @@ public class CountdownActivity extends BaseActivity {
         });
 
         dialog.show();
+    }
+
+    private void showAmbientSoundDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        android.view.View view = getLayoutInflater().inflate(R.layout.bottom_sheet_ambient_sound, null);
+        dialog.setContentView(view);
+
+        RadioGroup radioGroup = view.findViewById(R.id.rg_ambient_sound);
+        int currentMode = isBound && timerService != null
+                ? timerService.getAmbientSoundMode()
+                : getSavedAmbientSoundMode();
+        radioGroup.check(toRadioButtonId(currentMode));
+
+        Button btnApply = view.findViewById(R.id.btn_apply_sound);
+        btnApply.setOnClickListener(v -> {
+            int selectedMode = resolveSelectedSoundMode(radioGroup.getCheckedRadioButtonId());
+            saveAmbientSoundMode(selectedMode);
+
+            if (isBound && timerService != null) {
+                timerService.setAmbientSoundMode(selectedMode);
+                if (selectedMode != TimerService.AMBIENT_SOUND_NONE
+                        && !timerService.hasAmbientSoundResource(selectedMode)) {
+                    Toast.makeText(this, R.string.countdown_sound_missing_files, Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, R.string.countdown_sound_applied, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private int resolveSelectedSoundMode(int checkedId) {
+        if (checkedId == R.id.rb_sound_rain) {
+            return TimerService.AMBIENT_SOUND_RAIN;
+        }
+        if (checkedId == R.id.rb_sound_cafe) {
+            return TimerService.AMBIENT_SOUND_CAFE;
+        }
+        if (checkedId == R.id.rb_sound_lofi) {
+            return TimerService.AMBIENT_SOUND_LOFI;
+        }
+        return TimerService.AMBIENT_SOUND_NONE;
+    }
+
+    private int toRadioButtonId(int mode) {
+        switch (mode) {
+            case TimerService.AMBIENT_SOUND_RAIN:
+                return R.id.rb_sound_rain;
+            case TimerService.AMBIENT_SOUND_CAFE:
+                return R.id.rb_sound_cafe;
+            case TimerService.AMBIENT_SOUND_LOFI:
+                return R.id.rb_sound_lofi;
+            case TimerService.AMBIENT_SOUND_NONE:
+            default:
+                return R.id.rb_sound_none;
+        }
+    }
+
+    private int getSavedAmbientSoundMode() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return prefs.getInt(KEY_AMBIENT_SOUND_MODE, TimerService.AMBIENT_SOUND_NONE);
+    }
+
+    private void saveAmbientSoundMode(int mode) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        prefs.edit().putInt(KEY_AMBIENT_SOUND_MODE, mode).apply();
     }
 }

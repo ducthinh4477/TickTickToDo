@@ -36,6 +36,11 @@
     <string name="detail_label_priority">Priority</string>
     <string name="label_no_date">Pick a date</string>
     <string name="error_title_empty">Title cannot be empty</string>
+    <string name="ai_breakdown_button">AI Phân tích các bước</string>
+    <string name="ai_breakdown_loading">AI đang phân tích...</string>
+    <string name="ai_breakdown_title_empty">Hãy nhập tên công việc trước khi phân tích.</string>
+    <string name="ai_breakdown_parse_error">AI trả về dữ liệu chưa đúng định dạng. Vui lòng thử lại.</string>
+    <string name="ai_breakdown_success">Đã thêm checklist AI vào mô tả.</string>
     <string name="priority_none_label">None</string>
     <string name="priority_low_label">Low</string>
     <string name="priority_medium_label">Medium</string>
@@ -88,6 +93,15 @@
     <string name="countdown_session">Session:</string>
     <string name="countdown_toast_done">🎉 Great job! You completed a Pomodoro session!</string>
     <string name="countdown_toast_break_done">☕ Break over! Ready to focus again?</string>
+    <string name="countdown_sound_desc">Âm thanh môi trường</string>
+    <string name="countdown_sound_title">Chọn âm thanh tập trung</string>
+    <string name="countdown_sound_none">Không âm thanh</string>
+    <string name="countdown_sound_rain">Tiếng mưa</string>
+    <string name="countdown_sound_cafe">Quán cafe</string>
+    <string name="countdown_sound_lofi">Nhạc Lofi</string>
+    <string name="countdown_sound_applied">Đã cập nhật âm thanh tập trung.</string>
+    <string name="countdown_sound_missing_files">Chưa tìm thấy tệp âm thanh trong thư mục res/raw.</string>
+    <string name="countdown_sound_apply">Áp dụng</string>
     <string name="nav_timer_desc">Focus Timer</string>
 
     <!-- CalendarActivity -->
@@ -206,6 +220,22 @@
     <string name="statistics_percent_format">%d%%</string>
     <string name="statistics_no_tasks_today">No tasks today</string>
     <string name="statistics_completion_detail">%1$d / %2$d %3$s</string>
+    <string name="statistics_gamification">Gamification</string>
+    <string name="statistics_level">Cấp độ</string>
+    <string name="statistics_current_xp">Kinh nghiệm</string>
+    <string name="statistics_streak">Streak</string>
+    <string name="statistics_xp_progress">%1$d / 100 XP</string>
+    <string name="statistics_streak_days">%1$d ngày liên tiếp</string>
+    <string name="level_up_toast">Chúc mừng! Bạn đã lên cấp %1$d</string>
+
+    <!-- Home Widget -->
+    <string name="widget_todo_title">Today Tasks</string>
+    <string name="widget_todo_description">Quickly check off your tasks from the home screen</string>
+    <string name="widget_empty">No tasks for today</string>
+    <string name="widget_due_no_time">No due time</string>
+    <string name="widget_untitled_task">Untitled task</string>
+    <string name="widget_refresh_desc">Refresh widget</string>
+    <string name="widget_check_desc">Mark as completed</string>
 
     <!-- Task Reminder Notification -->
     <string name="reminder_notification_title">Task Reminder</string>
@@ -214,4 +244,37 @@
     <!-- School Sync -->
     <string name="school_calendar_sync">School Calendar Sync</string>
     <string name="sync_school_calendar_desc">Sync your school schedule with TickTickToDo</string>
+
+    <!-- Quick Settings Voice Add -->
+    <string name="qs_voice_tile_label">Thêm việc bằng giọng nói</string>
+    <string name="voice_permission_required">Cần quyền micro để thêm việc bằng giọng nói.</string>
+    <string name="voice_not_available">Thiết bị chưa hỗ trợ nhận diện giọng nói.</string>
+    <string name="voice_listening">Đang lắng nghe...</string>
+    <string name="voice_hearing">Mình đang nghe bạn nói...</string>
+    <string name="voice_retrying">Chưa nghe rõ, thử lại...</string>
+    <string name="voice_processing">Đang phân tích bằng AI...</string>
+    <string name="voice_processing_text">Đang xử lý: %1$s</string>
+    <string name="voice_created_description">Được tạo nhanh từ Quick Settings bằng giọng nói</string>
+    <string name="voice_task_added_success">Đã thêm công việc!</string>
+    <string name="voice_parse_failed">Không đọc được phản hồi AI, vui lòng thử lại.</string>
+
+    <!-- Scan To Tasks -->
+    <string name="scan_prepare_failed">Không thể mở camera để quét ảnh.</string>
+    <string name="scan_image_decode_failed">Không thể đọc ảnh vừa chụp.</string>
+    <string name="scan_processing_failed">Có lỗi khi xử lý ảnh, vui lòng thử lại.</string>
+    <string name="scan_no_tasks_found">AI chưa trích xuất được công việc nào từ ảnh.</string>
+    <string name="scan_tasks_added_count">Đã thêm %1$d công việc từ hình ảnh!</string>
+
+    <!-- Habit Tracker -->
+    <string name="habit_title">Thoi quen</string>
+    <string name="habit_add_title">Them thoi quen</string>
+    <string name="habit_add_hint">Nhap ten thoi quen</string>
+    <string name="habit_add_confirm">Them</string>
+    <string name="habit_add_empty_error">Ten thoi quen khong duoc de trong.</string>
+    <string name="habit_no_data_title">Chua co thoi quen nao. Bam + de them.</string>
+    <string name="habit_selected_prefix">Thoi quen: %1$s</string>
+    <string name="habit_checkin_success">Da check in hom nay.</string>
+    <string name="habit_legend_done">Da thuc hien</string>
+    <string name="habit_legend_missed">Bo lo</string>
+    <string name="nav_habits">Habits</string>
 </resources>

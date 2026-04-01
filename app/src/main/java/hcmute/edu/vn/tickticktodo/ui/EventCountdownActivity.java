@@ -5,6 +5,7 @@ import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
@@ -13,7 +14,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.lifecycle.ViewModelProvider;
@@ -39,6 +43,7 @@ public class EventCountdownActivity extends BaseActivity {
     private CountdownEventViewModel viewModel;
     private FloatingActionButton fabAdd;
     private ImageButton btnBack;
+    private View appBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +52,7 @@ public class EventCountdownActivity extends BaseActivity {
         setContentView(R.layout.activity_event_countdown);
 
         initViews();
+        applyWindowInsets();
         loadData();
     }
 
@@ -54,6 +60,7 @@ public class EventCountdownActivity extends BaseActivity {
         rvEvents = findViewById(R.id.rv_events);
         fabAdd = findViewById(R.id.fab_add_event);
         btnBack = findViewById(R.id.btn_back);
+        appBar = findViewById(R.id.app_bar);
 
         rvEvents.setLayoutManager(new LinearLayoutManager(this));
         eventList = new ArrayList<>();
@@ -76,6 +83,34 @@ public class EventCountdownActivity extends BaseActivity {
 
         btnBack.setOnClickListener(v -> finish());
         fabAdd.setOnClickListener(v -> showAddEventDialog());
+    }
+
+    private void applyWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(appBar, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            int baseTopPadding = (int) (12 * getResources().getDisplayMetrics().density);
+            view.setPadding(
+                    view.getPaddingLeft(),
+                    insets.top + baseTopPadding,
+                    view.getPaddingRight(),
+                    view.getPaddingBottom()
+            );
+            return windowInsets;
+        });
+
+        ViewCompat.setOnApplyWindowInsetsListener(rvEvents, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            view.setPadding(
+                    view.getPaddingLeft(),
+                    view.getPaddingTop(),
+                    view.getPaddingRight(),
+                    insets.bottom + (int) (16 * getResources().getDisplayMetrics().density)
+            );
+            return windowInsets;
+        });
+
+        ViewCompat.requestApplyInsets(appBar);
+        ViewCompat.requestApplyInsets(rvEvents);
     }
 
     private void setupSwipeToDelete() {

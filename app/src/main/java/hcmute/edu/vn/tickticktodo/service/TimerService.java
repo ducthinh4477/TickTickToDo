@@ -57,6 +57,11 @@ public class TimerService extends Service {
     public enum TimerState { IDLE, RUNNING, PAUSED }
     public enum TimerMode { COUNTDOWN, STOPWATCH }
 
+    public static final int AMBIENT_SOUND_NONE = 0;
+    public static final int AMBIENT_SOUND_RAIN = 1;
+    public static final int AMBIENT_SOUND_CAFE = 2;
+    public static final int AMBIENT_SOUND_LOFI = 3;
+
     // ── Internal state ───────────────────────────────────────────────────────────
     private TimerState timerState   = TimerState.IDLE;
     private TimerMode  timerMode    = TimerMode.COUNTDOWN;
@@ -70,6 +75,8 @@ public class TimerService extends Service {
     private Handler stopwatchHandler;
     private Runnable stopwatchRunnable;
     private MediaPlayer    mediaPlayer;
+    private MediaPlayer ambientMediaPlayer;
+    private int ambientSoundMode = AMBIENT_SOUND_NONE;
 
     private LocalBroadcastManager lbm;
 
@@ -147,6 +154,7 @@ public class TimerService extends Service {
         super.onDestroy();
         cancelCountdown();
         releaseMediaPlayer();
+        releaseAmbientSoundPlayer();
         stopForeground(true); // Ensure foreground is stopped
     }
 
@@ -159,6 +167,23 @@ public class TimerService extends Service {
     public long  getTotalMillis()        { return totalMillis; }
     public int   getCurrentModeMins()    { return currentModeMins; }
     public int   getSessionCount()       { return sessionCount; }
+    public int   getAmbientSoundMode()   { return ambientSoundMode; }
+
+    public void setAmbientSoundMode(int mode) {
+        ambientSoundMode = mode;
+        if (timerState == TimerState.RUNNING) {
+            startAmbientSound();
+        } else {
+            stopAmbientSound();
+        }
+    }
+
+    public boolean hasAmbientSoundResource(int mode) {
+        if (mode == AMBIENT_SOUND_NONE) {
+            return true;
+        }
+        return resolveAmbientSoundResId(mode) != 0;
+    }
 
     public void setTimerMode(TimerMode mode) {
         if (timerState != TimerState.IDLE) return;
@@ -192,6 +217,7 @@ public class TimerService extends Service {
                 runStopwatch();
             }
             startForegroundServiceNotification(); // Start foreground
+            startAmbientSound();
         }
     }
 
@@ -200,6 +226,7 @@ public class TimerService extends Service {
             cancelCountdown();
             timerState = TimerState.PAUSED;
             updateNotification(); // Update to show "Paused"
+            stopAmbientSound();
         }
     }
 
@@ -212,6 +239,7 @@ public class TimerService extends Service {
                 runStopwatch();
             }
             updateNotification(); // Update to show "Running"
+            startAmbientSound();
         }
     }
 
@@ -219,6 +247,7 @@ public class TimerService extends Service {
         cancelCountdown();
         timerState      = TimerState.IDLE;
         millisRemaining = totalMillis; // Reset về ban đầu của chế độ hiện tại
+        stopAmbientSound();
 
         broadcastTick(millisRemaining); // Update UI
         stopForeground(true); // Xóa notification
@@ -271,6 +300,7 @@ public class TimerService extends Service {
         sessionCount++;
 
         millisRemaining = totalMillis;
+        stopAmbientSound();
         playAlarmSound();
         broadcastFinish();
         stopForeground(true); // Stop foreground
@@ -387,6 +417,74 @@ public class TimerService extends Service {
             }, 3000);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void startAmbientSound() {
+        stopAmbientSound();
+        if (ambientSoundMode == AMBIENT_SOUND_NONE) {
+            return;
+        }
+
+        int resId = resolveAmbientSoundResId(ambientSoundMode);
+        if (resId == 0) {
+            return;
+        }
+
+        try {
+            ambientMediaPlayer = MediaPlayer.create(this, resId);
+            if (ambientMediaPlayer == null) {
+                return;
+            }
+            ambientMediaPlayer.setLooping(true);
+            ambientMediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build());
+            ambientMediaPlayer.start();
+        } catch (Exception ignored) {
+            releaseAmbientSoundPlayer();
+        }
+    }
+
+    private void stopAmbientSound() {
+        if (ambientMediaPlayer != null) {
+            try {
+                if (ambientMediaPlayer.isPlaying()) {
+                    ambientMediaPlayer.stop();
+                }
+            } catch (Exception ignored) {
+            }
+            releaseAmbientSoundPlayer();
+        }
+    }
+
+    private int resolveAmbientSoundResId(int mode) {
+        String rawName;
+        switch (mode) {
+            case AMBIENT_SOUND_RAIN:
+                rawName = "ambient_rain";
+                break;
+            case AMBIENT_SOUND_CAFE:
+                rawName = "ambient_cafe";
+                break;
+            case AMBIENT_SOUND_LOFI:
+                rawName = "ambient_lofi";
+                break;
+            case AMBIENT_SOUND_NONE:
+            default:
+                return 0;
+        }
+        return getResources().getIdentifier(rawName, "raw", getPackageName());
+    }
+
+    private void releaseAmbientSoundPlayer() {
+        if (ambientMediaPlayer != null) {
+            try {
+                ambientMediaPlayer.release();
+            } catch (Exception ignored) {
+            }
+            ambientMediaPlayer = null;
         }
     }
 

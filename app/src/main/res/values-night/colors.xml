@@ -54,5 +54,7 @@
     <color name="white">#FFFFFFFF</color>
     <color name="nav_rail_bg">#FF1D1D1D</color>
     <color name="panel_selected">#1A8875FF</color>
+    <color name="habit_heatmap_active">#66BB6A</color>
+    <color name="habit_heatmap_inactive">#FF3A3A3A</color>
 </resources>
 

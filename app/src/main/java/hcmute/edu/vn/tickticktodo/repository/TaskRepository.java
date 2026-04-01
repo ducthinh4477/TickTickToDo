@@ -1,9 +1,13 @@
 package hcmute.edu.vn.tickticktodo.repository;
 
 import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 
 import androidx.lifecycle.LiveData;
 
+import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,6 +16,7 @@ import hcmute.edu.vn.tickticktodo.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.helper.ReminderScheduler;
+import hcmute.edu.vn.tickticktodo.helper.UserStatsManager;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
 
@@ -30,6 +35,7 @@ public class TaskRepository {
     private final ExecutorService executor;
     private final Application application; // giữ để pass Context cho ReminderScheduler
     private final ActivityLogRepository logRepository;
+    private final UserStatsManager userStatsManager;
 
     public LiveData<List<Task>> getAllCompletedTasksLog() {
         return taskDao.getAllCompletedTasksLog();
@@ -47,6 +53,7 @@ public class TaskRepository {
         executor = Executors.newSingleThreadExecutor();
         this.application = application;
         this.logRepository = new ActivityLogRepository(application);
+        this.userStatsManager = UserStatsManager.getInstance(application);
     }
 
     // ─── READ ────────────────────────────────────────────────────────────────────
@@ -96,6 +103,10 @@ public class TaskRepository {
     // ─── WRITE (background thread) ──────────────────────────────────────────────
 
     public void insert(Task task) {
+        insert(task, null);
+    }
+
+    public void insert(Task task, Runnable onComplete) {
         executor.execute(() -> {
             long newId = taskDao.insert(task);
             // Set alarm: gán id vừa insert rồi schedule
@@ -107,6 +118,60 @@ public class TaskRepository {
 
             // Notification if due today
             checkAndNotifyIfToday(task);
+
+            postToMain(onComplete);
+        });
+    }
+
+    public void insertBatch(List<Task> tasks, Runnable onComplete) {
+        if (tasks == null || tasks.isEmpty()) {
+            postToMain(onComplete);
+            return;
+        }
+
+        executor.execute(() -> {
+            List<Long> ids = taskDao.insertAll(tasks);
+            for (int i = 0; i < tasks.size(); i++) {
+                Task task = tasks.get(i);
+                if (ids != null && i < ids.size()) {
+                    task.setId(ids.get(i));
+                }
+                if (!task.isCompleted()) {
+                    ReminderScheduler.scheduleReminder(application, task);
+                }
+            }
+
+            logRepository.insertLog("TẠO HÀNG LOẠT", "Số lượng: " + tasks.size());
+            postToMain(onComplete);
+        });
+    }
+
+    public void rescheduleTasksToTomorrow(List<Long> taskIds, Runnable onComplete) {
+        if (taskIds == null || taskIds.isEmpty()) {
+            postToMain(onComplete);
+            return;
+        }
+
+        executor.execute(() -> {
+            Calendar nextDay = Calendar.getInstance();
+            nextDay.add(Calendar.DAY_OF_MONTH, 1);
+            nextDay.set(Calendar.HOUR_OF_DAY, 9);
+            nextDay.set(Calendar.MINUTE, 0);
+            nextDay.set(Calendar.SECOND, 0);
+            nextDay.set(Calendar.MILLISECOND, 0);
+            long newDueDate = nextDay.getTimeInMillis();
+
+            taskDao.updateDueDateForTaskIds(taskIds, newDueDate);
+
+            for (Long taskId : taskIds) {
+                Task task = taskDao.getTaskByIdSync(taskId);
+                if (task != null && !task.isCompleted()) {
+                    ReminderScheduler.scheduleReminder(application, task);
+                }
+            }
+
+            logRepository.insertLog("DỜI CÔNG VIỆC", "Số lượng: " + taskIds.size());
+            postToMain(onComplete);
         });
     }
 
@@ -135,7 +200,12 @@ public class TaskRepository {
 
     public void update(Task task) {
         executor.execute(() -> {
+            Task previousTask = taskDao.getTaskByIdSync(task.getId());
+            boolean wasCompleted = previousTask != null && previousTask.isCompleted();
+
             taskDao.update(task);
+
+            handleCompletionTransition(wasCompleted, task.isCompleted());
             
             // Nhật ký
             logRepository.insertLog("CẬP NHẬT", task.getTitle());
@@ -162,7 +232,12 @@ public class TaskRepository {
 
     public void markTaskAsCompletedWithDate(long taskId, boolean isCompleted, Long completedDate) {
         executor.execute(() -> {
+            Task previousTask = taskDao.getTaskByIdSync(taskId);
+            boolean wasCompleted = previousTask != null && previousTask.isCompleted();
+
             taskDao.markTaskAsCompletedWithDate(taskId, isCompleted, completedDate);
+
+            handleCompletionTransition(wasCompleted, isCompleted);
             
             // Nhật ký
             logRepository.insertLog(isCompleted ? "HOÀN THÀNH" : "CHƯA HOÀN THÀNH", "Task ID: " + taskId);
@@ -253,5 +328,28 @@ public class TaskRepository {
 
     public void deleteList(TodoList todoList) {
         executor.execute(() -> todoListDao.delete(todoList));
+    }
+
+    private void handleCompletionTransition(boolean wasCompleted, boolean isCompleted) {
+        if (!wasCompleted && isCompleted) {
+            UserStatsManager.XpResult result = userStatsManager.addXp(10, true);
+            if (result.levelUp) {
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(
+                                application,
+                                application.getString(hcmute.edu.vn.tickticktodo.R.string.level_up_toast, result.stats.level),
+                                Toast.LENGTH_SHORT
+                        ).show()
+                );
+            }
+        } else if (wasCompleted && !isCompleted) {
+            userStatsManager.addXp(-10, false);
+        }
+    }
+
+    private void postToMain(Runnable callback) {
+        if (callback != null) {
+            new Handler(Looper.getMainLooper()).post(callback);
+        }
     }
 }

@@ -38,6 +38,17 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
+        <ImageButton
+            android:id="@+id/btn_ambient_sound"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/countdown_sound_desc"
+            android:src="@drawable/ic_timer"
+            android:tint="#FFFFFFFF" />
+
     </RelativeLayout>
 
     <com.google.android.material.button.MaterialButtonToggleGroup

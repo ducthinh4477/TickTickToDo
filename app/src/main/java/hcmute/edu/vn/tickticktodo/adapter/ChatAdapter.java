@@ -1,5 +1,6 @@
 package hcmute.edu.vn.tickticktodo.adapter;
 
+import android.graphics.Color;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -37,13 +38,16 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         holder.tvMessage.setText(message.getText());
 
         LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) holder.tvMessage.getLayoutParams();
+        params.setMargins(0, 4, 0, 4);
         if (message.isUser()) {
             holder.messageContainer.setGravity(Gravity.END);
-            holder.tvMessage.setBackgroundResource(android.R.drawable.btn_default); // Or a custom drawable
+            holder.tvMessage.setBackgroundResource(R.drawable.bg_chat_bubble_user);
+            holder.tvMessage.setTextColor(Color.WHITE);
             params.gravity = Gravity.END;
         } else {
             holder.messageContainer.setGravity(Gravity.START);
-            holder.tvMessage.setBackgroundColor(0xFFE0E0E0);
+            holder.tvMessage.setBackgroundResource(R.drawable.bg_chat_bubble_ai);
+            holder.tvMessage.setTextColor(Color.parseColor("#E6EBF5"));
             params.gravity = Gravity.START;
         }
         holder.tvMessage.setLayoutParams(params);

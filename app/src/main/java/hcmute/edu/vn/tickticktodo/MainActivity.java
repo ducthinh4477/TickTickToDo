@@ -3,6 +3,9 @@ package hcmute.edu.vn.tickticktodo;
 import android.content.Intent;
 import hcmute.edu.vn.tickticktodo.ui.EisenhowerActivity;
 import android.os.Bundle;
+import android.os.Build;
+import android.provider.Settings;
+import android.content.SharedPreferences;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -18,6 +21,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.graphics.Insets;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -50,15 +54,20 @@ import hcmute.edu.vn.tickticktodo.ui.AddListDialog;
 import hcmute.edu.vn.tickticktodo.ui.AddTaskBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.CalendarActivity;
 import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
+import hcmute.edu.vn.tickticktodo.ui.HabitTrackerActivity;
 import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.StatisticsActivity;
 import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.TaskDetailBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.ViewOptionsBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.SchoolLoginActivity;
+import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
 public class MainActivity extends BaseActivity {
+
+    private static final String PREFS_NAME = "TickTickPrefs";
+    private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
 
     private TaskViewModel taskViewModel;
 
@@ -86,9 +95,9 @@ public class MainActivity extends BaseActivity {
     private FloatingActionButton fabAddTask;
 
     // UI — Nav Rail items
-    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemSettings, navItemAiAssistant;
-    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings, navIconAiAssistant;
-    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings, navLabelAiAssistant;
+    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemHabits, navItemSettings, navItemAiAssistant;
+    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant;
+    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant;
 
     // Adapters
     private TaskAdapter overdueAdapter;
@@ -158,34 +167,39 @@ public class MainActivity extends BaseActivity {
         navItemCalendar = findViewById(R.id.nav_item_calendar);
         navItemFocus    = findViewById(R.id.nav_item_focus);
         navItemSchool   = findViewById(R.id.nav_item_school);
+        navItemHabits   = findViewById(R.id.nav_item_habits);
         navItemSettings  = findViewById(R.id.nav_item_settings);
         navIconHome     = findViewById(R.id.nav_icon_home);
         navIconCalendar = findViewById(R.id.nav_icon_calendar);
         navIconFocus    = findViewById(R.id.nav_icon_focus);
         navIconSchool   = findViewById(R.id.nav_icon_school);
+        navIconHabits   = findViewById(R.id.nav_icon_habits);
         navIconSettings  = findViewById(R.id.nav_icon_settings);
         navIconAiAssistant = findViewById(R.id.nav_icon_ai_assistant);
         navLabelHome    = findViewById(R.id.nav_label_home);
         navLabelCalendar= findViewById(R.id.nav_label_calendar);
         navLabelFocus   = findViewById(R.id.nav_label_focus);
         navLabelSchool  = findViewById(R.id.nav_label_school);
+        navLabelHabits  = findViewById(R.id.nav_label_habits);
         if (findViewById(R.id.nav_label_settings) != null) navLabelSettings = findViewById(R.id.nav_label_settings);
         navLabelAiAssistant = findViewById(R.id.nav_label_ai_assistant);
         navItemAiAssistant = findViewById(R.id.nav_item_ai_assistant);
 
         // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
         FrameLayout contentFrame = findViewById(R.id.content_frame);
-        contentFrame.getViewTreeObserver().addOnGlobalLayoutListener(
-                new ViewTreeObserver.OnGlobalLayoutListener() {
-                    @Override
-                    public void onGlobalLayout() {
-                        contentFrame.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                        int drawerWidth = contentFrame.getWidth() * 2 / 3;
-                        ViewGroup.LayoutParams lp = menuBoxContainer.getLayoutParams();
-                        lp.width = drawerWidth;
-                        menuBoxContainer.setLayoutParams(lp);
-                    }
-                });
+        if (contentFrame != null && menuBoxContainer != null) {
+            contentFrame.getViewTreeObserver().addOnGlobalLayoutListener(
+                    new ViewTreeObserver.OnGlobalLayoutListener() {
+                        @Override
+                        public void onGlobalLayout() {
+                            contentFrame.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                            int drawerWidth = contentFrame.getWidth() * 2 / 3;
+                            ViewGroup.LayoutParams lp = menuBoxContainer.getLayoutParams();
+                            lp.width = drawerWidth;
+                            menuBoxContainer.setLayoutParams(lp);
+                        }
+                    });
+        }
     }
 
     // ─── Header ─────────────────────────────────────────────────────────────
@@ -281,37 +295,44 @@ public class MainActivity extends BaseActivity {
         // Tapping backdrop closes menu
         menuBackdrop.setOnClickListener(v -> closeMenu());
 
-        findViewById(R.id.panel_item_today).setOnClickListener(v -> {
+        setClickListenerIfPresent(R.id.panel_item_today, v -> {
             closeMenu();
             currentMode = 0;
             tvHeaderTitle.setText(R.string.header_today);
             updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
         });
-        findViewById(R.id.panel_item_next7days).setOnClickListener(v -> {
+        setClickListenerIfPresent(R.id.panel_item_next7days, v -> {
             closeMenu();
             currentMode = 1;
             tvHeaderTitle.setText("7 Ngày tới");
             updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
-        findViewById(R.id.panel_item_inbox).setOnClickListener(v -> showDeveloperMessageDialog());
-        findViewById(R.id.nav_item_eisenhower).setOnClickListener(v -> {
+        setClickListenerIfPresent(R.id.panel_item_inbox, v -> showDeveloperMessageDialog());
+        setClickListenerIfPresent(R.id.nav_item_eisenhower, v -> {
             closeMenu();
             startActivity(new Intent(MainActivity.this, EisenhowerActivity.class));
         });
-        findViewById(R.id.nav_item_countdown).setOnClickListener(v -> {
+        setClickListenerIfPresent(R.id.nav_item_countdown, v -> {
             closeMenu();
             startActivity(new Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.EventCountdownActivity.class));
         });
-        findViewById(R.id.panel_item_completed).setOnClickListener(v -> showHistoryDialog("Nhật ký: Đã hoàn thành", taskViewModel.getAllCompletedTasksLog()));
-        findViewById(R.id.panel_item_trash).setOnClickListener(v -> showHistoryDialog("Nhật ký: Quá hạn", taskViewModel.getAllOverdueTasksLog()));
-        findViewById(R.id.panel_item_notifications).setOnClickListener(v -> {
+        setClickListenerIfPresent(R.id.panel_item_completed, v -> showHistoryDialog("Nhật ký: Đã hoàn thành", taskViewModel.getAllCompletedTasksLog()));
+        setClickListenerIfPresent(R.id.panel_item_trash, v -> showHistoryDialog("Nhật ký: Quá hạn", taskViewModel.getAllOverdueTasksLog()));
+        setClickListenerIfPresent(R.id.panel_item_notifications, v -> {
             closeMenu();
             Toast.makeText(this, R.string.toast_notifications_wip, Toast.LENGTH_SHORT).show();
         });
-        findViewById(R.id.panel_item_help).setOnClickListener(v -> {
+        setClickListenerIfPresent(R.id.panel_item_help, v -> {
             closeMenu();
             Toast.makeText(this, R.string.toast_help_wip, Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void setClickListenerIfPresent(int viewId, View.OnClickListener listener) {
+        View view = findViewById(viewId);
+        if (view != null) {
+            view.setOnClickListener(listener);
+        }
     }
 
     private void onPanelItemSelected(String label) {
@@ -419,6 +440,7 @@ public class MainActivity extends BaseActivity {
      */
     private void setupNavRailInsets() {
         LinearLayout navRail = findViewById(R.id.nav_rail);
+        if (navRail == null) return;
         ViewCompat.setOnApplyWindowInsetsListener(navRail, (view, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             int extraDp = (int) (16 * view.getResources().getDisplayMetrics().density);
@@ -433,28 +455,45 @@ public class MainActivity extends BaseActivity {
     }
 
     private void setupNavRail() {
-        navItemHome.setOnClickListener(v -> selectNavItem(R.id.nav_item_home));
+        if (navItemHome != null) {
+            navItemHome.setOnClickListener(v -> selectNavItem(R.id.nav_item_home));
+        }
 
-        navItemCalendar.setOnClickListener(v -> {
-            selectNavItem(R.id.nav_item_calendar);
-            startActivity(CalendarActivity.newIntent(this));
-        });
+        if (navItemCalendar != null) {
+            navItemCalendar.setOnClickListener(v -> {
+                selectNavItem(R.id.nav_item_calendar);
+                startActivity(CalendarActivity.newIntent(this));
+            });
+        }
 
-        navItemFocus.setOnClickListener(v -> {
-            selectNavItem(R.id.nav_item_focus);
-            startActivity(CountdownActivity.newIntent(this));
-        });
+        if (navItemFocus != null) {
+            navItemFocus.setOnClickListener(v -> {
+                selectNavItem(R.id.nav_item_focus);
+                startActivity(CountdownActivity.newIntent(this));
+            });
+        }
 
-        navItemSchool.setOnClickListener(v -> {
-            selectNavItem(R.id.nav_item_school);
-            Intent intent = new Intent(this, hcmute.edu.vn.tickticktodo.ui.MoodleActivity.class);
-            startActivity(intent);
-        });
+        if (navItemSchool != null) {
+            navItemSchool.setOnClickListener(v -> {
+                selectNavItem(R.id.nav_item_school);
+                Intent intent = new Intent(this, hcmute.edu.vn.tickticktodo.ui.MoodleActivity.class);
+                startActivity(intent);
+            });
+        }
 
-        navItemSettings.setOnClickListener(v -> {
-            selectNavItem(R.id.nav_item_settings);
-            showSettingsDialog();
-        });
+        if (navItemHabits != null) {
+            navItemHabits.setOnClickListener(v -> {
+                selectNavItem(R.id.nav_item_habits);
+                startActivity(HabitTrackerActivity.newIntent(this));
+            });
+        }
+
+        if (navItemSettings != null) {
+            navItemSettings.setOnClickListener(v -> {
+                selectNavItem(R.id.nav_item_settings);
+                showSettingsDialog();
+            });
+        }
 
         if (navItemAiAssistant != null) {
             navItemAiAssistant.setOnClickListener(v -> {
@@ -516,9 +555,9 @@ public class MainActivity extends BaseActivity {
     }
 
     private void selectNavItem(int selectedId) {
-        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_settings, R.id.nav_item_ai_assistant};
-        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconSettings, navIconAiAssistant};
-        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelSettings, navLabelAiAssistant};
+        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_habits, R.id.nav_item_settings, R.id.nav_item_ai_assistant};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant};
 
         int accent    = super.getResources().getColor(hcmute.edu.vn.tickticktodo.R.color.accent_primary, getTheme());
         int secondary = super.getResources().getColor(hcmute.edu.vn.tickticktodo.R.color.text_secondary, getTheme());
@@ -535,7 +574,42 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        syncFloatingAssistantState();
         selectNavItem(R.id.nav_item_home);
+    }
+
+    private void syncFloatingAssistantState() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean enabled = prefs.getBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false);
+        boolean hasOverlayPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
+
+        Intent serviceIntent = new Intent(this, FloatingAssistantService.class);
+        if (enabled && hasOverlayPermission) {
+            startFloatingServiceSafely(prefs, FloatingAssistantService.ACTION_HIDE_BUBBLE);
+        } else {
+            stopService(serviceIntent);
+            if (enabled && !hasOverlayPermission) {
+                prefs.edit().putBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false).apply();
+            }
+        }
+    }
+
+    private void startFloatingServiceSafely(SharedPreferences prefs, String action) {
+        Intent serviceIntent = new Intent(this, FloatingAssistantService.class);
+        serviceIntent.setAction(action);
+        try {
+            ContextCompat.startForegroundService(this, serviceIntent);
+        } catch (Exception firstException) {
+            try {
+                // Fallback cho một số thiết bị ROM tùy biến không cho startForegroundService ở thời điểm này.
+                startService(serviceIntent);
+            } catch (Exception secondException) {
+                // Không để crash app nếu service khởi động lỗi trên một số thiết bị/API.
+                stopService(serviceIntent);
+                prefs.edit().putBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false).apply();
+                Toast.makeText(this, "Không thể khởi động Trợ lý nổi trên thiết bị này.", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     // ─── Adapters ───────────────────────────────────────────────────────────

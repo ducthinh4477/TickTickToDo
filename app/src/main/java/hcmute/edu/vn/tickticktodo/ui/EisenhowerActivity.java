@@ -79,7 +79,7 @@ public class EisenhowerActivity extends BaseActivity {
         llTasksSlow = findViewById(R.id.ll_tasks_slow);
 
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
-        taskViewModel.getTodayIncompleteTasks().observe(this, this::updateMatrixes);
+        taskViewModel.getTodayAllTasks().observe(this, this::updateMatrixes);
         fab.setOnClickListener(v -> showAddTaskDialog(-1));
 
     }

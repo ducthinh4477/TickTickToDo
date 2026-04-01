@@ -2,6 +2,7 @@ package hcmute.edu.vn.tickticktodo.ui;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.graphics.Bitmap;
 
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -12,7 +13,9 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 import java.io.File;
+import java.io.IOException;
 import android.database.Cursor;
 import android.provider.OpenableColumns;
 
@@ -29,6 +32,7 @@ import android.widget.ImageButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -36,12 +40,22 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
+import com.google.android.material.snackbar.Snackbar;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
+import hcmute.edu.vn.tickticktodo.helper.ImageProcessingHelper;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
@@ -69,6 +83,8 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private View btnAddImage;
     private View btnAddAudio;
     private View btnAddFile;
+    private View btnScanFromCamera;
+    private View layoutScanProgress;
 
     private LinearLayout llAttachments, llVoicePlayer;
     private ImageView ivAttachmentImage, ivPlayPause;
@@ -87,6 +103,10 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private ActivityResultLauncher<String> imagePickerLauncher;
     private ActivityResultLauncher<String> audioPickerLauncher;
     private ActivityResultLauncher<String> filePickerLauncher;
+    private ActivityResultLauncher<Uri> cameraCaptureLauncher;
+
+    private Uri pendingCaptureUri;
+    private final ExecutorService scanExecutor = Executors.newSingleThreadExecutor();
 
 
     // State
@@ -128,6 +148,8 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             mediaPlayer.release();
             mediaPlayer = null;
         }
+        handler.removeCallbacksAndMessages(null);
+        scanExecutor.shutdownNow();
     }
 
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -172,6 +194,8 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         btnAddImage = view.findViewById(R.id.btn_add_image);
         btnAddAudio = view.findViewById(R.id.btn_add_audio);
         btnAddFile = view.findViewById(R.id.btn_add_file);
+        btnScanFromCamera = view.findViewById(R.id.btn_scan_camera);
+        layoutScanProgress = view.findViewById(R.id.layout_scan_progress);
 
         llAttachments = view.findViewById(R.id.ll_attachments);
         llVoicePlayer = view.findViewById(R.id.ll_voice_player);
@@ -180,6 +204,10 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         tvAttachmentFile = view.findViewById(R.id.tv_attachment_file);
         tvVoiceDuration = view.findViewById(R.id.tv_voice_duration);
         sbVoiceProgress = view.findViewById(R.id.sb_voice_progress);
+
+        if (layoutScanProgress != null) {
+            layoutScanProgress.setVisibility(View.GONE);
+        }
 
     }
 
@@ -332,6 +360,185 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
                 tvAttachmentFile.setText(fileName);
             }
         });
+
+        cameraCaptureLauncher = registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
+            if (success && pendingCaptureUri != null) {
+                handleCameraCapturedImage(pendingCaptureUri);
+            } else {
+                toggleScanProgress(false);
+            }
+        });
+    }
+
+    private void launchCameraCapture() {
+        try {
+            File cacheDir = new File(requireContext().getCacheDir(), "scan_images");
+            if (!cacheDir.exists() && !cacheDir.mkdirs()) {
+                Toast.makeText(requireContext(), R.string.scan_prepare_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            File captureFile = File.createTempFile(
+                    "scan_" + System.currentTimeMillis(),
+                    ".jpg",
+                    cacheDir
+            );
+
+            pendingCaptureUri = FileProvider.getUriForFile(
+                    requireContext(),
+                    requireContext().getPackageName() + ".fileprovider",
+                    captureFile
+            );
+
+            toggleScanProgress(true);
+            cameraCaptureLauncher.launch(pendingCaptureUri);
+        } catch (IOException e) {
+            toggleScanProgress(false);
+            Toast.makeText(requireContext(), R.string.scan_prepare_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void handleCameraCapturedImage(Uri imageUri) {
+        toggleScanProgress(true);
+        scanExecutor.execute(() -> {
+            try {
+                Bitmap bitmap = ImageProcessingHelper.decodeSampledBitmapFromUri(
+                        requireContext(),
+                        imageUri,
+                        1600,
+                        1600
+                );
+
+                if (bitmap == null) {
+                    postScanError(getString(R.string.scan_image_decode_failed));
+                    return;
+                }
+
+                String prompt = "Day la hinh anh chua danh sach cong viec/bai tap. "
+                        + "Hay nhan dien van ban va trich xuat tung dau viec. "
+                        + "Tra ve JSON array chi gom tieu de cong viec. "
+                        + "Chi tra ve JSON.";
+
+                GeminiManager.getInstance().generateVisionResponse(bitmap, prompt, new GeminiManager.ResponseCallback() {
+                    @Override
+                    public void onSuccess(String responseText) {
+                        List<String> titles = parseTaskTitlesFromAi(responseText);
+                        if (titles.isEmpty()) {
+                            postScanError(getString(R.string.scan_no_tasks_found));
+                            return;
+                        }
+
+                        List<Task> tasks = new ArrayList<>();
+                        long dueDate = getScanDefaultDueDate();
+                        for (String title : titles) {
+                            if (title == null) {
+                                continue;
+                            }
+                            String cleanTitle = title.trim();
+                            if (cleanTitle.isEmpty()) {
+                                continue;
+                            }
+                            tasks.add(new Task(cleanTitle, "", dueDate, false, 0));
+                        }
+
+                        if (tasks.isEmpty()) {
+                            postScanError(getString(R.string.scan_no_tasks_found));
+                            return;
+                        }
+
+                        taskViewModel.insertBatch(tasks, () -> {
+                            if (!isAdded() || getView() == null) {
+                                return;
+                            }
+                            toggleScanProgress(false);
+                            Snackbar.make(getView(),
+                                            getString(R.string.scan_tasks_added_count, tasks.size()),
+                                            Snackbar.LENGTH_LONG)
+                                    .show();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        postScanError(errorMessage);
+                    }
+                });
+            } catch (Exception e) {
+                postScanError(getString(R.string.scan_processing_failed));
+            }
+        });
+    }
+
+    private void postScanError(String message) {
+        if (!isAdded()) {
+            return;
+        }
+        requireActivity().runOnUiThread(() -> {
+            toggleScanProgress(false);
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private long getScanDefaultDueDate() {
+        Calendar dueCal = (Calendar) selectedDate.clone();
+        dueCal.set(Calendar.HOUR_OF_DAY, 0);
+        dueCal.set(Calendar.MINUTE, 0);
+        dueCal.set(Calendar.SECOND, 0);
+        dueCal.set(Calendar.MILLISECOND, 0);
+        return dueCal.getTimeInMillis();
+    }
+
+    private List<String> parseTaskTitlesFromAi(String rawResponse) {
+        List<String> titles = new ArrayList<>();
+        try {
+            String jsonArrayText = extractJsonArray(rawResponse);
+            JSONArray jsonArray = new JSONArray(jsonArrayText);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                Object item = jsonArray.opt(i);
+                if (item instanceof String) {
+                    titles.add((String) item);
+                } else if (item instanceof JSONObject) {
+                    String title = ((JSONObject) item).optString("title", "");
+                    if (!title.trim().isEmpty()) {
+                        titles.add(title.trim());
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return titles;
+    }
+
+    private String extractJsonArray(String raw) {
+        if (raw == null) {
+            return "[]";
+        }
+
+        String text = raw.trim();
+        if (text.startsWith("```") && text.endsWith("```")) {
+            int firstLineBreak = text.indexOf('\n');
+            int lastFence = text.lastIndexOf("```");
+            if (firstLineBreak != -1 && lastFence > firstLineBreak) {
+                text = text.substring(firstLineBreak + 1, lastFence).trim();
+            }
+        }
+
+        int left = text.indexOf('[');
+        int right = text.lastIndexOf(']');
+        if (left >= 0 && right > left) {
+            return text.substring(left, right + 1);
+        }
+        return text;
+    }
+
+    private void toggleScanProgress(boolean loading) {
+        if (layoutScanProgress == null) {
+            return;
+        }
+        layoutScanProgress.setVisibility(loading ? View.VISIBLE : View.GONE);
+        if (btnSave != null) {
+            btnSave.setEnabled(!loading && !etTitle.getText().toString().trim().isEmpty());
+        }
     }
 
     private void setupAudioPlayer(Uri uri) {
@@ -431,6 +638,10 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         btnAddAudio.setOnClickListener(v -> audioPickerLauncher.launch("audio/*"));
 
         btnAddFile.setOnClickListener(v -> filePickerLauncher.launch("*/*"));
+
+        if (btnScanFromCamera != null) {
+            btnScanFromCamera.setOnClickListener(v -> launchCameraCapture());
+        }
     }
 
     // ─── Save ────────────────────────────────────────────────────────────────────

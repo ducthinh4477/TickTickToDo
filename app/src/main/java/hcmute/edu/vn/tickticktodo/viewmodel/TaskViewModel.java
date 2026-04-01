@@ -182,8 +182,16 @@ public class TaskViewModel extends AndroidViewModel {
         repository.insert(task);
     }
 
+    public void insertBatch(List<Task> tasks, Runnable onComplete) {
+        repository.insertBatch(tasks, onComplete);
+    }
+
     public void update(Task task) {
         repository.update(task);
+    }
+
+    public void moveUnfinishedTasksToTomorrow(List<Long> taskIds, Runnable onComplete) {
+        repository.rescheduleTasksToTomorrow(taskIds, onComplete);
     }
 
     public void delete(Task task) {
