@@ -9,6 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
@@ -23,6 +24,19 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     public void addMessage(ChatMessage message) {
         messages.add(message);
         notifyItemInserted(messages.size() - 1);
+    }
+
+    public void setMessages(List<ChatMessage> newMessages) {
+        messages.clear();
+        if (newMessages != null) {
+            messages.addAll(newMessages);
+        }
+        notifyDataSetChanged();
+    }
+
+    public void clearMessages() {
+        messages.clear();
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -47,7 +61,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         } else {
             holder.messageContainer.setGravity(Gravity.START);
             holder.tvMessage.setBackgroundResource(R.drawable.bg_chat_bubble_ai);
-            holder.tvMessage.setTextColor(Color.parseColor("#E6EBF5"));
+            holder.tvMessage.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_primary));
             params.gravity = Gravity.START;
         }
         holder.tvMessage.setLayoutParams(params);

@@ -32,9 +32,11 @@ public class AgentOrchestrator {
     }
 
     private static final String ORCHESTRATOR_SYSTEM_PROMPT =
-            "Bạn là Agent của TickTickToDo. Trả về JSON thuần. " +
-            "Nếu cần chạy công cụ, trả schema: {\"action\":\"<TOOL_NAME>\",\"payload\":{...},\"reply\":\"...\"}. " +
-            "Nếu chỉ trò chuyện, dùng action=CHAT.";
+            "Bạn là Agent của TickTickToDo. Trả về JSON thuần, không markdown, không text ngoài JSON. " +
+            "Nếu cần chạy công cụ, action phải là đúng tên tool có trong [TOOLS]. " +
+            "Schema bắt buộc: {\"action\":\"<TOOL_NAME hoặc CHAT>\",\"payload\":{...},\"reply\":\"...\"}. " +
+            "reply luôn viết tiếng Việt tự nhiên, đầy đủ ngữ cảnh app, ưu tiên 2-4 câu thay vì quá ngắn. " +
+            "Nếu là thao tác tạo/cập nhật task, reply cần nêu rõ kết quả (tên task, hạn, độ ưu tiên nếu có).";
 
     private final Application application;
     private final GeminiManager geminiManager;
@@ -77,27 +79,34 @@ public class AgentOrchestrator {
             postError(callback, "Tin nhắn không hợp lệ.");
             return;
         }
-
-        String contextBlock = contextAssembler.buildTieredContextBlock(userMessage);
-        String toolSchemas = toolRegistry.getToolSchemas().toString();
-        String prompt = buildPrompt(userMessage, contextBlock, toolSchemas);
-
         postDebugTrace(callback, "USER_MESSAGE", userMessage);
-        postDebugTrace(callback, "CONTEXT", contextBlock);
-        postDebugTrace(callback, "TOOL_SCHEMAS", toolSchemas);
-        postDebugTrace(callback, "PROMPT", prompt);
 
-        geminiManager.generateResponse(prompt, new GeminiManager.ResponseCallback() {
-            @Override
-            public void onSuccess(String responseText) {
-                postDebugTrace(callback, "MODEL_RAW", responseText);
-                workerExecutor.execute(() -> processModelResponse(responseText, callback));
-            }
+        workerExecutor.execute(() -> {
+            try {
+                String contextBlock = contextAssembler.buildTieredContextBlock(userMessage);
+                String toolSchemas = toolRegistry.getToolSchemas().toString();
+                String prompt = buildPrompt(userMessage, contextBlock, toolSchemas);
 
-            @Override
-            public void onError(String errorMessage) {
-                postDebugTrace(callback, "MODEL_ERROR", errorMessage);
-                postError(callback, errorMessage);
+                postDebugTrace(callback, "CONTEXT", contextBlock);
+                postDebugTrace(callback, "TOOL_SCHEMAS", toolSchemas);
+                postDebugTrace(callback, "PROMPT", prompt);
+
+                geminiManager.generateResponse(prompt, new GeminiManager.ResponseCallback() {
+                    @Override
+                    public void onSuccess(String responseText) {
+                        postDebugTrace(callback, "MODEL_RAW", responseText);
+                        workerExecutor.execute(() -> processModelResponse(responseText, callback));
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        postDebugTrace(callback, "MODEL_ERROR", errorMessage);
+                        postError(callback, errorMessage);
+                    }
+                });
+            } catch (Exception e) {
+                postDebugTrace(callback, "ORCHESTRATOR_PREP_ERROR", e.getMessage());
+                postError(callback, "Không thể chuẩn bị ngữ cảnh AI lúc này.");
             }
         });
     }
@@ -125,7 +134,12 @@ public class AgentOrchestrator {
         postToolResult(callback, result);
 
         if (!TextUtils.isEmpty(envelope.getReply())) {
-            postAssistantReply(callback, envelope.getReply());
+            String reply = envelope.getReply().trim();
+            if (result != null && result.isSuccess() && reply.length() < 24) {
+                postAssistantReply(callback, reply + "\n" + renderToolResultSummary(result));
+            } else {
+                postAssistantReply(callback, reply);
+            }
         } else {
             postAssistantReply(callback, renderToolResultSummary(result));
         }
@@ -188,11 +202,47 @@ public class AgentOrchestrator {
             return "Mình chưa có kết quả từ công cụ.";
         }
 
-        if (result.isSuccess()) {
-            return "Đã chạy công cụ " + result.getToolName() + " thành công.";
+        if (!result.isSuccess()) {
+            return "Công cụ " + result.getToolName() + " lỗi: " + result.getErrorMessage();
         }
 
-        return "Công cụ " + result.getToolName() + " lỗi: " + result.getErrorMessage();
+        JSONObject data = result.getData();
+        String toolName = result.getToolName();
+
+        if (AgentToolNames.CREATE_TASK_WITH_SUBTASKS.equals(toolName)) {
+            JSONObject parentTask = data == null ? null : data.optJSONObject("parentTask");
+            String title = parentTask == null ? "" : parentTask.optString("title", "").trim();
+            int subtaskCount = data == null ? 0 : data.optInt("createdSubtasksCount", 0);
+            if (!TextUtils.isEmpty(title)) {
+                if (subtaskCount > 0) {
+                    return "Đã tạo task \"" + title + "\" cùng " + subtaskCount + " subtask.";
+                }
+                return "Đã tạo task \"" + title + "\" thành công.";
+            }
+            return "Đã tạo task mới thành công.";
+        }
+
+        if (AgentToolNames.GET_TODAY_TASKS.equals(toolName)
+                || AgentToolNames.GET_OVERDUE_TASKS.equals(toolName)
+                || AgentToolNames.FIND_TASKS.equals(toolName)) {
+            int count = data == null ? 0 : data.optInt("count", 0);
+            JSONArray tasks = data == null ? null : data.optJSONArray("tasks");
+            if (tasks != null && tasks.length() > 0) {
+                JSONObject first = tasks.optJSONObject(0);
+                String firstTitle = first == null ? "" : first.optString("title", "").trim();
+                if (!TextUtils.isEmpty(firstTitle)) {
+                    return "Mình tìm thấy " + count + " task. Gợi ý đầu tiên: \"" + firstTitle + "\".";
+                }
+            }
+            return "Mình tìm thấy " + count + " task phù hợp.";
+        }
+
+        if (AgentToolNames.RESCHEDULE_BULK_TASKS.equals(toolName)) {
+            int count = data == null ? 0 : data.optInt("rescheduledCount", 0);
+            return "Đã dời lịch " + count + " task thành công.";
+        }
+
+        return "Đã chạy công cụ " + toolName + " thành công.";
     }
 
     private void postAssistantReply(Callback callback, String replyText) {

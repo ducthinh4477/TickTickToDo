@@ -277,4 +277,46 @@
     <string name="habit_legend_done">Da thuc hien</string>
     <string name="habit_legend_missed">Bo lo</string>
     <string name="nav_habits">Habits</string>
+
+    <!-- Assistant + Chat History -->
+    <string name="assistant_title">Tro ly TickTick</string>
+    <string name="assistant_back_desc">Quay lai</string>
+    <string name="assistant_menu_history_desc">Mo lich su tro chuyen</string>
+    <string name="assistant_settings_desc">Cai dat tro ly</string>
+    <string name="assistant_settings_dialog_title">Cai dat Tro ly AI</string>
+    <string name="assistant_floating_switch_label">Hien thi Tro ly noi tren man hinh</string>
+    <string name="assistant_floating_switch_hint">Tro ly noi giup ban dieu khien ung dung nhanh hon tu bat ky dau tren thiet bi.</string>
+    <string name="assistant_quick_title">Xin chao!</string>
+    <string name="assistant_quick_subtitle">Toi co the giup ban lap ke hoach, uu tien viec va tong ket ngay lam viec.</string>
+    <string name="assistant_quick_today_plan">Lap ke hoach hom nay</string>
+    <string name="assistant_quick_prioritize">Sap xep muc uu tien</string>
+    <string name="assistant_quick_habit">Goi y thoi quen nho</string>
+    <string name="assistant_quick_review">Tong ket cuoi ngay</string>
+
+    <string name="chat_history_title">Lich su tro chuyen</string>
+    <string name="chat_history_subtitle">Chon mot cuoc hoi thoai de tiep tuc lam viec.</string>
+    <string name="chat_history_new_session">Phien moi</string>
+    <string name="chat_history_empty_title">Chua co lich su tro chuyen</string>
+    <string name="chat_history_empty_subtitle">Hay bat dau mot cuoc hoi thoai moi voi tro ly TickTick.</string>
+    <string name="chat_history_untitled_session">Cuoc tro chuyen moi</string>
+    <string name="chat_history_empty_preview">Chua co tin nhan</string>
+    <string name="chat_history_clear_title">Xoa lich su tro chuyen</string>
+    <string name="chat_history_clear_message">Ban co chac muon xoa toan bo lich su tro chuyen khong?</string>
+    <string name="chat_history_clear_confirm">Xoa</string>
+
+    <string name="floating_chat_settings_desc">Mo cai dat popup tro ly</string>
+    <string name="floating_chat_overlay_title">Tuy chinh popup tro ly</string>
+    <string name="floating_chat_overlay_close_desc">Dong lop tuy chinh popup</string>
+    <string name="floating_chat_overlay_transparency">Do trong suot popup</string>
+    <string name="floating_chat_overlay_voice_title">Che do voice</string>
+    <string name="floating_chat_overlay_auto_turn_taking">Tu dong hoi dap luot tiep theo</string>
+    <string name="floating_chat_overlay_speak_replies">Doc thanh tieng cau tra loi cua tro ly</string>
+    <string name="floating_chat_overlay_fullscreen">Toan man hinh</string>
+    <string name="floating_chat_dismiss_label">X</string>
+    <string name="floating_chat_hidden_toast">Da an tro ly noi. Mo lai trong cai dat neu can.</string>
+
+    <!-- Habit tracker refreshed layout -->
+    <string name="habit_section_list_title">Thoi quen cua ban</string>
+    <string name="habit_section_heatmap_title">Bang theo doi 30 ngay</string>
+    <string name="habit_section_subtitle">Theo doi nhip do va giu chuoi thoi quen moi ngay.</string>
 </resources>

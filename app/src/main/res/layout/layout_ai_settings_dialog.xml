@@ -4,30 +4,31 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="@android:color/white">
+    android:background="?attr/colorSurface">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Cài đặt Trợ lý AI"
+        android:text="@string/assistant_settings_dialog_title"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:textColor="@android:color/black"
+        android:textColor="?attr/colorOnSurface"
         android:layout_marginBottom="16dp"/>
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/switchFloatingAi"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Hiển thị Trợ lý nổi trên màn hình"
+        android:text="@string/assistant_floating_switch_label"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="16sp"/>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Trợ lý nổi giúp bạn điều khiển ứng dụng nhanh chóng từ bất kỳ đâu trên thiết bị."
-        android:textColor="#757575"
+        android:text="@string/assistant_floating_switch_hint"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="14sp" />
         
 </LinearLayout>

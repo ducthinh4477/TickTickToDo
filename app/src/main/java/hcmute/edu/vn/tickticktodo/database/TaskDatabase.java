@@ -13,7 +13,10 @@ import hcmute.edu.vn.tickticktodo.dao.HabitDao;
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.dao.ActivityLogDao;
+import hcmute.edu.vn.tickticktodo.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.model.ActivityLog;
+import hcmute.edu.vn.tickticktodo.model.ChatHistoryMessage;
+import hcmute.edu.vn.tickticktodo.model.ChatSession;
 import hcmute.edu.vn.tickticktodo.model.Habit;
 import hcmute.edu.vn.tickticktodo.model.HabitLog;
 import hcmute.edu.vn.tickticktodo.model.Task;
@@ -37,8 +40,10 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
     ActivityLog.class,
     hcmute.edu.vn.tickticktodo.model.CountdownEvent.class,
     Habit.class,
-    HabitLog.class
-}, version = 10, exportSchema = false)
+    HabitLog.class,
+    ChatSession.class,
+    ChatHistoryMessage.class
+}, version = 11, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -49,6 +54,7 @@ public abstract class TaskDatabase extends RoomDatabase {
     public abstract ActivityLogDao activityLogDao();
     public abstract hcmute.edu.vn.tickticktodo.dao.CountdownEventDao countdownEventDao();
     public abstract HabitDao habitDao();
+    public abstract ChatHistoryDao chatHistoryDao();
 
 
     // ─── Migration v2 → v3 ───────────────────────────────────────────────────────
@@ -140,6 +146,35 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_10_11 = new Migration(10, 11) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `chat_sessions` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`title` TEXT, " +
+                            "`source` TEXT, " +
+                            "`last_message` TEXT, " +
+                            "`created_at` INTEGER NOT NULL, " +
+                            "`updated_at` INTEGER NOT NULL)"
+            );
+
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `chat_messages` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`session_id` INTEGER NOT NULL, " +
+                            "`role` TEXT, " +
+                            "`content` TEXT, " +
+                            "`source` TEXT, " +
+                            "`created_at` INTEGER NOT NULL, " +
+                            "FOREIGN KEY(`session_id`) REFERENCES `chat_sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            );
+
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_chat_messages_session_id` ON `chat_messages` (`session_id`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_chat_messages_created_at` ON `chat_messages` (`created_at`)");
+        }
+    };
+
     static final Migration MIGRATION_7_8 = new Migration(7, 8) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -166,7 +201,8 @@ public abstract class TaskDatabase extends RoomDatabase {
                             MIGRATION_6_7,
                             MIGRATION_7_8,
                             MIGRATION_8_9,
-                            MIGRATION_9_10
+                            MIGRATION_9_10,
+                            MIGRATION_10_11
                         ) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();

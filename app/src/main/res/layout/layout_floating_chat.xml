@@ -9,6 +9,7 @@
     android:padding="14dp">
 
     <RelativeLayout
+        android:id="@+id/floating_chat_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -16,7 +17,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="AI Assistant"
-            android:textColor="#0F213D"
+            android:textColor="@color/floating_chat_title"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -27,7 +28,7 @@
             android:layout_alignParentStart="true"
             android:layout_marginTop="2dp"
             android:text="Always-on floating copilot"
-            android:textColor="#6D7C91"
+            android:textColor="@color/floating_chat_subtitle"
             android:textSize="11sp" />
 
         <TextView
@@ -36,26 +37,38 @@
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:layout_marginEnd="10dp"
-            android:layout_toStartOf="@id/btn_close_chat"
+            android:layout_toStartOf="@id/btn_chat_settings"
             android:background="@drawable/bg_floating_header_chip"
             android:paddingLeft="10dp"
             android:paddingTop="5dp"
             android:paddingRight="10dp"
             android:paddingBottom="5dp"
             android:text="Hiện Trace"
-            android:textColor="#1A4D8C"
+            android:textColor="@color/floating_chat_chip_text"
             android:textSize="12sp"
             android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btn_chat_settings"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="6dp"
+            android:layout_toStartOf="@id/btn_close_chat"
+            android:background="@drawable/bg_floating_icon_button"
+            android:contentDescription="@string/floating_chat_settings_desc"
+            android:src="@drawable/ic_settings"
+            android:tint="@color/floating_chat_close_tint" />
 
         <ImageButton
             android:id="@+id/btn_close_chat"
             android:layout_width="34dp"
             android:layout_height="34dp"
             android:layout_alignParentEnd="true"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_floating_icon_button"
             android:contentDescription="Close"
             android:src="@drawable/ic_close"
-            android:tint="#5F6E82" />
+            android:tint="@color/floating_chat_close_tint" />
     </RelativeLayout>
 
     <View
@@ -85,7 +98,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Agent Tool Trace"
-                android:textColor="#8EE9FF"
+                android:textColor="@color/floating_chat_debug_title"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -99,7 +112,7 @@
                 android:paddingRight="8dp"
                 android:paddingBottom="3dp"
                 android:text="Clear"
-                android:textColor="#7AE8BE"
+                android:textColor="@color/floating_chat_debug_clear_text"
                 android:textSize="11sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -120,7 +133,7 @@
                 android:fontFamily="monospace"
                 android:lineSpacingExtra="1dp"
                 android:text="Chưa có trace."
-                android:textColor="#77FFC9"
+                android:textColor="@color/floating_chat_debug_text"
                 android:textIsSelectable="true"
                 android:textSize="11sp" />
         </ScrollView>
@@ -148,7 +161,7 @@
             android:id="@+id/tv_daily_review_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#1F3048"
+            android:textColor="@color/floating_chat_daily_text"
             android:textSize="14sp" />
 
         <Button
@@ -192,14 +205,13 @@
                 android:paddingRight="14dp"
                 android:paddingBottom="10dp"
                 android:singleLine="true"
-                android:textColor="#12213A"
-                android:textColorHint="#7C8BA1" />
+                android:textColor="@color/floating_chat_input_text"
+                android:textColorHint="@color/floating_chat_input_hint" />
 
             <FrameLayout
                 android:layout_width="42dp"
                 android:layout_height="42dp"
-                android:layout_marginStart="6dp"
-                android:foreground="?android:attr/selectableItemBackgroundBorderless">
+                android:layout_marginStart="6dp">
 
                 <View
                     android:id="@+id/voice_pulse_indicator"
@@ -216,7 +228,7 @@
                     android:contentDescription="Voice"
                     android:padding="10dp"
                     android:src="@drawable/ic_mic"
-                    android:tint="#3767D7" />
+                    android:tint="@color/floating_chat_action_tint" />
             </FrameLayout>
 
             <ImageButton
@@ -242,7 +254,7 @@
             android:paddingRight="10dp"
             android:paddingBottom="4dp"
             android:text="Đang lắng nghe..."
-            android:textColor="#1C5ED1"
+            android:textColor="@color/floating_chat_status_text"
             android:textSize="11sp"
             android:visibility="gone" />
     </LinearLayout>

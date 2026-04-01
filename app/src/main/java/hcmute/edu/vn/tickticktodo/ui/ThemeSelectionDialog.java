@@ -3,6 +3,8 @@ package hcmute.edu.vn.tickticktodo.ui;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -14,9 +16,11 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.helper.ThemeManager;
+import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
 
 /**
  * Dialog chọn chế độ giao diện Sáng / Tối / Theo hệ thống.
@@ -114,6 +118,7 @@ public class ThemeSelectionDialog extends Dialog {
                 ThemeManager.setThemeMode(host.getApplicationContext(), chosenMode);
                 // Áp dụng ngay lập tức qua AppCompatDelegate
                 ThemeManager.applyTheme(host.getApplicationContext());
+                requestFloatingAssistantThemeRefresh(host);
                 dismiss();
                 // recreate() để Activity load lại đúng bộ resource (colors, drawables)
                 host.recreate();
@@ -142,6 +147,25 @@ public class ThemeSelectionDialog extends Dialog {
     private int dp(int value) {
         float density = getContext().getResources().getDisplayMetrics().density;
         return Math.round(value * density);
+    }
+
+    private void requestFloatingAssistantThemeRefresh(Activity host) {
+        SharedPreferences prefs = host.getSharedPreferences("TickTickPrefs", Context.MODE_PRIVATE);
+        boolean floatingEnabled = prefs.getBoolean("floating_assistant_enabled", false);
+        if (!floatingEnabled) {
+            return;
+        }
+
+        Intent intent = new Intent(host, FloatingAssistantService.class);
+        intent.setAction(FloatingAssistantService.ACTION_REFRESH_THEME);
+        try {
+            ContextCompat.startForegroundService(host, intent);
+        } catch (Exception first) {
+            try {
+                host.startService(intent);
+            } catch (Exception ignored) {
+            }
+        }
     }
 }
 

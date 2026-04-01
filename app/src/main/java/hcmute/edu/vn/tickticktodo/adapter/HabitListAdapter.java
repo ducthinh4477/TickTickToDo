@@ -8,7 +8,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
@@ -91,9 +90,7 @@ public class HabitListAdapter extends RecyclerView.Adapter<HabitListAdapter.Habi
             }
             icon.setImageResource(iconRes);
 
-            int selectedBg = ContextCompat.getColor(itemView.getContext(), R.color.panel_selected);
-            int normalBg = ContextCompat.getColor(itemView.getContext(), android.R.color.transparent);
-            root.setBackgroundColor(selected ? selectedBg : normalBg);
+            root.setSelected(selected);
 
             itemView.setOnClickListener(v -> {
                 if (listener != null) {

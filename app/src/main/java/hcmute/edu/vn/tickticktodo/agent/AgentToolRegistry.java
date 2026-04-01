@@ -24,6 +24,9 @@ public class AgentToolRegistry {
         registry.register(new FindTasksTool());
         registry.register(new CreateTaskWithSubtasksTool());
         registry.register(new RescheduleBulkTasksTool());
+        // Keep backwards-compatible action names so model outputs like CREATE_TASK still execute tools.
+        registry.registerAlias(AgentAction.CREATE_TASK, AgentToolNames.CREATE_TASK_WITH_SUBTASKS);
+        registry.registerAlias(AgentAction.LIST_TODAY, AgentToolNames.GET_TODAY_TASKS);
         return registry;
     }
 
@@ -44,6 +47,14 @@ public class AgentToolRegistry {
 
     public Collection<AgentTool> allTools() {
         return tools.values();
+    }
+
+    public void registerAlias(String aliasName, String targetToolName) {
+        AgentTool target = tools.get(normalize(targetToolName));
+        if (target == null || aliasName == null || aliasName.trim().isEmpty()) {
+            return;
+        }
+        tools.put(normalize(aliasName), target);
     }
 
     public JSONArray getToolSchemas() {

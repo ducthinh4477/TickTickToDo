@@ -16,6 +16,14 @@
         android:layout_gravity="center"
         android:background="@drawable/bg_floating_bubble_ring" />
 
+    <View
+        android:id="@+id/voice_long_press_glow"
+        android:layout_width="66dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_voice_long_press_glow"
+        android:visibility="gone" />
+
     <ImageView
         android:id="@+id/iv_floating_bubble"
         android:layout_width="58dp"

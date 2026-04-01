@@ -50,8 +50,16 @@ public class HabitTrackerFragment extends Fragment {
 
         setupHabitList(view);
         setupHeatmap(view);
+        setupBackButton(view);
         setupAddHabitButton(view);
         observeData();
+    }
+
+    private void setupBackButton(View root) {
+        View btnBack = root.findViewById(R.id.btn_habit_back);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> requireActivity().finish());
+        }
     }
 
     private void setupHabitList(View root) {

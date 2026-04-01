@@ -1,32 +1,32 @@
 package hcmute.edu.vn.tickticktodo.ui;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import android.content.Intent;
-import android.net.Uri;
-import android.provider.Settings;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Build;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.switchmaterial.SwitchMaterial;
-import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -36,21 +36,30 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
+import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.adapter.ChatAdapter;
 import hcmute.edu.vn.tickticktodo.agent.AgentAction;
 import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
+import hcmute.edu.vn.tickticktodo.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.databinding.ActivityAiAssistantBinding;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
+import hcmute.edu.vn.tickticktodo.model.ChatHistoryMessage;
 import hcmute.edu.vn.tickticktodo.model.ChatMessage;
+import hcmute.edu.vn.tickticktodo.model.ChatSession;
 import hcmute.edu.vn.tickticktodo.model.Task;
+import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
 
 public class AiAssistantActivity extends BaseActivity {
 
+    public static final String EXTRA_SESSION_ID = "extra_chat_session_id";
+    public static final String EXTRA_CREATE_NEW_SESSION = "extra_chat_create_new_session";
+
     private static final String PREFS_NAME = "TickTickPrefs";
     private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
+    private static final String CHAT_SOURCE_MAIN = "ai_assistant";
     private static final int MAX_MEMORY_LINES = 10;
 
     private ActivityAiAssistantBinding binding;
@@ -58,11 +67,14 @@ public class AiAssistantActivity extends BaseActivity {
     private GeminiManager geminiManager;
     private ExecutorService dbExecutor;
     private Handler mainHandler;
-        private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
+    private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final AgentResponseParser responseParser = new AgentResponseParser();
 
     private SharedPreferences sharedPrefs;
     private ActivityResultLauncher<Intent> overlayPermissionLauncher;
+    private ActivityResultLauncher<Intent> historyLauncher;
+
+    private volatile long currentSessionId = -1L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,20 +84,43 @@ public class AiAssistantActivity extends BaseActivity {
 
         sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
-        // Register overlay permission launcher
         overlayPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> handleOverlayPermissionResult());
+
+        historyLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() != RESULT_OK || result.getData() == null) {
+                        return;
+                    }
+
+                    Intent data = result.getData();
+                    if (data.getBooleanExtra(EXTRA_CREATE_NEW_SESSION, false)) {
+                        createFreshSession();
+                        return;
+                    }
+
+                    long selectedSessionId = data.getLongExtra(EXTRA_SESSION_ID, -1L);
+                    if (selectedSessionId > 0L) {
+                        switchToSession(selectedSessionId);
+                    }
+                });
 
         dbExecutor = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
 
         setupRecyclerView();
+        setupQuickPrompts();
         setupGemini();
         ensureFloatingServiceState();
 
-        if (binding.btnBack != null) {
-            binding.btnBack.setOnClickListener(v -> finish());
+        if (binding.btnNavigateBack != null) {
+            binding.btnNavigateBack.setOnClickListener(v -> finish());
+        }
+
+        if (binding.btnHistory != null) {
+            binding.btnHistory.setOnClickListener(v -> openChatHistory());
         }
 
         if (binding.btnSettings != null) {
@@ -98,6 +133,15 @@ public class AiAssistantActivity extends BaseActivity {
                 sendMessage(message);
             }
         });
+
+        initializeSessionFromIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        initializeSessionFromIntent(intent);
     }
 
     private void setupRecyclerView() {
@@ -108,23 +152,131 @@ public class AiAssistantActivity extends BaseActivity {
         binding.chatRecyclerView.setAdapter(chatAdapter);
     }
 
+    private void setupQuickPrompts() {
+        if (binding.cardQuickTodayPlan != null) {
+            binding.cardQuickTodayPlan.setOnClickListener(v -> sendMessage("Lên kế hoạch công việc hôm nay theo mức ưu tiên giúp tôi."));
+        }
+        if (binding.cardQuickPrioritize != null) {
+            binding.cardQuickPrioritize.setOnClickListener(v -> sendMessage("Hãy giúp tôi phân loại việc cần làm theo mức độ khẩn cấp và quan trọng."));
+        }
+        if (binding.cardQuickHabit != null) {
+            binding.cardQuickHabit.setOnClickListener(v -> sendMessage("Gợi ý cho tôi 3 thói quen nhỏ để duy trì năng suất trong ngày."));
+        }
+        if (binding.cardQuickReview != null) {
+            binding.cardQuickReview.setOnClickListener(v -> sendMessage("Tổng kết ngày hôm nay và đề xuất việc cần chuẩn bị cho ngày mai."));
+        }
+    }
+
     private void setupGemini() {
         geminiManager = GeminiManager.getInstance();
 
         if (!geminiManager.hasConfiguredApiKey()) {
             showAssistantMessage("Vui lòng kiểm tra cấu hình API Key trong local.properties");
-            return;
+        }
+    }
+
+    private void initializeSessionFromIntent(Intent intent) {
+        final boolean shouldCreateNew = intent != null && intent.getBooleanExtra(EXTRA_CREATE_NEW_SESSION, false);
+        final long requestedSessionId = intent != null ? intent.getLongExtra(EXTRA_SESSION_ID, -1L) : -1L;
+
+        if (intent != null) {
+            intent.removeExtra(EXTRA_CREATE_NEW_SESSION);
+            intent.removeExtra(EXTRA_SESSION_ID);
         }
 
-        showAssistantMessage("Xin chào! Tôi là trợ lý TickTickToDo. Bạn có thể nhắn: tạo task, hoàn thành task, hoặc xem danh sách hôm nay.");
+        dbExecutor.execute(() -> {
+            ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
+            long resolvedSessionId;
+
+            if (shouldCreateNew) {
+                resolvedSessionId = createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
+            } else if (requestedSessionId > 0L && dao.getSessionByIdSync(requestedSessionId) != null) {
+                resolvedSessionId = requestedSessionId;
+            } else {
+                ChatSession latest = dao.getLatestSessionSync();
+                resolvedSessionId = latest != null
+                        ? latest.id
+                        : createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
+            }
+
+            currentSessionId = resolvedSessionId;
+            List<ChatHistoryMessage> historyRows = dao.getMessagesForSessionSync(resolvedSessionId);
+
+            mainHandler.post(() -> {
+                applyHistoryToUi(historyRows);
+                if (shouldCreateNew) {
+                    Toast.makeText(this, "Đã tạo phiên trò chuyện mới.", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    private void switchToSession(long sessionId) {
+        dbExecutor.execute(() -> {
+            ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
+            if (dao.getSessionByIdSync(sessionId) == null) {
+                return;
+            }
+
+            currentSessionId = sessionId;
+            List<ChatHistoryMessage> rows = dao.getMessagesForSessionSync(sessionId);
+            mainHandler.post(() -> applyHistoryToUi(rows));
+        });
+    }
+
+    private void createFreshSession() {
+        dbExecutor.execute(() -> {
+            ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
+            long newSessionId = createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
+            currentSessionId = newSessionId;
+
+            mainHandler.post(() -> {
+                conversationMemory.clear();
+                chatAdapter.clearMessages();
+                updateQuickPromptVisibility();
+                Toast.makeText(this, "Đã tạo phiên trò chuyện mới.", Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
+    private void applyHistoryToUi(List<ChatHistoryMessage> rows) {
+        List<ChatMessage> uiMessages = new ArrayList<>();
+        conversationMemory.clear();
+
+        if (rows != null) {
+            for (ChatHistoryMessage row : rows) {
+                boolean isUser = "user".equalsIgnoreCase(row.role);
+                String text = row.content == null ? "" : row.content;
+                uiMessages.add(new ChatMessage(text, isUser));
+                rememberTurn(isUser ? "user" : "assistant", text);
+            }
+        }
+
+        chatAdapter.setMessages(uiMessages);
+        if (!uiMessages.isEmpty()) {
+            binding.chatRecyclerView.scrollToPosition(uiMessages.size() - 1);
+        }
+        updateQuickPromptVisibility();
+    }
+
+    private void updateQuickPromptVisibility() {
+        if (binding.quickPromptContainer != null) {
+            binding.quickPromptContainer.setVisibility(chatAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void openChatHistory() {
+        Intent intent = new Intent(this, ChatHistoryActivity.class);
+        intent.putExtra(EXTRA_SESSION_ID, currentSessionId);
+        historyLauncher.launch(intent);
     }
 
     private void showSettingsDialog() {
         BottomSheetDialog dialog = new BottomSheetDialog(this);
-        View view = getLayoutInflater().inflate(hcmute.edu.vn.tickticktodo.R.layout.layout_ai_settings_dialog, null);
+        View view = getLayoutInflater().inflate(R.layout.layout_ai_settings_dialog, null);
         dialog.setContentView(view);
 
-        SwitchMaterial switchFloating = view.findViewById(hcmute.edu.vn.tickticktodo.R.id.switchFloatingAi);
+        SwitchMaterial switchFloating = view.findViewById(R.id.switchFloatingAi);
         if (switchFloating == null) {
             dialog.dismiss();
             Toast.makeText(this, "Không thể mở cài đặt Trợ lý nổi.", Toast.LENGTH_SHORT).show();
@@ -158,14 +310,14 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void sendMessage(String userText) {
-        if (geminiManager == null) {
+        if (geminiManager == null || !geminiManager.hasConfiguredApiKey()) {
             showAssistantMessage("Vui lòng kiểm tra cấu hình API Key trong local.properties");
             return;
         }
 
         binding.messageInput.setText("");
         showUserMessage(userText);
-        binding.chatRecyclerView.smoothScrollToPosition(chatAdapter.getItemCount() - 1);
+        binding.chatRecyclerView.smoothScrollToPosition(Math.max(0, chatAdapter.getItemCount() - 1));
 
         if (tryHandleQuickCreateIntent(userText)) {
             return;
@@ -188,7 +340,9 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void handleAiResponse(String text) {
-        if (text == null || text.trim().isEmpty()) return;
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
 
         AgentResponseEnvelope response = responseParser.parse(text);
         String action = response.getAction();
@@ -349,10 +503,10 @@ public class AiAssistantActivity extends BaseActivity {
 
     private String buildAgentPrompt(String userText) {
         return AgentPromptContract.buildPrompt(
-            AgentPromptContract.STANDARD_ASSISTANT_PROMPT,
-            buildRuntimeContext(),
-            buildConversationMemoryBlock(),
-            userText
+                AgentPromptContract.STANDARD_ASSISTANT_PROMPT,
+                buildRuntimeContext(),
+                buildConversationMemoryBlock(),
+                userText
         );
     }
 
@@ -422,16 +576,89 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void showUserMessage(String text) {
+        if (TextUtils.isEmpty(text)) {
+            return;
+        }
         chatAdapter.addMessage(new ChatMessage(text, true));
         rememberTurn("user", text);
+        persistMessageAsync("user", text, CHAT_SOURCE_MAIN);
+        updateQuickPromptVisibility();
     }
 
     private void showAssistantMessage(String text) {
         mainHandler.post(() -> {
+            if (TextUtils.isEmpty(text)) {
+                return;
+            }
             chatAdapter.addMessage(new ChatMessage(text, false));
             rememberTurn("assistant", text);
-            binding.chatRecyclerView.smoothScrollToPosition(chatAdapter.getItemCount() - 1);
+            persistMessageAsync("assistant", text, CHAT_SOURCE_MAIN);
+            binding.chatRecyclerView.smoothScrollToPosition(Math.max(0, chatAdapter.getItemCount() - 1));
+            updateQuickPromptVisibility();
         });
+    }
+
+    private void persistMessageAsync(String role, String text, String source) {
+        if (TextUtils.isEmpty(text)) {
+            return;
+        }
+
+        dbExecutor.execute(() -> {
+            try {
+                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
+                long sessionId = ensureSessionSync(dao, source);
+                long now = System.currentTimeMillis();
+
+                ChatHistoryMessage row = new ChatHistoryMessage();
+                row.sessionId = sessionId;
+                row.role = role;
+                row.content = text;
+                row.source = source;
+                row.createdAt = now;
+                dao.insertMessage(row);
+
+                String preview = abbreviateForPreview(text);
+                dao.updateSessionAfterMessage(sessionId, now, preview);
+                if ("user".equals(role)) {
+                    dao.updateSessionTitleIfEmpty(sessionId, preview);
+                }
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private long ensureSessionSync(ChatHistoryDao dao, String source) {
+        if (currentSessionId > 0L && dao.getSessionByIdSync(currentSessionId) != null) {
+            return currentSessionId;
+        }
+
+        ChatSession latest = dao.getLatestSessionSync();
+        if (latest != null) {
+            currentSessionId = latest.id;
+            return currentSessionId;
+        }
+
+        currentSessionId = createNewSessionSync(dao, source, "");
+        return currentSessionId;
+    }
+
+    private long createNewSessionSync(ChatHistoryDao dao, String source, String title) {
+        long now = System.currentTimeMillis();
+        ChatSession session = new ChatSession();
+        session.title = title;
+        session.source = source;
+        session.lastMessage = "";
+        session.createdAt = now;
+        session.updatedAt = now;
+        return dao.insertSession(session);
+    }
+
+    private String abbreviateForPreview(String text) {
+        String value = text == null ? "" : text.trim().replace('\n', ' ');
+        if (value.length() <= 64) {
+            return value;
+        }
+        return value.substring(0, 64) + "...";
     }
 
     private int clampPriority(int priority) {
@@ -577,7 +804,6 @@ public class AiAssistantActivity extends BaseActivity {
             ContextCompat.startForegroundService(this, intent);
         } catch (Exception firstException) {
             try {
-                // Fallback cho thiết bị/ROM không cho foreground service ngay thời điểm hiện tại.
                 startService(intent);
             } catch (Exception secondException) {
                 setFloatingPreference(false);
@@ -594,10 +820,6 @@ public class AiAssistantActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         ensureFloatingServiceState();
-    }
-
-    private void showTextResponse(String text) {
-        showAssistantMessage(text);
     }
 
     @Override

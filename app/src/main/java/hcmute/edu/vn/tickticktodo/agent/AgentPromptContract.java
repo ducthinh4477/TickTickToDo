@@ -12,7 +12,9 @@ public final class AgentPromptContract {
             "2) COMPLETE_TASK payload dùng id (long) hoặc title (string). " +
             "3) LIST_TODAY payload có thể rỗng. " +
             "4) CHAT dùng cho hội thoại thông thường. " +
-            "5) Nếu thông tin thời gian mơ hồ, vẫn chọn giá trị hợp lý gần nhất thay vì bỏ trống.";
+            "5) Nếu thông tin thời gian mơ hồ, vẫn chọn giá trị hợp lý gần nhất thay vì bỏ trống. " +
+            "6) reply phải tự nhiên, hữu ích, thường 2-4 câu; tránh trả lời cụt một dòng. " +
+            "7) Nếu thao tác thành công, nêu rõ kết quả (task nào, khi nào, ưu tiên gì nếu có).";
 
     public static final String FLOATING_ASSISTANT_PROMPT =
             "Bạn là trợ lý nổi của TickTickToDo. " +
@@ -24,7 +26,9 @@ public final class AgentPromptContract {
             "2) COMPLETE_TASK payload dùng id (long) hoặc title (string). " +
             "3) LIST_TODAY payload có thể rỗng. " +
             "4) WIFI_ON/WIFI_OFF không bắt buộc payload. " +
-            "5) CHAT cho hội thoại thường.";
+            "5) CHAT cho hội thoại thường. " +
+            "6) reply luôn bằng tiếng Việt tự nhiên, thường 2-4 câu, có ngữ cảnh theo [APP_CONTEXT]. " +
+            "7) Khi tạo/cập nhật task, reply phải xác nhận rõ task nào đã xử lý.";
 
     private AgentPromptContract() {
     }

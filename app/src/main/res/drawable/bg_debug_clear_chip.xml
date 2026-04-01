@@ -2,20 +2,20 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
-            <solid android:color="#243A5A" />
+            <solid android:color="@color/floating_chat_debug_chip_pressed" />
             <corners android:radius="10dp" />
             <stroke
                 android:width="1dp"
-                android:color="#88A7C8E8" />
+                android:color="@color/floating_chat_debug_chip_pressed_stroke" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#16263D" />
+            <solid android:color="@color/floating_chat_debug_chip" />
             <corners android:radius="10dp" />
             <stroke
                 android:width="1dp"
-                android:color="#6E90B3D4" />
+                android:color="@color/floating_chat_debug_chip_stroke" />
         </shape>
     </item>
 </selector>

@@ -98,6 +98,10 @@
         <activity android:name=".ui.AiAssistantActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
 
         <activity
+            android:name=".ui.ChatHistoryActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.VoicePromptActivity"
             android:exported="false"
             android:theme="@style/Theme.TickTickToDo.Translucent" />
