@@ -1,6 +1,7 @@
 package hcmute.edu.vn.tickticktodo.service;
 
 import android.Manifest;
+import android.animation.ObjectAnimator;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -10,9 +11,11 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
@@ -30,6 +33,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowManager;
+import android.view.animation.LinearInterpolator;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ScrollView;
@@ -92,6 +96,8 @@ public class FloatingAssistantService extends Service {
     private static final int DEFAULT_BUBBLE_Y = 220;
     private static final int MAX_DEBUG_TRACE_LINES = 80;
     private static final int MAX_DEBUG_TRACE_CHARS = 2400;
+    private static final int MAX_VOICE_AUTO_RETRY = 2;
+    private static final long VOICE_RETRY_DELAY_MS = 500L;
 
     private static WindowManager sWindowManager;
     private static View sBubbleView;
@@ -108,6 +114,10 @@ public class FloatingAssistantService extends Service {
     private ExecutorService workerExecutor;
     private SpeechRecognizer speechRecognizer;
     private Intent speechRecognizerIntent;
+    private boolean isVoiceListening;
+    private int voiceAutoRetryCount;
+    private String latestPartialTranscript = "";
+    private boolean voiceStopRequestedByUser;
     private Handler mainHandler;
     private RecyclerView floatingChatRecyclerView;
     private ChatAdapter floatingChatAdapter;
@@ -120,9 +130,18 @@ public class FloatingAssistantService extends Service {
     private TextView debugTraceContent;
     private ScrollView debugTraceScroll;
     private View debugTraceClear;
+    private View voiceMicButton;
+    private View voicePulseIndicator;
+    private TextView voiceStatusText;
+    private ObjectAnimator voicePulseAnimator;
     private boolean debugPanelVisible;
     private final ArrayList<Long> pendingCarryOverTaskIds = new ArrayList<>();
     private AgentOrchestrator agentOrchestrator;
+    private final Runnable hideVoiceStatusRunnable = () -> {
+        if (!isVoiceListening && voiceStatusText != null) {
+            voiceStatusText.setVisibility(View.GONE);
+        }
+    };
 
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final ArrayDeque<String> debugTraceMemory = new ArrayDeque<>();
@@ -183,14 +202,30 @@ public class FloatingAssistantService extends Service {
         speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN");
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "vi-VN");
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L);
+        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 900L);
 
         speechRecognizer.setRecognitionListener(new RecognitionListener() {
             @Override
             public void onReadyForSpeech(android.os.Bundle params) {
+                isVoiceListening = true;
+                voiceStopRequestedByUser = false;
+                updateVoiceUiState(true, "Đang lắng nghe...");
+                appendDebugTrace("VOICE_READY", "SpeechRecognizer ready.");
             }
 
             @Override
             public void onBeginningOfSpeech() {
+                isVoiceListening = true;
+                voiceStopRequestedByUser = false;
+                updateVoiceUiState(true, "Đang lắng nghe...");
+                appendDebugTrace("VOICE_BEGIN", "Detected beginning of speech.");
             }
 
             @Override
@@ -203,37 +238,74 @@ public class FloatingAssistantService extends Service {
 
             @Override
             public void onEndOfSpeech() {
+                isVoiceListening = false;
+                updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
+                appendDebugTrace("VOICE_END", "End of speech captured.");
             }
 
             @Override
             public void onError(int error) {
+                isVoiceListening = false;
+                boolean userStopped = voiceStopRequestedByUser && error == SpeechRecognizer.ERROR_CLIENT;
+                voiceStopRequestedByUser = false;
+
+                if (userStopped) {
+                    updateVoiceUiState(false, "Đã dừng nghe.");
+                    appendDebugTrace("VOICE_STOPPED", "Stopped by user.");
+                    return;
+                }
+
                 Log.e(TAG, "Speech error: " + error);
+                appendDebugTrace("VOICE_ERROR", "code=" + error + ", message=" + mapSpeechErrorMessage(error));
+
+                if (shouldUsePartialFallback(error)) {
+                    if (applyRecognizedVoiceText(latestPartialTranscript, true)) {
+                        return;
+                    }
+                }
+
+                if (shouldRetryVoice(error)) {
+                    scheduleVoiceRetry(error);
+                    return;
+                }
+
+                updateVoiceUiState(false, mapSpeechErrorMessage(error));
                 mainHandler.post(() ->
                         Toast.makeText(FloatingAssistantService.this, "Lỗi thu âm: " + error, Toast.LENGTH_SHORT).show());
             }
 
             @Override
             public void onResults(android.os.Bundle results) {
+                isVoiceListening = false;
+                voiceStopRequestedByUser = false;
                 ArrayList<String> data = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (data == null || data.isEmpty()) {
+                    if (applyRecognizedVoiceText(latestPartialTranscript, true)) {
+                        return;
+                    }
+                    scheduleVoiceRetry(SpeechRecognizer.ERROR_NO_MATCH);
                     return;
                 }
 
                 String text = data.get(0);
-                Log.d(TAG, "Recognized text: " + text);
-
-                if (floatingChatView != null) {
-                    EditText etInput = floatingChatView.findViewById(R.id.et_message_floating);
-                    if (etInput != null) {
-                        etInput.setText(text);
-                    }
-                }
-
-                sendToGemini(text);
+                applyRecognizedVoiceText(text, false);
             }
 
             @Override
             public void onPartialResults(android.os.Bundle partialResults) {
+                ArrayList<String> partial = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (partial == null || partial.isEmpty()) {
+                    return;
+                }
+
+                String text = partial.get(0) == null ? "" : partial.get(0).trim();
+                if (text.isEmpty()) {
+                    return;
+                }
+
+                latestPartialTranscript = text;
+                updateVoicePreviewText(text);
+                updateVoiceUiState(true, "Đang nghe: " + abbreviateForStatus(text));
             }
 
             @Override
@@ -367,6 +439,9 @@ public class FloatingAssistantService extends Service {
         debugTraceContent = floatingChatView.findViewById(R.id.tv_agent_debug_trace);
         debugTraceScroll = floatingChatView.findViewById(R.id.sv_agent_debug_trace);
         debugTraceClear = floatingChatView.findViewById(R.id.btn_clear_debug_trace);
+        voiceMicButton = btnMic;
+        voicePulseIndicator = floatingChatView.findViewById(R.id.voice_pulse_indicator);
+        voiceStatusText = floatingChatView.findViewById(R.id.tv_voice_status_floating);
         debugPanelVisible = false;
 
         if (debugPanelToggle != null) {
@@ -400,29 +475,17 @@ public class FloatingAssistantService extends Service {
         if (btnMic != null) {
             btnMic.setOnTouchListener((v, event) -> {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                            == PackageManager.PERMISSION_GRANTED
-                            && speechRecognizer != null
-                            && speechRecognizerIntent != null) {
-                        mainHandler.post(() -> Toast.makeText(this, "Đang lắng nghe...", Toast.LENGTH_SHORT).show());
-                        speechRecognizer.startListening(speechRecognizerIntent);
-                    } else {
-                        mainHandler.post(() -> Toast.makeText(this,
-                                "Vui lòng cấp quyền Microphone trong app trước!",
-                                Toast.LENGTH_SHORT).show());
-                    }
-                    return true;
-                }
-
-                if (event.getAction() == MotionEvent.ACTION_UP) {
-                    if (speechRecognizer != null) {
-                        speechRecognizer.stopListening();
-                    }
-                    return true;
+                    v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(90).start();
+                } else if (event.getAction() == MotionEvent.ACTION_UP
+                        || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(90).start();
                 }
                 return false;
             });
+            btnMic.setOnClickListener(v -> toggleVoiceListening());
         }
+
+        updateVoiceUiState(false, "Chạm mic để bắt đầu ghi âm");
 
         showAssistantMessage("Xin chào, mình là trợ lý nổi. Bạn có thể nói hoặc nhập lệnh tạo/hoàn thành task.");
         appendDebugTrace("DEBUG_PANEL", "Agent trace panel is ready. Toggle 'Hiện Trace' to watch tool-call flow.");
@@ -501,14 +564,267 @@ public class FloatingAssistantService extends Service {
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 Math.max(desiredWidth, dpToPx(280)),
-                WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutFlag,
                 flags,
                 PixelFormat.TRANSLUCENT
         );
-        params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        params.y = dpToPx(80);
+        params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        params.y = dpToPx(20);
+        params.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
+                | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN;
         return params;
+    }
+
+    private void toggleVoiceListening() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            updateVoiceUiState(false, "Thiếu quyền Microphone. Chuyển sang màn hình cấp quyền...");
+            Toast.makeText(this,
+                    "Chưa có quyền Microphone. Mình sẽ mở phần cài đặt app để bạn cấp quyền.",
+                    Toast.LENGTH_LONG).show();
+            openAppSettings();
+            return;
+        }
+
+        if (speechRecognizer == null || speechRecognizerIntent == null) {
+            updateVoiceUiState(false, "Speech recognizer chưa sẵn sàng.");
+            Toast.makeText(this,
+                    "Speech recognizer chưa sẵn sàng. Vui lòng thử lại.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            if (isVoiceListening) {
+                voiceStopRequestedByUser = true;
+                speechRecognizer.stopListening();
+                isVoiceListening = false;
+                updateVoiceUiState(false, "Đang dừng nghe...");
+                Toast.makeText(this, "Đang dừng nghe...", Toast.LENGTH_SHORT).show();
+            } else {
+                startVoiceListening(false);
+            }
+        } catch (Exception e) {
+            isVoiceListening = false;
+            updateVoiceUiState(false, "Không thể bật voice lúc này.");
+            Log.e(TAG, "Unable to toggle voice listening", e);
+            Toast.makeText(this, "Không thể bật voice lúc này.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startVoiceListening(boolean fromRetry) {
+        if (speechRecognizer == null || speechRecognizerIntent == null) {
+            updateVoiceUiState(false, "Speech recognizer chưa sẵn sàng.");
+            return;
+        }
+
+        if (!fromRetry) {
+            voiceAutoRetryCount = 0;
+            latestPartialTranscript = "";
+        }
+
+        voiceStopRequestedByUser = false;
+
+        try {
+            speechRecognizer.startListening(speechRecognizerIntent);
+            isVoiceListening = true;
+            updateVoiceUiState(true,
+                    fromRetry
+                            ? "Đang thử nghe lại..."
+                            : "Đang lắng nghe... chạm mic lần nữa để dừng");
+            appendDebugTrace("VOICE_START", fromRetry ? "Retry start listening" : "Start listening");
+        } catch (Exception e) {
+            isVoiceListening = false;
+            Log.e(TAG, "Unable to start listening", e);
+            appendDebugTrace("VOICE_START_ERROR", e.getMessage() == null ? "unknown" : e.getMessage());
+
+            if (!fromRetry && voiceAutoRetryCount < MAX_VOICE_AUTO_RETRY) {
+                voiceAutoRetryCount++;
+                mainHandler.postDelayed(() -> startVoiceListening(true), VOICE_RETRY_DELAY_MS);
+                return;
+            }
+
+            updateVoiceUiState(false, "Không thể khởi động nhận diện giọng nói.");
+        }
+    }
+
+    private void scheduleVoiceRetry(int errorCode) {
+        if (voiceAutoRetryCount >= MAX_VOICE_AUTO_RETRY) {
+            updateVoiceUiState(false, mapSpeechErrorMessage(errorCode));
+            return;
+        }
+
+        voiceAutoRetryCount++;
+        updateVoiceUiState(false,
+                "Không nghe rõ, đang thử lại ("
+                        + voiceAutoRetryCount
+                        + "/"
+                        + MAX_VOICE_AUTO_RETRY
+                        + ")...");
+        appendDebugTrace("VOICE_RETRY", "error=" + errorCode + ", attempt=" + voiceAutoRetryCount);
+        mainHandler.postDelayed(() -> startVoiceListening(true), VOICE_RETRY_DELAY_MS);
+    }
+
+    private boolean shouldRetryVoice(int error) {
+        return error == SpeechRecognizer.ERROR_NO_MATCH
+                || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                || error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
+                || error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT
+                || error == SpeechRecognizer.ERROR_SERVER;
+    }
+
+    private boolean shouldUsePartialFallback(int error) {
+        if (TextUtils.isEmpty(latestPartialTranscript)) {
+            return false;
+        }
+
+        return error == SpeechRecognizer.ERROR_NO_MATCH
+                || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                || error == SpeechRecognizer.ERROR_SERVER;
+    }
+
+    private boolean applyRecognizedVoiceText(String rawText, boolean fromPartial) {
+        String text = rawText == null ? "" : rawText.trim();
+        if (text.isEmpty()) {
+            return false;
+        }
+
+        voiceAutoRetryCount = 0;
+        latestPartialTranscript = "";
+
+        updateVoiceUiState(false,
+                fromPartial
+                        ? "Đã dùng kết quả nghe tạm thời."
+                        : "Đã nhận giọng nói.");
+        appendDebugTrace("VOICE_TEXT", text);
+
+        updateVoicePreviewText(text);
+        sendToGemini(text);
+        return true;
+    }
+
+    private void updateVoicePreviewText(String text) {
+        if (floatingChatView == null) {
+            return;
+        }
+
+        EditText etInput = floatingChatView.findViewById(R.id.et_message_floating);
+        if (etInput != null) {
+            etInput.setText(text);
+            etInput.setSelection(etInput.getText().length());
+        }
+    }
+
+    private String abbreviateForStatus(String text) {
+        if (text == null) {
+            return "";
+        }
+        String clean = text.replace('\n', ' ').trim();
+        if (clean.length() <= 40) {
+            return clean;
+        }
+        return clean.substring(0, 40) + "...";
+    }
+
+    private void updateVoiceUiState(boolean listening, String status) {
+        if (voiceMicButton != null) {
+            voiceMicButton.setBackgroundResource(
+                    listening
+                            ? R.drawable.bg_chat_mic_button_listening
+                            : R.drawable.bg_chat_mic_button_idle
+            );
+            if (voiceMicButton instanceof ImageView) {
+                ((ImageView) voiceMicButton).setColorFilter(
+                        listening ? Color.WHITE : Color.parseColor("#3767D7")
+                );
+            }
+        }
+
+        if (voiceStatusText != null) {
+            mainHandler.removeCallbacks(hideVoiceStatusRunnable);
+            if (TextUtils.isEmpty(status)) {
+                voiceStatusText.setVisibility(View.GONE);
+            } else {
+                voiceStatusText.setText(status);
+                voiceStatusText.setVisibility(View.VISIBLE);
+                if (!listening) {
+                    mainHandler.postDelayed(hideVoiceStatusRunnable, 1800);
+                }
+            }
+        }
+
+        if (voicePulseIndicator != null) {
+            if (listening) {
+                voicePulseIndicator.setVisibility(View.VISIBLE);
+                startVoicePulseAnimation();
+            } else {
+                stopVoicePulseAnimation();
+                voicePulseIndicator.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void startVoicePulseAnimation() {
+        if (voicePulseIndicator == null) {
+            return;
+        }
+
+        if (voicePulseAnimator == null) {
+            voicePulseAnimator = ObjectAnimator.ofFloat(voicePulseIndicator, "alpha", 0.2f, 1f);
+            voicePulseAnimator.setDuration(700L);
+            voicePulseAnimator.setRepeatCount(ObjectAnimator.INFINITE);
+            voicePulseAnimator.setRepeatMode(ObjectAnimator.REVERSE);
+            voicePulseAnimator.setInterpolator(new LinearInterpolator());
+        }
+
+        if (!voicePulseAnimator.isStarted()) {
+            voicePulseAnimator.start();
+        }
+    }
+
+    private void stopVoicePulseAnimation() {
+        if (voicePulseAnimator != null) {
+            voicePulseAnimator.cancel();
+        }
+        if (voicePulseIndicator != null) {
+            voicePulseIndicator.setAlpha(1f);
+        }
+    }
+
+    private String mapSpeechErrorMessage(int error) {
+        switch (error) {
+            case SpeechRecognizer.ERROR_AUDIO:
+                return "Lỗi audio từ microphone.";
+            case SpeechRecognizer.ERROR_CLIENT:
+                return "Voice đã dừng.";
+            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                return "Thiếu quyền Microphone.";
+            case SpeechRecognizer.ERROR_NETWORK:
+            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                return "Lỗi mạng khi nhận diện giọng nói.";
+            case SpeechRecognizer.ERROR_NO_MATCH:
+                return "Không nhận diện được nội dung. Hãy thử nói rõ hơn.";
+            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                return "Recognizer đang bận. Thử lại sau vài giây.";
+            case SpeechRecognizer.ERROR_SERVER:
+                return "Lỗi máy chủ nhận diện giọng nói.";
+            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                return "Không phát hiện giọng nói.";
+            default:
+                return "Lỗi thu âm: " + error;
+        }
+    }
+
+    private void openAppSettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to open app settings", e);
+        }
     }
 
     private int dpToPx(int dp) {
@@ -1362,6 +1678,11 @@ public class FloatingAssistantService extends Service {
         if (speechRecognizer != null) {
             speechRecognizer.destroy();
         }
+        isVoiceListening = false;
+        if (mainHandler != null) {
+            mainHandler.removeCallbacks(hideVoiceStatusRunnable);
+        }
+        stopVoicePulseAnimation();
 
         if (workerExecutor != null && !workerExecutor.isShutdown()) {
             workerExecutor.shutdown();

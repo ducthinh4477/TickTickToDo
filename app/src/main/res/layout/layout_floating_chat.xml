@@ -2,11 +2,11 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_margin="12dp"
+    android:background="@drawable/bg_floating_chat_container"
+    android:elevation="20dp"
     android:orientation="vertical"
-    android:layout_margin="16dp"
-    android:background="@android:color/white"
-    android:elevation="12dp"
-    android:padding="16dp">
+    android:padding="14dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -16,48 +16,63 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="AI Assistant"
+            android:textColor="#0F213D"
             android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="@android:color/black" />
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/btn_toggle_debug_panel"
+            android:layout_alignParentStart="true"
+            android:layout_marginTop="2dp"
+            android:text="Always-on floating copilot"
+            android:textColor="#6D7C91"
+            android:textSize="11sp" />
 
         <TextView
             android:id="@+id/btn_toggle_debug_panel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
-            android:layout_toStartOf="@id/btn_close_chat"
             android:layout_marginEnd="10dp"
-            android:background="#E8EEF8"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp"
+            android:layout_toStartOf="@id/btn_close_chat"
+            android:background="@drawable/bg_floating_header_chip"
+            android:paddingLeft="10dp"
+            android:paddingTop="5dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="5dp"
             android:text="Hiện Trace"
-            android:textColor="#1A3B66"
-            android:textSize="12sp" />
+            android:textColor="#1A4D8C"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
         <ImageButton
             android:id="@+id/btn_close_chat"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:layout_alignParentEnd="true"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:background="?android:attr/selectableItemBackgroundBorderless" />
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close"
+            android:src="@drawable/ic_close"
+            android:tint="#5F6E82" />
     </RelativeLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:background="#DDDDDD" />
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/bg_floating_divider" />
 
     <LinearLayout
         android:id="@+id/layout_agent_debug_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:background="#0E1A2A"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/bg_debug_terminal"
         android:orientation="vertical"
-        android:padding="8dp"
+        android:padding="10dp"
         android:visibility="gone">
 
         <LinearLayout
@@ -70,7 +85,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Agent Tool Trace"
-                android:textColor="#D5E3F7"
+                android:textColor="#8EE9FF"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -78,27 +93,34 @@
                 android:id="@+id/btn_clear_debug_trace"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
+                android:background="@drawable/bg_debug_clear_chip"
+                android:paddingLeft="8dp"
+                android:paddingTop="3dp"
+                android:paddingRight="8dp"
+                android:paddingBottom="3dp"
                 android:text="Clear"
-                android:textColor="#9BC2FF"
-                android:textSize="11sp" />
+                android:textColor="#7AE8BE"
+                android:textSize="11sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <ScrollView
             android:id="@+id/sv_agent_debug_trace"
             android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:layout_marginTop="6dp"
-            android:fillViewport="true">
+            android:layout_height="118dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_debug_trace_inner"
+            android:fillViewport="true"
+            android:padding="8dp">
 
             <TextView
                 android:id="@+id/tv_agent_debug_trace"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
+                android:lineSpacingExtra="1dp"
                 android:text="Chưa có trace."
-                android:textColor="#E9F2FF"
+                android:textColor="#77FFC9"
                 android:textIsSelectable="true"
                 android:textSize="11sp" />
         </ScrollView>
@@ -107,64 +129,121 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_floating_chat_messages"
         android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:background="#F6F6F6"
-        android:padding="6dp"
-        android:clipToPadding="false" />
+        android:layout_height="228dp"
+        android:background="@drawable/bg_chat_messages_surface"
+        android:clipToPadding="false"
+        android:padding="8dp" />
 
     <LinearLayout
         android:id="@+id/layout_daily_review_action"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="#EEF3FF"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_daily_review_card"
         android:orientation="vertical"
-        android:padding="10dp"
+        android:padding="12dp"
         android:visibility="gone">
 
         <TextView
             android:id="@+id/tv_daily_review_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#222222"
+            android:textColor="#1F3048"
             android:textSize="14sp" />
 
         <Button
             android:id="@+id/btn_move_unfinished_tasks"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Chuyển việc dang dở sang ngày mai" />
+            android:layout_height="40dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_daily_review_button"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:text="Chuyển việc dang dở sang ngày mai"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_chat_input_shell"
+        android:orientation="vertical"
+        android:padding="6dp">
 
-        <EditText
-            android:id="@+id/et_message_floating"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Nhập lệnh..."
-            android:background="#F0F0F0"
-            android:padding="10dp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <ImageButton
-            android:id="@+id/btn_mic_floating"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            android:background="?android:attr/selectableItemBackground"
-            android:layout_marginStart="4dp" />
+            <EditText
+                android:id="@+id/et_message_floating"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chat_input_pill"
+                android:hint="Nhập lệnh..."
+                android:imeOptions="actionSend"
+                android:paddingLeft="14dp"
+                android:paddingTop="10dp"
+                android:paddingRight="14dp"
+                android:paddingBottom="10dp"
+                android:singleLine="true"
+                android:textColor="#12213A"
+                android:textColorHint="#7C8BA1" />
 
-        <ImageButton
-            android:id="@+id/btn_send_floating"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_menu_send"
-            android:background="?android:attr/selectableItemBackground"
-            android:layout_marginStart="4dp" />
+            <FrameLayout
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp"
+                android:foreground="?android:attr/selectableItemBackgroundBorderless">
+
+                <View
+                    android:id="@+id/voice_pulse_indicator"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_voice_pulse_indicator"
+                    android:visibility="gone" />
+
+                <ImageButton
+                    android:id="@+id/btn_mic_floating"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_chat_mic_button_idle"
+                    android:contentDescription="Voice"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_mic"
+                    android:tint="#3767D7" />
+            </FrameLayout>
+
+            <ImageButton
+                android:id="@+id/btn_send_floating"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_chat_send_button"
+                android:contentDescription="Send"
+                android:padding="10dp"
+                android:src="@drawable/ic_send"
+                android:tint="#FFFFFF" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_voice_status_floating"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_voice_status_chip"
+            android:paddingLeft="10dp"
+            android:paddingTop="4dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="4dp"
+            android:text="Đang lắng nghe..."
+            android:textColor="#1C5ED1"
+            android:textSize="11sp"
+            android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>
