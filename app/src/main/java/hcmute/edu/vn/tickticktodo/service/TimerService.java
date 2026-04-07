@@ -13,6 +13,7 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -35,6 +36,8 @@ import hcmute.edu.vn.tickticktodo.helper.NotificationHelper; // Added
  *   Khi tất cả client unbind → onUnbind() → Service tự stopSelf()
  */
 public class TimerService extends Service {
+
+    private static final String TAG = "TimerService";
 
     // ── Broadcast action constants ───────────────────────────────────────────────
     public static final String ACTION_TICK   = "hcmute.ticktick.TIMER_TICK";
@@ -64,6 +67,7 @@ public class TimerService extends Service {
 
     // ── Internal state ───────────────────────────────────────────────────────────
     private TimerState timerState   = TimerState.IDLE;
+    private static volatile TimerState processTimerState = TimerState.IDLE;
     private TimerMode  timerMode    = TimerMode.COUNTDOWN;
     private int   currentModeMins   = 25;          // mặc định Pomodoro
     private long  totalMillis       = 25 * 60 * 1000L;
@@ -103,6 +107,7 @@ public class TimerService extends Service {
     public void onCreate() {
         super.onCreate();
         lbm = LocalBroadcastManager.getInstance(this);
+        processTimerState = timerState;
         // Ensure channel exists
         NotificationHelper.createNotificationChannels(this);
     }
@@ -156,12 +161,16 @@ public class TimerService extends Service {
         releaseMediaPlayer();
         releaseAmbientSoundPlayer();
         stopForeground(true); // Ensure foreground is stopped
+        timerState = TimerState.IDLE;
+        processTimerState = TimerState.IDLE;
+        Log.d(TAG, "TimerService destroyed, state reset to IDLE");
     }
 
     // ── Public API (gọi qua Binder) ──────────────────────────────────────────────
 
     /** Lấy trạng thái hiện tại để Activity sync UI khi vừa bind */
     public TimerState getTimerState()    { return timerState; }
+    public static boolean isTimerRunning() { return processTimerState == TimerState.RUNNING; }
     public TimerMode  getTimerMode()     { return timerMode; }
     public long  getMillisRemaining()    { return timerMode == TimerMode.COUNTDOWN ? millisRemaining : stopwatchMillis; }
     public long  getTotalMillis()        { return totalMillis; }
@@ -211,6 +220,7 @@ public class TimerService extends Service {
     public void startTimer() {
         if (timerState == TimerState.IDLE || timerState == TimerState.PAUSED) {
             timerState = TimerState.RUNNING;
+            processTimerState = timerState;
             if (timerMode == TimerMode.COUNTDOWN) {
                 runCountdown(millisRemaining);
             } else {
@@ -225,14 +235,17 @@ public class TimerService extends Service {
         if (timerState == TimerState.RUNNING) {
             cancelCountdown();
             timerState = TimerState.PAUSED;
+            processTimerState = timerState;
             updateNotification(); // Update to show "Paused"
             stopAmbientSound();
+            Log.d(TAG, "Timer paused");
         }
     }
 
     public void resumeTimer() {
         if (timerState == TimerState.PAUSED) {
             timerState = TimerState.RUNNING;
+            processTimerState = timerState;
             if (timerMode == TimerMode.COUNTDOWN) {
                 runCountdown(millisRemaining);
             } else {
@@ -246,6 +259,7 @@ public class TimerService extends Service {
     public void stopTimer() {
         cancelCountdown();
         timerState      = TimerState.IDLE;
+        processTimerState = timerState;
         millisRemaining = totalMillis; // Reset về ban đầu của chế độ hiện tại
         stopAmbientSound();
 
@@ -296,6 +310,7 @@ public class TimerService extends Service {
 
     private void onTimerFinished() {
         timerState = TimerState.IDLE;
+        processTimerState = timerState;
 
         sessionCount++;
 

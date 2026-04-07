@@ -22,12 +22,13 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/tv_floating_chat_mode"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/btn_toggle_debug_panel"
             android:layout_alignParentStart="true"
             android:layout_marginTop="2dp"
-            android:text="Always-on floating copilot"
+            android:text="Chat mode"
             android:textColor="@color/floating_chat_subtitle"
             android:textSize="11sp" />
 
@@ -198,7 +199,7 @@
                 android:layout_height="44dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_chat_input_pill"
-                android:hint="Nhập lệnh..."
+                android:hint="@string/floating_chat_input_hint_chat"
                 android:imeOptions="actionSend"
                 android:paddingLeft="14dp"
                 android:paddingTop="10dp"

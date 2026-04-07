@@ -2,26 +2,36 @@ package hcmute.edu.vn.tickticktodo.ui;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.chip.Chip;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -30,8 +40,10 @@ import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.adapter.SubtaskStepAdapter;
 import hcmute.edu.vn.tickticktodo.helper.AiTaskBreakdownHelper;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
+import hcmute.edu.vn.tickticktodo.model.Subtask;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
@@ -40,7 +52,6 @@ import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
  */
 public class TaskDetailActivity extends BaseActivity {
 
-    /** Key dùng để truyền taskId qua Intent */
     public static final String EXTRA_TASK_ID = "extra_task_id";
 
     private TaskViewModel taskViewModel;
@@ -57,28 +68,28 @@ public class TaskDetailActivity extends BaseActivity {
     private LinearLayout btnPriorityLow;
     private LinearLayout btnPriorityMedium;
     private LinearLayout btnPriorityHigh;
+    private LinearLayout llAttachments;
+    private ImageView ivAttachmentImage;
+    private ChipGroup chipGroupAttachments;
+    private RecyclerView rvSubtasks;
+    private TextView tvSubtasksEmpty;
 
     // State
-    private Task currentTask;       // task đang chỉnh sửa
-    private Long selectedDueDate;   // timestamp ngày được chọn (null = không có)
-    private int selectedPriority;   // 0..3
-    private boolean hasTimeSelected; // user đã chọn giờ chưa
+    private Task currentTask;
+    private Long selectedDueDate;
+    private int selectedPriority;
+    private boolean hasTimeSelected;
+    private SubtaskStepAdapter subtaskAdapter;
+    private LiveData<List<Subtask>> subtasksLiveData;
+    private long observedTaskId = -1L;
     private final SimpleDateFormat timeFormat =
             new SimpleDateFormat("HH:mm", Locale.getDefault());
 
-    // ─── Static factory helper ────────────────────────────────────────────────
-
-    /**
-     * Tạo Intent để mở TaskDetailActivity với taskId cho trước.
-     * Gọi từ bên ngoài thay vì tự xây Intent.
-     */
     public static Intent newIntent(Context context, long taskId) {
         Intent intent = new Intent(context, TaskDetailActivity.class);
         intent.putExtra(EXTRA_TASK_ID, taskId);
         return intent;
     }
-
-    // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,62 +100,83 @@ public class TaskDetailActivity extends BaseActivity {
         setupToolbar();
         setupPriorityButtons();
         setupDueDateChip();
+        setupSubtaskList();
         setupAiBreakdown();
         loadTaskFromIntent();
     }
 
-    // ─── Khởi tạo view references ─────────────────────────────────────────────
-
     private void initViews() {
-        toolbar        = findViewById(R.id.toolbar);
-        cbCompleted    = findViewById(R.id.cb_completed);
-        etTitle        = findViewById(R.id.et_title);
-        etDescription  = findViewById(R.id.et_description);
-        chipDueDate    = findViewById(R.id.chip_due_date);
+        toolbar = findViewById(R.id.toolbar);
+        cbCompleted = findViewById(R.id.cb_completed);
+        etTitle = findViewById(R.id.et_title);
+        etDescription = findViewById(R.id.et_description);
+        chipDueDate = findViewById(R.id.chip_due_date);
         btnAiBreakdown = findViewById(R.id.btn_ai_breakdown);
         progressAiBreakdown = findViewById(R.id.progress_ai_breakdown);
-        btnPriorityNone   = findViewById(R.id.btn_priority_none);
-        btnPriorityLow    = findViewById(R.id.btn_priority_low);
+        btnPriorityNone = findViewById(R.id.btn_priority_none);
+        btnPriorityLow = findViewById(R.id.btn_priority_low);
         btnPriorityMedium = findViewById(R.id.btn_priority_medium);
-        btnPriorityHigh   = findViewById(R.id.btn_priority_high);
+        btnPriorityHigh = findViewById(R.id.btn_priority_high);
+        llAttachments = findViewById(R.id.ll_attachments);
+        ivAttachmentImage = findViewById(R.id.iv_attachment_image);
+        chipGroupAttachments = findViewById(R.id.chip_group_attachments);
+        rvSubtasks = findViewById(R.id.rv_subtasks);
+        tvSubtasksEmpty = findViewById(R.id.tv_subtasks_empty);
     }
 
-    // ─── Toolbar ──────────────────────────────────────────────────────────────
+    private void setupSubtaskList() {
+        if (rvSubtasks == null) {
+            return;
+        }
+
+        subtaskAdapter = new SubtaskStepAdapter(new SubtaskStepAdapter.Listener() {
+            @Override
+            public void onSubtaskCheckedChanged(Subtask subtask, boolean isChecked) {
+                taskViewModel.markSubtaskCompleted(subtask, isChecked);
+            }
+
+            @Override
+            public void onSubtaskApproved(Subtask subtask) {
+                taskViewModel.setSubtaskApproved(subtask, true);
+            }
+
+            @Override
+            public void onSubtaskPriorityChanged(Subtask subtask, int newPriority) {
+                taskViewModel.updateSubtaskPriority(subtask, newPriority);
+            }
+        });
+
+        rvSubtasks.setLayoutManager(new LinearLayoutManager(this));
+        rvSubtasks.setAdapter(subtaskAdapter);
+    }
 
     private void setupToolbar() {
         setSupportActionBar(toolbar);
-        // Navigation icon (X) → đóng màn hình mà không lưu
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        // Nút Save (dấu tick ✓)
-        findViewById(R.id.btn_save).setOnClickListener(v -> saveTask());
+        ImageButton btnSave = findViewById(R.id.btn_save);
+        btnSave.setOnClickListener(v -> saveTask());
 
-        // Áp dụng padding để tránh notch
         ViewCompat.setOnApplyWindowInsetsListener(toolbar, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            // Lấy LayoutParams hiện tại
             ViewGroup.LayoutParams lp = v.getLayoutParams();
 
-            // Áp dụng padding để tránh notch
             v.setPadding(v.getPaddingLeft(), insets.top, v.getPaddingRight(), v.getPaddingBottom());
-
-            // Cập nhật chiều cao để chứa notch + kích thước action bar
-            // Sử dụng WRAP_CONTENT để cho phép Toolbar mở rộng cùng với padding
             lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
             v.setLayoutParams(lp);
 
-            // Đảm bảo chiều cao tối thiểu khớp với kích thước Action Bar tiêu chuẩn
             android.util.TypedValue tv = new android.util.TypedValue();
             if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-                int actionBarHeight = android.util.TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
+                int actionBarHeight = android.util.TypedValue.complexToDimensionPixelSize(
+                        tv.data,
+                        getResources().getDisplayMetrics()
+                );
                 v.setMinimumHeight(actionBarHeight + insets.top);
             }
 
             return WindowInsetsCompat.CONSUMED;
         });
     }
-
-    // ─── Load task từ DB ──────────────────────────────────────────────────────
 
     private void loadTaskFromIntent() {
         long taskId = getIntent().getLongExtra(EXTRA_TASK_ID, -1L);
@@ -155,30 +187,23 @@ public class TaskDetailActivity extends BaseActivity {
         }
 
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
-
-        // Observe LiveData: tự động điền UI khi data sẵn sàng
         taskViewModel.getTaskById(taskId).observe(this, task -> {
             if (task == null) {
                 Toast.makeText(this, "Task không tồn tại", Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
-            // Lưu lại reference để dùng khi update
             currentTask = task;
             populateUI(task);
         });
     }
-
-    // ─── Điền dữ liệu lên UI ─────────────────────────────────────────────────
 
     private void populateUI(Task task) {
         etTitle.setText(task.getTitle());
         etDescription.setText(task.getDescription());
         cbCompleted.setChecked(task.isCompleted());
 
-        // Cài due date
         selectedDueDate = task.getDueDate();
-        // Kiểm tra xem due date có chứa giờ không (khác 00:00)
         if (selectedDueDate != null) {
             Calendar check = Calendar.getInstance();
             check.setTimeInMillis(selectedDueDate);
@@ -189,12 +214,137 @@ public class TaskDetailActivity extends BaseActivity {
         }
         updateDueDateChip(selectedDueDate);
 
-        // Cài priority
         selectedPriority = task.getPriority();
         highlightPriorityButton(selectedPriority);
+        bindAttachments(task);
+        observeSubtasks(task.getId());
     }
 
-    // ─── Due Date Chip ────────────────────────────────────────────────────────
+    private void observeSubtasks(long taskId) {
+        if (observedTaskId == taskId) {
+            return;
+        }
+        observedTaskId = taskId;
+
+        if (subtasksLiveData != null) {
+            subtasksLiveData.removeObservers(this);
+        }
+
+        subtasksLiveData = taskViewModel.getSubtasksByTaskId(taskId);
+        subtasksLiveData.observe(this, this::renderSubtasks);
+    }
+
+    private void renderSubtasks(List<Subtask> subtasks) {
+        if (subtaskAdapter != null) {
+            subtaskAdapter.submitList(subtasks);
+        }
+        if (tvSubtasksEmpty != null) {
+            boolean isEmpty = subtasks == null || subtasks.isEmpty();
+            tvSubtasksEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void bindAttachments(Task task) {
+        if (llAttachments == null || chipGroupAttachments == null || ivAttachmentImage == null) {
+            return;
+        }
+
+        chipGroupAttachments.removeAllViews();
+        ivAttachmentImage.setVisibility(View.GONE);
+        ivAttachmentImage.setImageDrawable(null);
+        ivAttachmentImage.setOnClickListener(null);
+
+        boolean hasAnyAttachment = false;
+
+        String imageAttachment = normalizeAttachment(task.getImageAttachment());
+        if (imageAttachment != null) {
+            Uri imageUri = Uri.parse(imageAttachment);
+            try {
+                ivAttachmentImage.setImageURI(imageUri);
+                ivAttachmentImage.setVisibility(View.VISIBLE);
+                ivAttachmentImage.setOnClickListener(v -> openAttachment(imageUri, "image/*"));
+                hasAnyAttachment = true;
+            } catch (SecurityException securityException) {
+                Toast.makeText(this, R.string.detail_attachment_permission_missing, Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        String voiceAttachment = normalizeAttachment(task.getVoiceAttachment());
+        if (voiceAttachment != null) {
+            Uri voiceUri = Uri.parse(voiceAttachment);
+            String label = getString(R.string.detail_attachment_audio_label, getDisplayName(voiceUri));
+            addAttachmentChip(label, R.drawable.ic_audio, voiceUri, "audio/*");
+            hasAnyAttachment = true;
+        }
+
+        String fileAttachment = normalizeAttachment(task.getFileAttachment());
+        if (fileAttachment != null) {
+            Uri fileUri = Uri.parse(fileAttachment);
+            String label = getString(R.string.detail_attachment_file_label, getDisplayName(fileUri));
+            addAttachmentChip(label, R.drawable.ic_attach_file, fileUri, "*/*");
+            hasAnyAttachment = true;
+        }
+
+        llAttachments.setVisibility(hasAnyAttachment ? View.VISIBLE : View.GONE);
+    }
+
+    private void addAttachmentChip(String text, int iconRes, Uri uri, String mimeType) {
+        Chip chip = new Chip(this);
+        chip.setText(text);
+        chip.setChipIconResource(iconRes);
+        chip.setClickable(true);
+        chip.setCheckable(false);
+        chip.setOnClickListener(v -> openAttachment(uri, mimeType));
+        chipGroupAttachments.addView(chip);
+    }
+
+    private String normalizeAttachment(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String getDisplayName(Uri uri) {
+        if (uri == null) {
+            return "attachment";
+        }
+        if ("content".equals(uri.getScheme())) {
+            try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (columnIndex >= 0) {
+                        String displayName = cursor.getString(columnIndex);
+                        if (displayName != null && !displayName.trim().isEmpty()) {
+                            return displayName;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String lastPath = uri.getLastPathSegment();
+        if (lastPath == null || lastPath.trim().isEmpty()) {
+            return "attachment";
+        }
+        int slashIdx = lastPath.lastIndexOf('/');
+        return slashIdx >= 0 ? lastPath.substring(slashIdx + 1) : lastPath;
+    }
+
+    private void openAttachment(Uri uri, String mimeType) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(uri, mimeType);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException activityNotFoundException) {
+            Toast.makeText(this, R.string.detail_attachment_open_failed, Toast.LENGTH_SHORT).show();
+        } catch (SecurityException securityException) {
+            Toast.makeText(this, R.string.detail_attachment_permission_missing, Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private void setupDueDateChip() {
         chipDueDate.setOnClickListener(v -> showDatePicker());
@@ -208,6 +358,11 @@ public class TaskDetailActivity extends BaseActivity {
     }
 
     private void requestAiBreakdown() {
+        if (currentTask == null) {
+            Toast.makeText(this, R.string.ai_breakdown_parse_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         String title = etTitle.getText().toString().trim();
         if (title.isEmpty()) {
             Toast.makeText(this, R.string.ai_breakdown_title_empty, Toast.LENGTH_SHORT).show();
@@ -223,25 +378,12 @@ public class TaskDetailActivity extends BaseActivity {
                     public void onSuccess(String responseText) {
                         try {
                             List<String> steps = AiTaskBreakdownHelper.parseSteps(responseText);
-                            String mergedDescription = AiTaskBreakdownHelper.mergeChecklistIntoDescription(
-                                    etDescription.getText().toString(),
-                                    steps
-                            );
-                            etDescription.setText(mergedDescription);
-                            etDescription.setSelection(mergedDescription.length());
-
-                            if (currentTask != null) {
-                                currentTask.setTitle(etTitle.getText().toString().trim());
-                                currentTask.setDescription(mergedDescription);
-                                currentTask.setDueDate(selectedDueDate);
-                                currentTask.setPriority(selectedPriority);
-                                currentTask.setCompleted(cbCompleted.isChecked());
-                                taskViewModel.update(currentTask);
-                            }
-                            Toast.makeText(TaskDetailActivity.this, R.string.ai_breakdown_success, Toast.LENGTH_SHORT).show();
+                            taskViewModel.applyAiBreakdownToSubtasks(currentTask.getId(), steps, () -> {
+                                setAiBreakdownLoading(false);
+                                Toast.makeText(TaskDetailActivity.this, R.string.ai_breakdown_success, Toast.LENGTH_SHORT).show();
+                            });
                         } catch (Exception parseError) {
                             Toast.makeText(TaskDetailActivity.this, R.string.ai_breakdown_parse_error, Toast.LENGTH_SHORT).show();
-                        } finally {
                             setAiBreakdownLoading(false);
                         }
                     }
@@ -280,7 +422,6 @@ public class TaskDetailActivity extends BaseActivity {
                     selected.set(year, month, dayOfMonth, 0, 0, 0);
                     selected.set(Calendar.MILLISECOND, 0);
                     selectedDueDate = selected.getTimeInMillis();
-                    // Mở TimePicker ngay sau khi chọn ngày
                     showTimePicker();
                 },
                 cal.get(Calendar.YEAR),
@@ -324,7 +465,6 @@ public class TaskDetailActivity extends BaseActivity {
             return;
         }
 
-        // Hiện "Today" / "Tomorrow" hoặc ngày định dạng
         Calendar today = Calendar.getInstance();
         Calendar tomorrow = Calendar.getInstance();
         tomorrow.add(Calendar.DAY_OF_MONTH, 1);
@@ -352,8 +492,6 @@ public class TaskDetailActivity extends BaseActivity {
                 && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR);
     }
 
-    // ─── Priority buttons ─────────────────────────────────────────────────────
-
     private void setupPriorityButtons() {
         btnPriorityNone.setOnClickListener(v -> selectPriority(0));
         btnPriorityLow.setOnClickListener(v -> selectPriority(1));
@@ -366,10 +504,6 @@ public class TaskDetailActivity extends BaseActivity {
         highlightPriorityButton(priority);
     }
 
-    /**
-     * Làm nổi bật nút priority đang được chọn bằng cách thay đổi alpha
-     * của các nút không được chọn.
-     */
     private void highlightPriorityButton(int priority) {
         btnPriorityNone.setAlpha(priority == 0 ? 1f : 0.35f);
         btnPriorityLow.setAlpha(priority == 1 ? 1f : 0.35f);
@@ -377,10 +511,10 @@ public class TaskDetailActivity extends BaseActivity {
         btnPriorityHigh.setAlpha(priority == 3 ? 1f : 0.35f);
     }
 
-    // ─── Lưu task ─────────────────────────────────────────────────────────────
-
     private void saveTask() {
-        if (currentTask == null) return;
+        if (currentTask == null) {
+            return;
+        }
 
         String title = etTitle.getText().toString().trim();
         if (title.isEmpty()) {
@@ -389,14 +523,12 @@ public class TaskDetailActivity extends BaseActivity {
             return;
         }
 
-        // Cập nhật các field của task gốc
         currentTask.setTitle(title);
         currentTask.setDescription(etDescription.getText().toString().trim());
         currentTask.setDueDate(selectedDueDate);
         currentTask.setPriority(selectedPriority);
         currentTask.setCompleted(cbCompleted.isChecked());
 
-        // Ghi vào DB qua ViewModel (background thread)
         taskViewModel.update(currentTask);
 
         Toast.makeText(this, getString(R.string.detail_saved), Toast.LENGTH_SHORT).show();

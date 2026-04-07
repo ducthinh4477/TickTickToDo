@@ -2,7 +2,8 @@ package hcmute.edu.vn.tickticktodo.ui;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
-import android.graphics.Bitmap;
+import android.content.DialogInterface;
+import android.content.Intent;
 
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -42,20 +43,11 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.snackbar.Snackbar;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
-import hcmute.edu.vn.tickticktodo.helper.ImageProcessingHelper;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
@@ -71,6 +63,7 @@ import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
     private static final String ARG_INITIAL_TITLE = "initial_title";
+    private static final String ARG_FINISH_HOST_ON_DISMISS = "finish_host_on_dismiss";
 
     // Views
     private EditText etTitle;
@@ -100,13 +93,12 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private Handler handler = new Handler();
     private Runnable runnable;
 
-    private ActivityResultLauncher<String> imagePickerLauncher;
-    private ActivityResultLauncher<String> audioPickerLauncher;
-    private ActivityResultLauncher<String> filePickerLauncher;
+    private ActivityResultLauncher<String[]> imagePickerLauncher;
+    private ActivityResultLauncher<String[]> audioPickerLauncher;
+    private ActivityResultLauncher<String[]> filePickerLauncher;
     private ActivityResultLauncher<Uri> cameraCaptureLauncher;
 
     private Uri pendingCaptureUri;
-    private final ExecutorService scanExecutor = Executors.newSingleThreadExecutor();
 
 
     // State
@@ -139,6 +131,14 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         return fragment;
     }
 
+    public static AddTaskBottomSheet newOverlayPopupInstance() {
+        AddTaskBottomSheet fragment = new AddTaskBottomSheet();
+        Bundle args = new Bundle();
+        args.putBoolean(ARG_FINISH_HOST_ON_DISMISS, true);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
     // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
     @Override
@@ -149,7 +149,16 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             mediaPlayer = null;
         }
         handler.removeCallbacksAndMessages(null);
-        scanExecutor.shutdownNow();
+    }
+
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        super.onDismiss(dialog);
+        Bundle args = getArguments();
+        boolean finishHost = args != null && args.getBoolean(ARG_FINISH_HOST_ON_DISMISS, false);
+        if (finishHost && getActivity() != null && !getActivity().isFinishing()) {
+            getActivity().finish();
+        }
     }
 
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -333,8 +342,9 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
     
     private void setupPickers() {
-        imagePickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+        imagePickerLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
             if (uri != null) {
+                persistReadPermission(uri);
                 imagePath = uri.toString();
                 llAttachments.setVisibility(View.VISIBLE);
                 ivAttachmentImage.setVisibility(View.VISIBLE);
@@ -342,8 +352,9 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         });
         
-        audioPickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+        audioPickerLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
             if (uri != null) {
+                persistReadPermission(uri);
                 voicePath = uri.toString();
                 llAttachments.setVisibility(View.VISIBLE);
                 llVoicePlayer.setVisibility(View.VISIBLE);
@@ -351,8 +362,9 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         });
         
-        filePickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+        filePickerLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
             if (uri != null) {
+                persistReadPermission(uri);
                 filePath = uri.toString();
                 llAttachments.setVisibility(View.VISIBLE);
                 tvAttachmentFile.setVisibility(View.VISIBLE);
@@ -367,7 +379,22 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             } else {
                 toggleScanProgress(false);
             }
+            pendingCaptureUri = null;
         });
+    }
+
+    private void persistReadPermission(Uri uri) {
+        if (uri == null || !"content".equals(uri.getScheme())) {
+            return;
+        }
+        try {
+            requireContext().getContentResolver().takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+        } catch (SecurityException ignored) {
+            // Some providers do not support persistable URI permissions.
+        }
     }
 
     private void launchCameraCapture() {
@@ -399,136 +426,20 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     }
 
     private void handleCameraCapturedImage(Uri imageUri) {
-        toggleScanProgress(true);
-        scanExecutor.execute(() -> {
-            try {
-                Bitmap bitmap = ImageProcessingHelper.decodeSampledBitmapFromUri(
-                        requireContext(),
-                        imageUri,
-                        1600,
-                        1600
-                );
-
-                if (bitmap == null) {
-                    postScanError(getString(R.string.scan_image_decode_failed));
-                    return;
-                }
-
-                String prompt = "Day la hinh anh chua danh sach cong viec/bai tap. "
-                        + "Hay nhan dien van ban va trich xuat tung dau viec. "
-                        + "Tra ve JSON array chi gom tieu de cong viec. "
-                        + "Chi tra ve JSON.";
-
-                GeminiManager.getInstance().generateVisionResponse(bitmap, prompt, new GeminiManager.ResponseCallback() {
-                    @Override
-                    public void onSuccess(String responseText) {
-                        List<String> titles = parseTaskTitlesFromAi(responseText);
-                        if (titles.isEmpty()) {
-                            postScanError(getString(R.string.scan_no_tasks_found));
-                            return;
-                        }
-
-                        List<Task> tasks = new ArrayList<>();
-                        long dueDate = getScanDefaultDueDate();
-                        for (String title : titles) {
-                            if (title == null) {
-                                continue;
-                            }
-                            String cleanTitle = title.trim();
-                            if (cleanTitle.isEmpty()) {
-                                continue;
-                            }
-                            tasks.add(new Task(cleanTitle, "", dueDate, false, 0));
-                        }
-
-                        if (tasks.isEmpty()) {
-                            postScanError(getString(R.string.scan_no_tasks_found));
-                            return;
-                        }
-
-                        taskViewModel.insertBatch(tasks, () -> {
-                            if (!isAdded() || getView() == null) {
-                                return;
-                            }
-                            toggleScanProgress(false);
-                            Snackbar.make(getView(),
-                                            getString(R.string.scan_tasks_added_count, tasks.size()),
-                                            Snackbar.LENGTH_LONG)
-                                    .show();
-                        });
-                    }
-
-                    @Override
-                    public void onError(String errorMessage) {
-                        postScanError(errorMessage);
-                    }
-                });
-            } catch (Exception e) {
-                postScanError(getString(R.string.scan_processing_failed));
-            }
-        });
-    }
-
-    private void postScanError(String message) {
-        if (!isAdded()) {
+        if (!isAdded() || imageUri == null) {
+            toggleScanProgress(false);
             return;
         }
-        requireActivity().runOnUiThread(() -> {
-            toggleScanProgress(false);
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-        });
-    }
-
-    private long getScanDefaultDueDate() {
-        Calendar dueCal = (Calendar) selectedDate.clone();
-        dueCal.set(Calendar.HOUR_OF_DAY, 0);
-        dueCal.set(Calendar.MINUTE, 0);
-        dueCal.set(Calendar.SECOND, 0);
-        dueCal.set(Calendar.MILLISECOND, 0);
-        return dueCal.getTimeInMillis();
-    }
-
-    private List<String> parseTaskTitlesFromAi(String rawResponse) {
-        List<String> titles = new ArrayList<>();
-        try {
-            String jsonArrayText = extractJsonArray(rawResponse);
-            JSONArray jsonArray = new JSONArray(jsonArrayText);
-            for (int i = 0; i < jsonArray.length(); i++) {
-                Object item = jsonArray.opt(i);
-                if (item instanceof String) {
-                    titles.add((String) item);
-                } else if (item instanceof JSONObject) {
-                    String title = ((JSONObject) item).optString("title", "");
-                    if (!title.trim().isEmpty()) {
-                        titles.add(title.trim());
-                    }
-                }
-            }
-        } catch (Exception ignored) {
+        persistReadPermission(imageUri);
+        imagePath = imageUri.toString();
+        llAttachments.setVisibility(View.VISIBLE);
+        ivAttachmentImage.setVisibility(View.VISIBLE);
+        ivAttachmentImage.setImageURI(imageUri);
+        toggleScanProgress(false);
+        View root = getView();
+        if (root != null) {
+            Snackbar.make(root, R.string.scan_image_attached, Snackbar.LENGTH_SHORT).show();
         }
-        return titles;
-    }
-
-    private String extractJsonArray(String raw) {
-        if (raw == null) {
-            return "[]";
-        }
-
-        String text = raw.trim();
-        if (text.startsWith("```") && text.endsWith("```")) {
-            int firstLineBreak = text.indexOf('\n');
-            int lastFence = text.lastIndexOf("```");
-            if (firstLineBreak != -1 && lastFence > firstLineBreak) {
-                text = text.substring(firstLineBreak + 1, lastFence).trim();
-            }
-        }
-
-        int left = text.indexOf('[');
-        int right = text.lastIndexOf(']');
-        if (left >= 0 && right > left) {
-            return text.substring(left, right + 1);
-        }
-        return text;
     }
 
     private void toggleScanProgress(boolean loading) {
@@ -633,11 +544,11 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
-        btnAddImage.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
+        btnAddImage.setOnClickListener(v -> imagePickerLauncher.launch(new String[]{"image/*"}));
 
-        btnAddAudio.setOnClickListener(v -> audioPickerLauncher.launch("audio/*"));
+        btnAddAudio.setOnClickListener(v -> audioPickerLauncher.launch(new String[]{"audio/*"}));
 
-        btnAddFile.setOnClickListener(v -> filePickerLauncher.launch("*/*"));
+        btnAddFile.setOnClickListener(v -> filePickerLauncher.launch(new String[]{"*/*"}));
 
         if (btnScanFromCamera != null) {
             btnScanFromCamera.setOnClickListener(v -> launchCameraCapture());
@@ -666,6 +577,9 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         dueCal.set(Calendar.MILLISECOND, 0);
 
         Task newTask = new Task(title, description, dueCal.getTimeInMillis(), false, selectedPriority);
+        newTask.setImageAttachment(imagePath);
+        newTask.setVoiceAttachment(voicePath);
+        newTask.setFileAttachment(filePath);
         taskViewModel.insert(newTask);
 
         dismiss();

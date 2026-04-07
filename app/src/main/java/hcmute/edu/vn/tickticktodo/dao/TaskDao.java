@@ -130,6 +130,9 @@ public interface TaskDao {
     @Query("UPDATE tasks SET order_index = :orderIndex WHERE id = :taskId")
     void updateOrderIndex(long taskId, int orderIndex);
 
+       @Query("UPDATE tasks SET order_index = order_index WHERE id = :taskId")
+       void touchTask(long taskId);
+
     // ══════════════════════════════════════════════════════════════════════════════
     // STATISTICS QUERIES — Thống kê
     // ══════════════════════════════════════════════════════════════════════════════

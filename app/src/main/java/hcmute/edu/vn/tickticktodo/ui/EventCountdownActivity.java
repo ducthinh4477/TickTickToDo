@@ -33,9 +33,12 @@ import java.util.List;
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.adapter.CountdownEventAdapter;
+import hcmute.edu.vn.tickticktodo.helper.UsageStreakManager;
 import hcmute.edu.vn.tickticktodo.model.CountdownEvent;
 
 public class EventCountdownActivity extends BaseActivity {
+
+    private static final long DAY_MILLIS = 24L * 60L * 60L * 1000L;
 
     private RecyclerView rvEvents;
     private CountdownEventAdapter adapter;
@@ -152,10 +155,10 @@ public class EventCountdownActivity extends BaseActivity {
         }
         eventList.add(new CountdownEvent("Tết Dương lịch", nyCal.getTimeInMillis()));
 
-        // 3. TickTick Usage (Past) - 21 days ago as an example
-        Calendar pastCal = Calendar.getInstance();
-        pastCal.add(Calendar.DAY_OF_YEAR, -21);
-        eventList.add(new CountdownEvent("Sử dụng TickTick", pastCal.getTimeInMillis()));
+        // 3. TickTick Usage (Past) - real streak days based on app usage
+        int streakDays = Math.max(1, UsageStreakManager.markUsageAndGetCurrentStreak(this));
+        long streakAnchorMillis = System.currentTimeMillis() - (streakDays * DAY_MILLIS);
+        eventList.add(new CountdownEvent("Sử dụng TickTick", streakAnchorMillis));
 
         adapter.setEvents(eventList);
     }

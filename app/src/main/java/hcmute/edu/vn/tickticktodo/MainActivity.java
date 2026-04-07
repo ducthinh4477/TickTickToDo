@@ -1,5 +1,6 @@
 package hcmute.edu.vn.tickticktodo;
 
+import android.app.TimePickerDialog;
 import android.content.Intent;
 import hcmute.edu.vn.tickticktodo.ui.EisenhowerActivity;
 import android.os.Bundle;
@@ -68,6 +69,7 @@ public class MainActivity extends BaseActivity {
 
     private static final String PREFS_NAME = "TickTickPrefs";
     private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
+    public static final String EXTRA_OPEN_ADD_TASK_SHEET = "extra_open_add_task_sheet";
 
     private TaskViewModel taskViewModel;
 
@@ -138,6 +140,45 @@ public class MainActivity extends BaseActivity {
         setupViewModel();
         setupQuickAdd();
         setupFab();
+        handleExternalIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleExternalIntent(intent);
+    }
+
+    private void handleExternalIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        if (intent.getBooleanExtra(EXTRA_OPEN_ADD_TASK_SHEET, false)) {
+            intent.removeExtra(EXTRA_OPEN_ADD_TASK_SHEET);
+            openAddTaskSheetFromExternalTrigger();
+        }
+    }
+
+    private void openAddTaskSheetFromExternalTrigger() {
+        if (isFinishing()) {
+            return;
+        }
+
+        View anchor = rvTasks != null ? rvTasks : findViewById(android.R.id.content);
+        if (anchor == null) {
+            return;
+        }
+
+        anchor.post(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            if (getSupportFragmentManager().findFragmentByTag("AddTask") == null) {
+                AddTaskBottomSheet.newInstance().show(getSupportFragmentManager(), "AddTask");
+            }
+        });
     }
 
     // ─── View binding ───────────────────────────────────────────────────────
@@ -728,15 +769,33 @@ public class MainActivity extends BaseActivity {
         String title = etQuickAdd.getText().toString().trim();
         if (title.isEmpty()) return;
 
-        Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
+        showQuickAddDueTimePicker(title);
+    }
 
-        taskViewModel.insert(new Task(title, "", cal.getTimeInMillis(), false, 0));
-        etQuickAdd.setText("");
-        hideKeyboard();
+    private void showQuickAddDueTimePicker(String title) {
+        Calendar now = Calendar.getInstance();
+
+        TimePickerDialog timePickerDialog = new TimePickerDialog(
+                this,
+                (view, hourOfDay, minute) -> {
+                    Calendar dueCal = Calendar.getInstance();
+                    dueCal.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    dueCal.set(Calendar.MINUTE, minute);
+                    dueCal.set(Calendar.SECOND, 0);
+                    dueCal.set(Calendar.MILLISECOND, 0);
+
+                    taskViewModel.insert(new Task(title, "", dueCal.getTimeInMillis(), false, 0));
+                    etQuickAdd.setText("");
+                    hideKeyboard();
+                },
+                now.get(Calendar.HOUR_OF_DAY),
+                now.get(Calendar.MINUTE),
+                true
+        );
+        timePickerDialog.setTitle(getString(R.string.quick_add_due_time_title));
+        timePickerDialog.setOnCancelListener(dialog ->
+                Toast.makeText(this, R.string.quick_add_due_time_required, Toast.LENGTH_SHORT).show());
+        timePickerDialog.show();
     }
 
     // ─── FAB ────────────────────────────────────────────────────────────────

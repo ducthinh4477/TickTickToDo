@@ -11,6 +11,7 @@ import androidx.lifecycle.Transformations;
 import java.util.Calendar;
 import java.util.List;
 
+import hcmute.edu.vn.tickticktodo.model.Subtask;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
 import hcmute.edu.vn.tickticktodo.repository.TaskRepository;
@@ -166,6 +167,10 @@ public class TaskViewModel extends AndroidViewModel {
         return repository.getTaskById(taskId);
     }
 
+    public LiveData<List<Subtask>> getSubtasksByTaskId(long taskId) {
+        return repository.getSubtasksByTaskId(taskId);
+    }
+
     // ─── Moodle ──────────────────────────────────────────────────────────────────
 
     public LiveData<List<Task>> getUpcomingMoodleTasks(long currentTime) {
@@ -188,6 +193,31 @@ public class TaskViewModel extends AndroidViewModel {
 
     public void update(Task task) {
         repository.update(task);
+    }
+
+    public void applyAiBreakdownToSubtasks(long taskId, List<String> steps, Runnable onComplete) {
+        repository.applyAiBreakdownSubtasks(taskId, steps, onComplete);
+    }
+
+    public void markSubtaskCompleted(Subtask subtask, boolean isCompleted) {
+        if (subtask == null) {
+            return;
+        }
+        repository.markSubtaskCompleted(subtask.getId(), subtask.getTaskId(), isCompleted);
+    }
+
+    public void setSubtaskApproved(Subtask subtask, boolean isApproved) {
+        if (subtask == null) {
+            return;
+        }
+        repository.setSubtaskApproved(subtask.getId(), subtask.getTaskId(), isApproved);
+    }
+
+    public void updateSubtaskPriority(Subtask subtask, int priority) {
+        if (subtask == null) {
+            return;
+        }
+        repository.updateSubtaskPriority(subtask.getId(), subtask.getTaskId(), priority);
     }
 
     public void moveUnfinishedTasksToTomorrow(List<Long> taskIds, Runnable onComplete) {

@@ -76,6 +76,7 @@ dependencies {
 
     // Google Gemini SDK (Java Support)
     implementation("com.google.ai.client.generativeai:generativeai:0.8.0")
+    implementation("org.reactivestreams:reactive-streams:1.0.4")
     implementation("com.google.guava:guava:32.1.3-android")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
 

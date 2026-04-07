@@ -3,6 +3,8 @@
     <string name="splash_tagline">Organize your day, one tick at a time.</string>
     <string name="priority_flag_desc">Priority flag</string>
     <string name="quick_add_hint">Add a new task…</string>
+    <string name="quick_add_due_time_title">Chọn giờ hết hạn</string>
+    <string name="quick_add_due_time_required">Bạn cần chọn giờ hết hạn để tạo công việc.</string>
     <string name="add_task_desc">Add task</string>
     <string name="send_task_desc">Send task</string>
     <string name="empty_state_message">No tasks for today.\nTap + to add one!</string>
@@ -31,16 +33,31 @@
     <!-- TaskDetailActivity -->
     <string name="detail_back_desc">Close</string>
     <string name="detail_save_desc">Save</string>
+    <string name="detail_expand_desc">Expand or collapse</string>
     <string name="detail_saved">Changes saved</string>
     <string name="detail_label_date">Due date</string>
     <string name="detail_label_priority">Priority</string>
+    <string name="detail_label_attachments">Attachments</string>
+    <string name="detail_attachment_image_desc">Attached image preview</string>
+    <string name="detail_attachment_audio_label">Audio: %1$s</string>
+    <string name="detail_attachment_file_label">File: %1$s</string>
+    <string name="detail_attachment_video_label">Video: %1$s</string>
+    <string name="detail_attachment_open_failed">Cannot open attachment</string>
+    <string name="detail_attachment_permission_missing">Attachment access denied</string>
     <string name="label_no_date">Pick a date</string>
     <string name="error_title_empty">Title cannot be empty</string>
     <string name="ai_breakdown_button">AI Phân tích các bước</string>
     <string name="ai_breakdown_loading">AI đang phân tích...</string>
     <string name="ai_breakdown_title_empty">Hãy nhập tên công việc trước khi phân tích.</string>
     <string name="ai_breakdown_parse_error">AI trả về dữ liệu chưa đúng định dạng. Vui lòng thử lại.</string>
-    <string name="ai_breakdown_success">Đã thêm checklist AI vào mô tả.</string>
+    <string name="ai_breakdown_success">Đã cập nhật các bước AI. Bước đã duyệt sẽ được giữ lại.</string>
+    <string name="detail_label_subtasks">Các bước con</string>
+    <string name="detail_subtasks_empty">Chưa có bước con. Hãy dùng AI để phân tích thành nhiều bước.</string>
+    <string name="subtask_raw_suffix">(raw)</string>
+    <string name="subtask_approve">Duyệt</string>
+    <string name="subtask_approved">Đã duyệt</string>
+    <string name="subtask_toggle_complete_desc">Đánh dấu hoàn thành bước con</string>
+    <string name="subtask_change_priority_desc">Đổi mức cờ của bước con</string>
     <string name="priority_none_label">None</string>
     <string name="priority_low_label">Low</string>
     <string name="priority_medium_label">Medium</string>
@@ -117,6 +134,7 @@
     <string name="cal_next_month_desc">Next month</string>
     <string name="cal_today">Today</string>
     <string name="cal_add_event_desc">Add new event</string>
+    <string name="calendar_day_detail_back_desc">Quay lại lịch tháng</string>
 
     <!-- Day-of-week headers (Mon-first, Vietnamese abbreviation) -->
     <string name="cal_day_mon">T2</string>
@@ -259,11 +277,14 @@
     <string name="voice_parse_failed">Không đọc được phản hồi AI, vui lòng thử lại.</string>
 
     <!-- Scan To Tasks -->
-    <string name="scan_prepare_failed">Không thể mở camera để quét ảnh.</string>
+    <string name="scan_prepare_failed">Không thể mở camera để chụp ảnh.</string>
     <string name="scan_image_decode_failed">Không thể đọc ảnh vừa chụp.</string>
     <string name="scan_processing_failed">Có lỗi khi xử lý ảnh, vui lòng thử lại.</string>
     <string name="scan_no_tasks_found">AI chưa trích xuất được công việc nào từ ảnh.</string>
     <string name="scan_tasks_added_count">Đã thêm %1$d công việc từ hình ảnh!</string>
+    <string name="scan_camera_action">Chụp ảnh</string>
+    <string name="scan_camera_loading">Đang mở camera...</string>
+    <string name="scan_image_attached">Đã đính kèm ảnh vào công việc.</string>
 
     <!-- Habit Tracker -->
     <string name="habit_title">Thoi quen</string>
@@ -311,9 +332,24 @@
     <string name="floating_chat_overlay_voice_title">Che do voice</string>
     <string name="floating_chat_overlay_auto_turn_taking">Tu dong hoi dap luot tiep theo</string>
     <string name="floating_chat_overlay_speak_replies">Doc thanh tieng cau tra loi cua tro ly</string>
+    <string name="floating_chat_overlay_barge_in_threshold">Do nhay ngat loi khi tro ly dang noi</string>
     <string name="floating_chat_overlay_fullscreen">Toan man hinh</string>
+    <string name="floating_chat_mode_chat">Chat mode (khong voice)</string>
+    <string name="floating_chat_mode_voice">Voice mode (khong chat)</string>
+    <string name="floating_chat_input_hint_chat">Nhap lenh...</string>
+    <string name="floating_chat_input_hint_voice">Voice mode dang bat (khong chat)</string>
+    <string name="floating_chat_chat_mode_no_voice">Chat mode khong su dung voice.</string>
+    <string name="floating_chat_voice_mode_no_typing">Voice mode khong ho tro nhap chat.</string>
+    <string name="floating_chat_voice_mode_ready">Cham mic de bat dau voice.</string>
     <string name="floating_chat_dismiss_label">X</string>
     <string name="floating_chat_hidden_toast">Da an tro ly noi. Mo lai trong cai dat neu can.</string>
+    <string name="floating_action_center_desc">Tro ly noi</string>
+    <string name="floating_action_chat_desc">Mo chat popup</string>
+    <string name="floating_action_voice_desc">Bat dau voice tam thoi</string>
+    <string name="floating_action_camera_desc">Camera (sap cap nhat)</string>
+    <string name="floating_action_task_desc">Tao task moi</string>
+    <string name="floating_action_home_desc">Mo trang chu ung dung</string>
+    <string name="floating_action_camera_todo">Tinh nang camera se duoc cap nhat sau.</string>
 
     <!-- Habit tracker refreshed layout -->
     <string name="habit_section_list_title">Thoi quen cua ban</string>

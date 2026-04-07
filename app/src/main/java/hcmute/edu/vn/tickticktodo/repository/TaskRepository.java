@@ -8,13 +8,16 @@ import android.widget.Toast;
 import androidx.lifecycle.LiveData;
 
 import java.util.Calendar;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import hcmute.edu.vn.tickticktodo.dao.SubtaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.model.Subtask;
 import hcmute.edu.vn.tickticktodo.helper.ReminderScheduler;
 import hcmute.edu.vn.tickticktodo.helper.UserStatsManager;
 import hcmute.edu.vn.tickticktodo.model.Task;
@@ -31,6 +34,7 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
 public class TaskRepository {
 
     private final TaskDao taskDao;
+    private final SubtaskDao subtaskDao;
     private final TodoListDao todoListDao;
     private final ExecutorService executor;
     private final Application application; // giữ để pass Context cho ReminderScheduler
@@ -49,6 +53,7 @@ public class TaskRepository {
     public TaskRepository(Application application) {
         TaskDatabase db = TaskDatabase.getInstance(application);
         taskDao = db.taskDao();
+        subtaskDao = db.subtaskDao();
         todoListDao = db.todoListDao();
         executor = Executors.newSingleThreadExecutor();
         this.application = application;
@@ -98,6 +103,10 @@ public class TaskRepository {
 
     public LiveData<Task> getTaskById(long taskId) {
         return taskDao.getTaskById(taskId);
+    }
+
+    public LiveData<List<Subtask>> getSubtasksByTaskId(long taskId) {
+        return subtaskDao.getSubtasksByTaskId(taskId);
     }
 
     // ─── WRITE (background thread) ──────────────────────────────────────────────
@@ -227,6 +236,60 @@ public class TaskRepository {
             logRepository.insertLog("XÓA", task.getTitle());
             
             ReminderScheduler.cancelReminder(application, task.getId()); // huỷ alarm
+        });
+    }
+
+    public void applyAiBreakdownSubtasks(long taskId, List<String> steps, Runnable onComplete) {
+        executor.execute(() -> {
+            subtaskDao.deleteUnapprovedByTaskId(taskId);
+
+            List<Subtask> pendingSubtasks = new ArrayList<>();
+            Integer maxOrderIndex = subtaskDao.getMaxOrderIndex(taskId);
+            int nextOrderIndex = maxOrderIndex == null ? 0 : maxOrderIndex + 1;
+
+            if (steps != null) {
+                for (String step : steps) {
+                    if (step == null) {
+                        continue;
+                    }
+                    String cleanStep = step.trim();
+                    if (cleanStep.isEmpty()) {
+                        continue;
+                    }
+
+                    Subtask subtask = new Subtask(taskId, cleanStep, false, false, 0, nextOrderIndex++);
+                    pendingSubtasks.add(subtask);
+                }
+            }
+
+            if (!pendingSubtasks.isEmpty()) {
+                subtaskDao.insertAll(pendingSubtasks);
+            }
+
+            taskDao.touchTask(taskId);
+            postToMain(onComplete);
+        });
+    }
+
+    public void markSubtaskCompleted(long subtaskId, long taskId, boolean isCompleted) {
+        executor.execute(() -> {
+            subtaskDao.markSubtaskCompleted(subtaskId, isCompleted);
+            taskDao.touchTask(taskId);
+        });
+    }
+
+    public void setSubtaskApproved(long subtaskId, long taskId, boolean isApproved) {
+        executor.execute(() -> {
+            subtaskDao.setSubtaskApproved(subtaskId, isApproved);
+            taskDao.touchTask(taskId);
+        });
+    }
+
+    public void updateSubtaskPriority(long subtaskId, long taskId, int priority) {
+        executor.execute(() -> {
+            int safePriority = Math.max(0, Math.min(3, priority));
+            subtaskDao.updateSubtaskPriority(subtaskId, safePriority);
+            taskDao.touchTask(taskId);
         });
     }
 

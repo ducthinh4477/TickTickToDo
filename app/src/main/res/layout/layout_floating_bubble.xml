@@ -1,8 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/iv_action_chat"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_chat_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_chat_bubble"
+        android:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_voice"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_voice_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_mic"
+        android:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_camera"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_camera_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_camera"
+        android:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_task"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_task_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_add"
+        android:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_home"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_home_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_home"
+        android:tint="@android:color/white"
+        android:visibility="invisible" />
 
     <View
         android:layout_width="74dp"
@@ -30,7 +97,7 @@
         android:layout_height="58dp"
         android:layout_gravity="center"
         android:background="@drawable/bg_floating_bubble_circle"
-        android:contentDescription="Floating AI Assistant"
+        android:contentDescription="@string/floating_action_center_desc"
         android:elevation="10dp"
         android:padding="15dp"
         android:scaleType="centerInside"

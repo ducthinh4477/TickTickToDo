@@ -3,12 +3,18 @@ package hcmute.edu.vn.tickticktodo.ui;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.app.TimePickerDialog;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -17,14 +23,17 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.Toolbar;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -32,8 +41,10 @@ import java.util.List;
 import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.adapter.SubtaskStepAdapter;
 import hcmute.edu.vn.tickticktodo.helper.AiTaskBreakdownHelper;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
+import hcmute.edu.vn.tickticktodo.model.Subtask;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
 
@@ -47,7 +58,9 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     private TaskViewModel taskViewModel;
 
     // Views
-    private android.widget.ImageButton btnExpandCollapse;
+    private ImageButton btnHeaderClose;
+    private ImageButton btnHeaderSave;
+    private ImageButton btnExpandCollapse;
     private CheckBox cbCompleted;
     private EditText etTitle;
     private EditText etDescription;
@@ -58,28 +71,24 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     private LinearLayout btnPriorityLow;
     private LinearLayout btnPriorityMedium;
     private LinearLayout btnPriorityHigh;
+    private LinearLayout llAttachments;
+    private ImageView ivAttachmentImage;
+    private ChipGroup chipGroupAttachments;
+    private RecyclerView rvSubtasks;
+    private TextView tvSubtasksEmpty;
 
     private BottomSheetBehavior<View> bottomSheetBehavior;
+    private SubtaskStepAdapter subtaskAdapter;
+    private LiveData<List<Subtask>> subtasksLiveData;
+    private long observedTaskId = -1L;
 
     // State
-    private Task currentTask;       // task đang chỉnh sửa
-
-    private LinearLayout llAttachments, llVoicePlayer;
-    private ImageView ivAttachmentImage, ivPlayPause;
-    private TextView tvAttachmentFile, tvVoiceDuration;
-    private android.widget.SeekBar sbVoiceProgress;
-    
-    private android.media.MediaPlayer mediaPlayer;
-    private boolean isPlaying = false;
-    private android.os.Handler handler = new android.os.Handler();
-    private Runnable runnable;
-    private Long selectedDueDate;   // timestamp ngày được chọn (null = không có)
-    private int selectedPriority;   // 0..3
-    private boolean hasTimeSelected; // user đã chọn giờ chưa
+    private Task currentTask;
+    private Long selectedDueDate;
+    private int selectedPriority;
+    private boolean hasTimeSelected;
     private final SimpleDateFormat timeFormat =
             new SimpleDateFormat("HH:mm", Locale.getDefault());
-
-    // ─── Static factory helper ────────────────────────────────────────────────
 
     public static TaskDetailBottomSheet newInstance(long taskId) {
         TaskDetailBottomSheet fragment = new TaskDetailBottomSheet();
@@ -92,7 +101,6 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Lấy ViewModel của Activity (share giữa Activity và Fragment)
         taskViewModel = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
     }
 
@@ -103,26 +111,22 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         dialog.setOnShowListener(dialogInterface -> {
             BottomSheetDialog d = (BottomSheetDialog) dialogInterface;
             View bottomSheet = d.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            if (bottomSheet != null) {
-                bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
-                
-                bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
-                    @Override
-                    public void onStateChanged(@NonNull View bottomSheet, int newState) {
-                        if (newState == BottomSheetBehavior.STATE_EXPANDED) {
-                            btnExpandCollapse.setImageResource(R.drawable.ic_back);
-                        } else if (newState == BottomSheetBehavior.STATE_HALF_EXPANDED || newState == BottomSheetBehavior.STATE_COLLAPSED) {
-                            btnExpandCollapse.setImageResource(R.drawable.ic_expand);
-                            saveTask(); // Auto-save khi thu nhỏ
-                        }
-                    }
-
-                    @Override
-                    public void onSlide(@NonNull View bottomSheet, float slideOffset) {
-                    }
-                });
+            if (bottomSheet == null) {
+                return;
             }
+            bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
+            updateExpandIcon(bottomSheetBehavior.getState());
+            bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+                @Override
+                public void onStateChanged(@NonNull View bottomSheet, int newState) {
+                    updateExpandIcon(newState);
+                }
+
+                @Override
+                public void onSlide(@NonNull View bottomSheet, float slideOffset) {
+                }
+            });
         });
         return dialog;
     }
@@ -143,72 +147,108 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         setupToolbar();
         setupPriorityButtons();
         setupDueDateChip();
+        setupSubtaskList();
         setupAiBreakdown();
         loadTaskFromArgs();
     }
 
-    // ─── Khởi tạo view references ─────────────────────────────────────────────
-
     private void initViews(View view) {
+        btnHeaderClose = view.findViewById(R.id.btn_header_close);
+        btnHeaderSave = view.findViewById(R.id.btn_header_save);
         btnExpandCollapse = view.findViewById(R.id.btn_expand_collapse);
-        cbCompleted       = view.findViewById(R.id.cb_completed);
-        etTitle           = view.findViewById(R.id.et_title);
-        etDescription     = view.findViewById(R.id.et_description);
-        chipDueDate       = view.findViewById(R.id.chip_due_date);
-        btnAiBreakdown    = view.findViewById(R.id.btn_ai_breakdown);
+        cbCompleted = view.findViewById(R.id.cb_completed);
+        etTitle = view.findViewById(R.id.et_title);
+        etDescription = view.findViewById(R.id.et_description);
+        chipDueDate = view.findViewById(R.id.chip_due_date);
+        btnAiBreakdown = view.findViewById(R.id.btn_ai_breakdown);
         progressAiBreakdown = view.findViewById(R.id.progress_ai_breakdown);
-        btnPriorityNone   = view.findViewById(R.id.btn_priority_none);
-        btnPriorityLow    = view.findViewById(R.id.btn_priority_low);
+        btnPriorityNone = view.findViewById(R.id.btn_priority_none);
+        btnPriorityLow = view.findViewById(R.id.btn_priority_low);
         btnPriorityMedium = view.findViewById(R.id.btn_priority_medium);
-        btnPriorityHigh   = view.findViewById(R.id.btn_priority_high);
-
+        btnPriorityHigh = view.findViewById(R.id.btn_priority_high);
         llAttachments = view.findViewById(R.id.ll_attachments);
-        llVoicePlayer = view.findViewById(R.id.ll_voice_player);
         ivAttachmentImage = view.findViewById(R.id.iv_attachment_image);
-        ivPlayPause = view.findViewById(R.id.iv_play_pause);
-        tvAttachmentFile = view.findViewById(R.id.tv_attachment_file);
-        tvVoiceDuration = view.findViewById(R.id.tv_voice_duration);
-        sbVoiceProgress = view.findViewById(R.id.sb_voice_progress);
+        chipGroupAttachments = view.findViewById(R.id.chip_group_attachments);
+        rvSubtasks = view.findViewById(R.id.rv_subtasks);
+        tvSubtasksEmpty = view.findViewById(R.id.tv_subtasks_empty);
 
-        // Auto expand khi focus hoặc click
         View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {
-            if (hasFocus) expandBottomSheet();
+            if (hasFocus) {
+                expandBottomSheet();
+            }
         };
         etTitle.setOnFocusChangeListener(focusChangeListener);
         etDescription.setOnFocusChangeListener(focusChangeListener);
-        
+
         View.OnClickListener clickListener = v -> expandBottomSheet();
         etTitle.setOnClickListener(clickListener);
         etDescription.setOnClickListener(clickListener);
     }
 
-    private void expandBottomSheet() {
-        if (bottomSheetBehavior != null && bottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
-            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+    private void setupSubtaskList() {
+        if (rvSubtasks == null) {
+            return;
         }
+
+        subtaskAdapter = new SubtaskStepAdapter(new SubtaskStepAdapter.Listener() {
+            @Override
+            public void onSubtaskCheckedChanged(Subtask subtask, boolean isChecked) {
+                taskViewModel.markSubtaskCompleted(subtask, isChecked);
+            }
+
+            @Override
+            public void onSubtaskApproved(Subtask subtask) {
+                taskViewModel.setSubtaskApproved(subtask, true);
+            }
+
+            @Override
+            public void onSubtaskPriorityChanged(Subtask subtask, int newPriority) {
+                taskViewModel.updateSubtaskPriority(subtask, newPriority);
+            }
+        });
+
+        rvSubtasks.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rvSubtasks.setAdapter(subtaskAdapter);
     }
 
-    // ─── Header ──────────────────────────────────────────────────────────────
-
     private void setupToolbar() {
+        btnHeaderClose.setOnClickListener(v -> dismiss());
+
+        btnHeaderSave.setOnClickListener(v -> {
+            if (saveTask()) {
+                dismiss();
+            }
+        });
+
         btnExpandCollapse.setOnClickListener(v -> {
-            if (bottomSheetBehavior != null) {
-                if (bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_EXPANDED) {
-                    bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
-                } else {
-                    bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                }
+            if (bottomSheetBehavior == null) {
+                return;
+            }
+            if (bottomSheetBehavior.getState() == BottomSheetBehavior.STATE_EXPANDED) {
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED);
+            } else {
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             }
         });
     }
 
-    @Override
-    public void onDismiss(@NonNull android.content.DialogInterface dialog) {
-        saveTask(); // Auto-save khi dialog bị đóng hoàn toàn
-        super.onDismiss(dialog);
+    private void updateExpandIcon(int state) {
+        if (btnExpandCollapse == null) {
+            return;
+        }
+        if (state == BottomSheetBehavior.STATE_EXPANDED) {
+            btnExpandCollapse.setImageResource(R.drawable.ic_back);
+        } else {
+            btnExpandCollapse.setImageResource(R.drawable.ic_expand);
+        }
     }
 
-    // ─── Load task từ Arguments ───────────────────────────────────────────────
+    private void expandBottomSheet() {
+        if (bottomSheetBehavior != null
+                && bottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        }
+    }
 
     private void loadTaskFromArgs() {
         Bundle args = getArguments();
@@ -230,8 +270,6 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         });
     }
 
-    // ─── Điền dữ liệu lên UI ─────────────────────────────────────────────────
-
     private void populateUI(Task task) {
         etTitle.setText(task.getTitle());
         etDescription.setText(task.getDescription());
@@ -250,9 +288,135 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
 
         selectedPriority = task.getPriority();
         highlightPriorityButton(selectedPriority);
+        bindAttachments(task);
+        observeSubtasks(task.getId());
     }
 
-    // ─── Due Date Chip ────────────────────────────────────────────────────────
+    private void observeSubtasks(long taskId) {
+        if (observedTaskId == taskId) {
+            return;
+        }
+        observedTaskId = taskId;
+
+        if (subtasksLiveData != null) {
+            subtasksLiveData.removeObservers(getViewLifecycleOwner());
+        }
+
+        subtasksLiveData = taskViewModel.getSubtasksByTaskId(taskId);
+        subtasksLiveData.observe(getViewLifecycleOwner(), this::renderSubtasks);
+    }
+
+    private void renderSubtasks(List<Subtask> subtasks) {
+        if (subtaskAdapter != null) {
+            subtaskAdapter.submitList(subtasks);
+        }
+        if (tvSubtasksEmpty != null) {
+            boolean isEmpty = subtasks == null || subtasks.isEmpty();
+            tvSubtasksEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void bindAttachments(Task task) {
+        if (llAttachments == null || chipGroupAttachments == null || ivAttachmentImage == null) {
+            return;
+        }
+
+        chipGroupAttachments.removeAllViews();
+        ivAttachmentImage.setVisibility(View.GONE);
+        ivAttachmentImage.setImageDrawable(null);
+        ivAttachmentImage.setOnClickListener(null);
+
+        boolean hasAnyAttachment = false;
+
+        String imageAttachment = normalizeAttachment(task.getImageAttachment());
+        if (imageAttachment != null) {
+            Uri imageUri = Uri.parse(imageAttachment);
+            try {
+                ivAttachmentImage.setImageURI(imageUri);
+                ivAttachmentImage.setVisibility(View.VISIBLE);
+                ivAttachmentImage.setOnClickListener(v -> openAttachment(imageUri, "image/*"));
+                hasAnyAttachment = true;
+            } catch (SecurityException securityException) {
+                Toast.makeText(requireContext(), R.string.detail_attachment_permission_missing, Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        String voiceAttachment = normalizeAttachment(task.getVoiceAttachment());
+        if (voiceAttachment != null) {
+            Uri voiceUri = Uri.parse(voiceAttachment);
+            String label = getString(R.string.detail_attachment_audio_label, getDisplayName(voiceUri));
+            addAttachmentChip(label, R.drawable.ic_audio, voiceUri, "audio/*");
+            hasAnyAttachment = true;
+        }
+
+        String fileAttachment = normalizeAttachment(task.getFileAttachment());
+        if (fileAttachment != null) {
+            Uri fileUri = Uri.parse(fileAttachment);
+            String label = getString(R.string.detail_attachment_file_label, getDisplayName(fileUri));
+            addAttachmentChip(label, R.drawable.ic_attach_file, fileUri, "*/*");
+            hasAnyAttachment = true;
+        }
+
+        llAttachments.setVisibility(hasAnyAttachment ? View.VISIBLE : View.GONE);
+    }
+
+    private void addAttachmentChip(String text, int iconRes, Uri uri, String mimeType) {
+        Chip chip = new Chip(requireContext());
+        chip.setText(text);
+        chip.setChipIconResource(iconRes);
+        chip.setClickable(true);
+        chip.setCheckable(false);
+        chip.setOnClickListener(v -> openAttachment(uri, mimeType));
+        chipGroupAttachments.addView(chip);
+    }
+
+    private String normalizeAttachment(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String getDisplayName(Uri uri) {
+        if (uri == null) {
+            return "attachment";
+        }
+        if ("content".equals(uri.getScheme())) {
+            try (Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (columnIndex >= 0) {
+                        String displayName = cursor.getString(columnIndex);
+                        if (displayName != null && !displayName.trim().isEmpty()) {
+                            return displayName;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String lastPath = uri.getLastPathSegment();
+        if (lastPath == null || lastPath.trim().isEmpty()) {
+            return "attachment";
+        }
+        int slashIdx = lastPath.lastIndexOf('/');
+        return slashIdx >= 0 ? lastPath.substring(slashIdx + 1) : lastPath;
+    }
+
+    private void openAttachment(Uri uri, String mimeType) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(uri, mimeType);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException activityNotFoundException) {
+            Toast.makeText(requireContext(), R.string.detail_attachment_open_failed, Toast.LENGTH_SHORT).show();
+        } catch (SecurityException securityException) {
+            Toast.makeText(requireContext(), R.string.detail_attachment_permission_missing, Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private void setupDueDateChip() {
         chipDueDate.setOnClickListener(v -> {
@@ -269,6 +433,11 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     }
 
     private void requestAiBreakdown() {
+        if (currentTask == null) {
+            Toast.makeText(requireContext(), R.string.ai_breakdown_parse_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         String title = etTitle.getText().toString().trim();
         if (title.isEmpty()) {
             Toast.makeText(requireContext(), R.string.ai_breakdown_title_empty, Toast.LENGTH_SHORT).show();
@@ -284,25 +453,12 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
                     public void onSuccess(String responseText) {
                         try {
                             List<String> steps = AiTaskBreakdownHelper.parseSteps(responseText);
-                            String mergedDescription = AiTaskBreakdownHelper.mergeChecklistIntoDescription(
-                                    etDescription.getText().toString(),
-                                    steps
-                            );
-                            etDescription.setText(mergedDescription);
-                            etDescription.setSelection(mergedDescription.length());
-
-                            if (currentTask != null) {
-                                currentTask.setTitle(etTitle.getText().toString().trim());
-                                currentTask.setDescription(mergedDescription);
-                                currentTask.setDueDate(selectedDueDate);
-                                currentTask.setPriority(selectedPriority);
-                                currentTask.setCompleted(cbCompleted.isChecked());
-                                taskViewModel.update(currentTask);
-                            }
-                            Toast.makeText(requireContext(), R.string.ai_breakdown_success, Toast.LENGTH_SHORT).show();
+                            taskViewModel.applyAiBreakdownToSubtasks(currentTask.getId(), steps, () -> {
+                                setAiBreakdownLoading(false);
+                                Toast.makeText(requireContext(), R.string.ai_breakdown_success, Toast.LENGTH_SHORT).show();
+                            });
                         } catch (Exception parseError) {
                             Toast.makeText(requireContext(), R.string.ai_breakdown_parse_error, Toast.LENGTH_SHORT).show();
-                        } finally {
                             setAiBreakdownLoading(false);
                         }
                     }
@@ -411,8 +567,6 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
                 && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR);
     }
 
-    // ─── Priority buttons ─────────────────────────────────────────────────────
-
     private void setupPriorityButtons() {
         btnPriorityNone.setOnClickListener(v -> selectPriority(0));
         btnPriorityLow.setOnClickListener(v -> selectPriority(1));
@@ -433,15 +587,16 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         btnPriorityHigh.setAlpha(priority == 3 ? 1f : 0.35f);
     }
 
-    // ─── Lưu task ─────────────────────────────────────────────────────────────
-
-    private void saveTask() {
-        if (currentTask == null) return;
+    private boolean saveTask() {
+        if (currentTask == null) {
+            return false;
+        }
 
         String title = etTitle.getText().toString().trim();
         if (title.isEmpty()) {
-            // Không save nếu title trống
-            return;
+            etTitle.setError(getString(R.string.error_title_empty));
+            etTitle.requestFocus();
+            return false;
         }
 
         currentTask.setTitle(title);
@@ -451,5 +606,6 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         currentTask.setCompleted(cbCompleted.isChecked());
 
         taskViewModel.update(currentTask);
+        return true;
     }
 }

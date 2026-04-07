@@ -10,6 +10,7 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import hcmute.edu.vn.tickticktodo.dao.HabitDao;
+import hcmute.edu.vn.tickticktodo.dao.SubtaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.dao.TodoListDao;
 import hcmute.edu.vn.tickticktodo.dao.ActivityLogDao;
@@ -19,6 +20,7 @@ import hcmute.edu.vn.tickticktodo.model.ChatHistoryMessage;
 import hcmute.edu.vn.tickticktodo.model.ChatSession;
 import hcmute.edu.vn.tickticktodo.model.Habit;
 import hcmute.edu.vn.tickticktodo.model.HabitLog;
+import hcmute.edu.vn.tickticktodo.model.Subtask;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
 
@@ -42,8 +44,9 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
     Habit.class,
     HabitLog.class,
     ChatSession.class,
-    ChatHistoryMessage.class
-}, version = 11, exportSchema = false)
+    ChatHistoryMessage.class,
+    Subtask.class
+}, version = 12, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -55,6 +58,7 @@ public abstract class TaskDatabase extends RoomDatabase {
     public abstract hcmute.edu.vn.tickticktodo.dao.CountdownEventDao countdownEventDao();
     public abstract HabitDao habitDao();
     public abstract ChatHistoryDao chatHistoryDao();
+    public abstract SubtaskDao subtaskDao();
 
 
     // ─── Migration v2 → v3 ───────────────────────────────────────────────────────
@@ -175,6 +179,24 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_11_12 = new Migration(11, 12) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `subtasks` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`task_id` INTEGER NOT NULL, " +
+                            "`title` TEXT, " +
+                            "`is_completed` INTEGER NOT NULL DEFAULT 0, " +
+                            "`is_approved` INTEGER NOT NULL DEFAULT 0, " +
+                            "`priority` INTEGER NOT NULL DEFAULT 0, " +
+                            "`order_index` INTEGER NOT NULL DEFAULT 0, " +
+                            "FOREIGN KEY(`task_id`) REFERENCES `tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            );
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_subtasks_task_id` ON `subtasks` (`task_id`)");
+        }
+    };
+
     static final Migration MIGRATION_7_8 = new Migration(7, 8) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -202,7 +224,8 @@ public abstract class TaskDatabase extends RoomDatabase {
                             MIGRATION_7_8,
                             MIGRATION_8_9,
                             MIGRATION_9_10,
-                            MIGRATION_10_11
+                            MIGRATION_10_11,
+                            MIGRATION_11_12
                         ) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();

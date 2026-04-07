@@ -4,10 +4,12 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
@@ -25,14 +27,19 @@ import hcmute.edu.vn.tickticktodo.worker.SyncWorker;
 import hcmute.edu.vn.tickticktodo.worker.DailyDigestWorker;
 import hcmute.edu.vn.tickticktodo.worker.OverdueCheckWorker;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
+import hcmute.edu.vn.tickticktodo.helper.UsageStreakManager;
+import hcmute.edu.vn.tickticktodo.receiver.SystemStateReceiver;
 import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
 
 public class TickTickApplication extends Application {
 
         private static final String PREFS_NAME = "TickTickPrefs";
         private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
+        private static final String TAG = "TickTickApplication";
 
         private int startedActivities = 0;
+        private SystemStateReceiver systemStateReceiver;
+        private boolean systemStateReceiverRegistered;
 
     @Override
     public void onCreate() {
@@ -44,6 +51,8 @@ public class TickTickApplication extends Application {
         // Schedule Workers
         scheduleWorkers();
 
+        registerSystemStateReceiver();
+
                 registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
                         @Override
                         public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
@@ -51,6 +60,7 @@ public class TickTickApplication extends Application {
 
                         @Override
                         public void onActivityStarted(Activity activity) {
+                                UsageStreakManager.markUsageAndGetCurrentStreak(activity.getApplicationContext());
                                 if (startedActivities == 0) {
                                         syncFloatingAssistantOverlay(true);
                                 }
@@ -85,6 +95,51 @@ public class TickTickApplication extends Application {
                         }
                 });
     }
+
+        @Override
+        public void onTerminate() {
+                unregisterSystemStateReceiver();
+                super.onTerminate();
+        }
+
+        private void registerSystemStateReceiver() {
+                if (systemStateReceiverRegistered) {
+                        return;
+                }
+
+                if (systemStateReceiver == null) {
+                        systemStateReceiver = new SystemStateReceiver();
+                }
+
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(Intent.ACTION_SCREEN_OFF);
+                filter.addAction(Intent.ACTION_BATTERY_LOW);
+                filter.addAction(Intent.ACTION_BATTERY_OKAY);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        registerReceiver(systemStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+                } else {
+                        registerReceiver(systemStateReceiver, filter);
+                }
+
+                systemStateReceiverRegistered = true;
+                Log.d(TAG, "SystemStateReceiver registered");
+        }
+
+        private void unregisterSystemStateReceiver() {
+                if (!systemStateReceiverRegistered || systemStateReceiver == null) {
+                        return;
+                }
+
+                try {
+                        unregisterReceiver(systemStateReceiver);
+                        Log.d(TAG, "SystemStateReceiver unregistered");
+                } catch (IllegalArgumentException exception) {
+                        Log.w(TAG, "SystemStateReceiver was already unregistered", exception);
+                } finally {
+                        systemStateReceiverRegistered = false;
+                }
+        }
 
         private void syncFloatingAssistantOverlay(boolean appInForeground) {
                 SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);

@@ -14,6 +14,8 @@ import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.net.Uri;
@@ -38,6 +40,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.view.animation.LinearInterpolator;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -67,8 +70,11 @@ import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.MainActivity;
 import hcmute.edu.vn.tickticktodo.adapter.ChatAdapter;
 import hcmute.edu.vn.tickticktodo.agent.AgentAction;
 import hcmute.edu.vn.tickticktodo.agent.AgentOrchestrator;
@@ -85,6 +91,7 @@ import hcmute.edu.vn.tickticktodo.model.ChatMessage;
 import hcmute.edu.vn.tickticktodo.model.ChatSession;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.ui.AiAssistantActivity;
+import hcmute.edu.vn.tickticktodo.ui.FloatingQuickAddActivity;
 
 public class FloatingAssistantService extends Service {
 
@@ -111,6 +118,7 @@ public class FloatingAssistantService extends Service {
     private static final String KEY_CHAT_ALPHA = "chat_alpha";
     private static final String KEY_VOICE_AUTO_TURN_TAKING = "voice_auto_turn_taking";
     private static final String KEY_VOICE_SPEAK_REPLIES = "voice_speak_replies";
+    private static final String KEY_VOICE_BARGE_IN_THRESHOLD = "voice_barge_in_threshold";
     private static final int DEFAULT_BUBBLE_X = 24;
     private static final int DEFAULT_BUBBLE_Y = 220;
     private static final int MAX_DEBUG_TRACE_LINES = 80;
@@ -120,10 +128,34 @@ public class FloatingAssistantService extends Service {
     private static final long VOICE_START_MIN_INTERVAL_MS = 650L;
     private static final long VOICE_ERROR_DEDUPE_WINDOW_MS = 900L;
     private static final long VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS = 420L;
+    private static final float VOICE_BARGE_IN_RMS_THRESHOLD = 7.0f;
+    private static final float VOICE_BARGE_IN_RMS_MIN = 4.0f;
+    private static final float VOICE_BARGE_IN_RMS_MAX = 15.0f;
     private static final long BUBBLE_LONG_PRESS_TRIGGER_MS = 1000L;
+    private static final int BUBBLE_COLLAPSED_SIZE_DP = 90;
+    private static final int BUBBLE_EXPANDED_SIZE_DP = 248;
+    private static final int BUBBLE_RADIAL_RADIUS_DP = 96;
+    private static final long BUBBLE_EXPAND_DURATION_MS = 280L;
+    private static final long BUBBLE_COLLAPSE_DURATION_MS = 220L;
+    private static final long BUBBLE_ACTION_STAGGER_MS = 26L;
     private static final float MIN_CHAT_ALPHA = 0.35f;
     private static final float MAX_CHAT_ALPHA = 1.0f;
     private static final String CHAT_SOURCE_FLOATING = "floating_assistant";
+    private static final String CHAT_SOURCE_FLOATING_TEMP_VOICE = "floating_assistant_temp_voice";
+    private static final float[] BUBBLE_OPEN_LEFT_ANGLES = new float[]{120f, 150f, 180f, 210f, 240f};
+    private static final float[] BUBBLE_OPEN_RIGHT_ANGLES = new float[]{60f, 30f, 0f, 330f, 300f};
+
+    private enum AssistantState {
+        IDLE,
+        LISTENING,
+        THINKING,
+        SPEAKING
+    }
+
+    private enum OverlayInteractionMode {
+        CHAT_ONLY,
+        VOICE_ONLY
+    }
 
     private static WindowManager sWindowManager;
     private static View sBubbleView;
@@ -136,6 +168,11 @@ public class FloatingAssistantService extends Service {
     private View chatSettingsOverlayView;
     private View bubbleVoiceGlow;
     private ImageView bubbleIcon;
+    private ImageView actionChatView;
+    private ImageView actionVoiceView;
+    private ImageView actionCameraView;
+    private ImageView actionTaskView;
+    private ImageView actionHomeView;
     private WindowManager.LayoutParams bubbleParams;
     private WindowManager.LayoutParams chatParams;
     private WindowManager.LayoutParams dismissTargetParams;
@@ -144,7 +181,13 @@ public class FloatingAssistantService extends Service {
     private boolean isServiceAlive;
     private boolean hasVoiceAudioFocus;
     private boolean bubbleLongPressTriggered;
+    private boolean isRadialMenuExpanded;
+    private boolean isRadialAnimating;
+    private int bubbleCollapsedSizePx;
+    private int bubbleExpandedSizePx;
+    private int bubbleRadialRadiusPx;
     private float currentChatAlpha = MAX_CHAT_ALPHA;
+    private AssistantState currentState = AssistantState.IDLE;
 
     private GeminiManager geminiManager;
     private ExecutorService workerExecutor;
@@ -158,6 +201,7 @@ public class FloatingAssistantService extends Service {
     private boolean autoListenAfterAssistantReply;
     private boolean voiceAutoTurnTakingEnabled = true;
     private boolean voiceSpeakRepliesEnabled = true;
+    private float voiceBargeInThreshold = VOICE_BARGE_IN_RMS_THRESHOLD;
     private int voiceAutoRetryCount;
     private int lastSpeechErrorCode = Integer.MIN_VALUE;
     private long lastSpeechErrorAtMs;
@@ -166,6 +210,7 @@ public class FloatingAssistantService extends Service {
     private boolean voiceStopRequestedByUser;
     private Handler mainHandler;
     private AudioManager audioManager;
+    private AudioFocusRequest voiceAudioFocusRequest;
     private RecyclerView floatingChatRecyclerView;
     private ChatAdapter floatingChatAdapter;
     private SharedPreferences positionPrefs;
@@ -182,6 +227,10 @@ public class FloatingAssistantService extends Service {
     private TextView voiceStatusText;
     private ObjectAnimator voicePulseAnimator;
     private boolean debugPanelVisible;
+    private OverlayInteractionMode overlayInteractionMode = OverlayInteractionMode.CHAT_ONLY;
+    private EditText floatingInputField;
+    private View floatingSendButton;
+    private TextView floatingModeText;
     private final ArrayList<Long> pendingCarryOverTaskIds = new ArrayList<>();
     private AgentOrchestrator agentOrchestrator;
     private final Runnable voiceRetryRunnable = () -> startVoiceListening(true);
@@ -201,10 +250,14 @@ public class FloatingAssistantService extends Service {
         }
     };
 
+    private final ArrayList<View> radialActionViews = new ArrayList<>();
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final ArrayDeque<String> debugTraceMemory = new ArrayDeque<>();
     private final AgentResponseParser responseParser = new AgentResponseParser();
     private volatile long currentSessionId = -1L;
+    private boolean tempVoiceSessionActive;
+    private volatile long tempVoiceSessionId = -1L;
+    private volatile long previousPersistentSessionId = -1L;
     private int lastUiNightMode = Configuration.UI_MODE_NIGHT_UNDEFINED;
 
     @Override
@@ -253,7 +306,7 @@ public class FloatingAssistantService extends Service {
 
     private void startForegroundSafely(Notification notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
         } else {
             startForeground(NOTIFICATION_ID, notification);
         }
@@ -310,12 +363,42 @@ public class FloatingAssistantService extends Service {
         }
     }
 
+    private void updateState(AssistantState newState) {
+        if (newState == null || currentState == newState) {
+            return;
+        }
+        currentState = newState;
+        appendDebugTrace("VOICE_STATE", newState.name());
+
+        safePostMain(() -> {
+            switch (newState) {
+                case LISTENING:
+                    updateVoiceUiState(true, "Đang lắng nghe...");
+                    break;
+                case THINKING:
+                    updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
+                    break;
+                case SPEAKING:
+                    updateVoiceUiState(false, "Trợ lý đang phản hồi...");
+                    break;
+                case IDLE:
+                default:
+                    if (!isVoiceListening && !isAssistantSpeaking) {
+                        updateVoiceUiState(false, null);
+                    }
+                    break;
+            }
+        });
+    }
+
     private void loadVoiceBehaviorSettings() {
         if (positionPrefs == null) {
             return;
         }
         voiceAutoTurnTakingEnabled = positionPrefs.getBoolean(KEY_VOICE_AUTO_TURN_TAKING, true);
         voiceSpeakRepliesEnabled = positionPrefs.getBoolean(KEY_VOICE_SPEAK_REPLIES, true);
+        float storedThreshold = positionPrefs.getFloat(KEY_VOICE_BARGE_IN_THRESHOLD, VOICE_BARGE_IN_RMS_THRESHOLD);
+        voiceBargeInThreshold = clampVoiceBargeInThreshold(storedThreshold);
     }
 
     private void setVoiceAutoTurnTakingEnabled(boolean enabled) {
@@ -339,6 +422,35 @@ public class FloatingAssistantService extends Service {
         if (positionPrefs != null) {
             positionPrefs.edit().putBoolean(KEY_VOICE_SPEAK_REPLIES, enabled).apply();
         }
+    }
+
+    private float clampVoiceBargeInThreshold(float value) {
+        return Math.max(VOICE_BARGE_IN_RMS_MIN, Math.min(VOICE_BARGE_IN_RMS_MAX, value));
+    }
+
+    private float progressToBargeInThreshold(int progress) {
+        float safeProgress = Math.max(0, Math.min(100, progress));
+        return VOICE_BARGE_IN_RMS_MIN
+                + (safeProgress / 100f) * (VOICE_BARGE_IN_RMS_MAX - VOICE_BARGE_IN_RMS_MIN);
+    }
+
+    private int bargeInThresholdToProgress(float threshold) {
+        float safeThreshold = clampVoiceBargeInThreshold(threshold);
+        float normalized = (safeThreshold - VOICE_BARGE_IN_RMS_MIN)
+                / (VOICE_BARGE_IN_RMS_MAX - VOICE_BARGE_IN_RMS_MIN);
+        return Math.round(normalized * 100f);
+    }
+
+    private String formatBargeInThreshold(float threshold) {
+        return String.format(Locale.ROOT, "%.1f dB", threshold);
+    }
+
+    private void setVoiceBargeInThreshold(float threshold) {
+        voiceBargeInThreshold = clampVoiceBargeInThreshold(threshold);
+        if (positionPrefs != null) {
+            positionPrefs.edit().putFloat(KEY_VOICE_BARGE_IN_THRESHOLD, voiceBargeInThreshold).apply();
+        }
+        appendDebugTrace("VOICE_BARGE_THRESHOLD", formatBargeInThreshold(voiceBargeInThreshold));
     }
 
     private Intent createSpeechRecognizerIntent() {
@@ -392,12 +504,14 @@ public class FloatingAssistantService extends Service {
                 @Override
                 public void onStart(String utteranceId) {
                     isAssistantSpeaking = true;
+                    updateState(AssistantState.SPEAKING);
                 }
 
                 @Override
                 public void onDone(String utteranceId) {
                     safePostMain(() -> {
                         isAssistantSpeaking = false;
+                        updateState(AssistantState.IDLE);
                         if (voiceAutoTurnTakingEnabled && autoListenAfterAssistantReply) {
                             safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
                         }
@@ -408,6 +522,7 @@ public class FloatingAssistantService extends Service {
                 public void onError(String utteranceId) {
                     safePostMain(() -> {
                         isAssistantSpeaking = false;
+                        updateState(AssistantState.IDLE);
                         appendDebugTrace("VOICE_TTS_ERROR", "utteranceId=" + utteranceId);
                         if (voiceAutoTurnTakingEnabled && autoListenAfterAssistantReply) {
                             safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
@@ -448,6 +563,15 @@ public class FloatingAssistantService extends Service {
     }
 
     private void speakAssistantMessage(String message, boolean shouldAutoContinueListening) {
+        speakAssistantMessage(message, TextToSpeech.QUEUE_FLUSH, shouldAutoContinueListening);
+    }
+    
+    public void speakAssistantMessage(String message, int queueMode, boolean shouldAutoContinueListening) {
+        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+            autoListenAfterAssistantReply = false;
+            return;
+        }
+
         if (TextUtils.isEmpty(message)) {
             if (shouldAutoContinueListening) {
                 autoListenAfterAssistantReply = true;
@@ -472,16 +596,17 @@ public class FloatingAssistantService extends Service {
             return;
         }
 
+        updateState(AssistantState.SPEAKING);
         String utteranceId = "floating-tts-" + SystemClock.elapsedRealtime();
         appendDebugTrace("VOICE_TTS_SPEAK", abbreviateForStatus(message));
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                assistantTts.speak(message, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+                assistantTts.speak(message, queueMode, null, utteranceId);
             } else {
                 HashMap<String, String> params = new HashMap<>();
                 params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId);
-                assistantTts.speak(message, TextToSpeech.QUEUE_FLUSH, params);
+                assistantTts.speak(message, queueMode, params);
             }
         } catch (Exception e) {
             isAssistantSpeaking = false;
@@ -492,20 +617,53 @@ public class FloatingAssistantService extends Service {
         }
     }
 
-    private void requestVoiceAudioFocus() {
-        if (audioManager == null || hasVoiceAudioFocus) {
-            return;
+    private boolean requestVoiceAudioFocus() {
+        if (audioManager == null) {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         }
-        try {
+        if (audioManager == null) {
+            hasVoiceAudioFocus = false;
+            return false;
+        }
+
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build();
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            if (voiceAudioFocusRequest == null) {
+                voiceAudioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                        .setAudioAttributes(audioAttributes)
+                        .setAcceptsDelayedFocusGain(true)
+                        .setOnAudioFocusChangeListener(focusChange -> {
+                            if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                                focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                                if (assistantTts != null) assistantTts.stop();
+                                updateState(AssistantState.IDLE);
+                            }
+                        })
+                        .build();
+            }
+            int result = audioManager.requestAudioFocus(voiceAudioFocusRequest);
+            hasVoiceAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+            appendDebugTrace("VOICE_AUDIO_FOCUS", hasVoiceAudioFocus ? "granted" : "denied");
+            return hasVoiceAudioFocus;
+        } else {
             int result = audioManager.requestAudioFocus(
-                    null,
+                    focusChange -> {
+                        if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                            if (assistantTts != null) assistantTts.stop();
+                            updateState(AssistantState.IDLE);
+                        }
+                    },
                     AudioManager.STREAM_MUSIC,
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
             );
             hasVoiceAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
             appendDebugTrace("VOICE_AUDIO_FOCUS", hasVoiceAudioFocus ? "granted" : "denied");
-        } catch (Exception e) {
-            appendDebugTrace("VOICE_AUDIO_FOCUS", "error=" + e.getMessage());
+            return hasVoiceAudioFocus;
         }
     }
 
@@ -514,7 +672,11 @@ public class FloatingAssistantService extends Service {
             return;
         }
         try {
-            audioManager.abandonAudioFocus(null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && voiceAudioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(voiceAudioFocusRequest);
+            } else {
+                audioManager.abandonAudioFocus(null);
+            }
         } catch (Exception ignored) {
         }
         hasVoiceAudioFocus = false;
@@ -541,6 +703,7 @@ public class FloatingAssistantService extends Service {
             public void onReadyForSpeech(android.os.Bundle params) {
                 isVoiceListening = true;
                 voiceStopRequestedByUser = false;
+                updateState(AssistantState.LISTENING);
                 updateVoiceUiState(true, "Đang lắng nghe...");
                 appendDebugTrace("VOICE_READY", "SpeechRecognizer ready.");
             }
@@ -549,12 +712,26 @@ public class FloatingAssistantService extends Service {
             public void onBeginningOfSpeech() {
                 isVoiceListening = true;
                 voiceStopRequestedByUser = false;
+                updateState(AssistantState.LISTENING);
                 updateVoiceUiState(true, "Đang lắng nghe...");
                 appendDebugTrace("VOICE_BEGIN", "Detected beginning of speech.");
             }
 
             @Override
             public void onRmsChanged(float rmsdB) {
+                if (voicePulseIndicator != null && voicePulseIndicator.getVisibility() == View.VISIBLE) {
+                    float alpha = Math.max(0.2f, Math.min(1.0f, rmsdB / 10.0f));
+                    voicePulseIndicator.setAlpha(alpha);
+                }
+
+                // Barge-in: user speaks while assistant is speaking.
+                if (currentState == AssistantState.SPEAKING
+                        && isAssistantSpeaking
+                        && rmsdB > voiceBargeInThreshold) {
+                    Log.d(TAG, "Voice interruption detected. Stop TTS and resume listening.");
+                    stopAssistantSpeech(true);
+                    updateState(AssistantState.LISTENING);
+                }
             }
 
             @Override
@@ -565,6 +742,7 @@ public class FloatingAssistantService extends Service {
             public void onEndOfSpeech() {
                 isVoiceListening = false;
                 releaseVoiceAudioFocus();
+                updateState(AssistantState.THINKING);
                 updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
                 appendDebugTrace("VOICE_END", "End of speech captured.");
             }
@@ -580,6 +758,7 @@ public class FloatingAssistantService extends Service {
                     voiceSessionRequested = false;
                     autoListenAfterAssistantReply = false;
                     cancelVoiceRetry();
+                    updateState(AssistantState.IDLE);
                     updateVoiceUiState(false, "Đã dừng nghe.");
                     appendDebugTrace("VOICE_STOPPED", "Stopped by user.");
                     return;
@@ -615,6 +794,7 @@ public class FloatingAssistantService extends Service {
                 }
 
                 voiceSessionRequested = false;
+                updateState(AssistantState.IDLE);
                 updateVoiceUiState(false, mapSpeechErrorMessage(error));
                 safePostMain(() ->
                         Toast.makeText(FloatingAssistantService.this, "Loi thu am: " + error, Toast.LENGTH_SHORT).show());
@@ -665,14 +845,25 @@ public class FloatingAssistantService extends Service {
         floatingBubbleView = LayoutInflater.from(this).inflate(R.layout.layout_floating_bubble, null);
         bubbleVoiceGlow = floatingBubbleView.findViewById(R.id.voice_long_press_glow);
         bubbleIcon = floatingBubbleView.findViewById(R.id.iv_floating_bubble);
+        actionChatView = floatingBubbleView.findViewById(R.id.iv_action_chat);
+        actionVoiceView = floatingBubbleView.findViewById(R.id.iv_action_voice);
+        actionCameraView = floatingBubbleView.findViewById(R.id.iv_action_camera);
+        actionTaskView = floatingBubbleView.findViewById(R.id.iv_action_task);
+        actionHomeView = floatingBubbleView.findViewById(R.id.iv_action_home);
+
+        bubbleCollapsedSizePx = dpToPx(BUBBLE_COLLAPSED_SIZE_DP);
+        bubbleExpandedSizePx = dpToPx(BUBBLE_EXPANDED_SIZE_DP);
+        bubbleRadialRadiusPx = dpToPx(BUBBLE_RADIAL_RADIUS_DP);
+        isRadialMenuExpanded = false;
+        isRadialAnimating = false;
 
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 : WindowManager.LayoutParams.TYPE_PHONE;
 
         bubbleParams = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
+            bubbleCollapsedSizePx,
+            bubbleCollapsedSizePx,
                 layoutFlag,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
@@ -700,7 +891,29 @@ public class FloatingAssistantService extends Service {
             stopSelf();
             return;
         }
-        ivBubble.setClickable(false);
+
+        radialActionViews.clear();
+        if (actionChatView != null) {
+            radialActionViews.add(actionChatView);
+            actionChatView.setOnClickListener(v -> handleChatAction());
+        }
+        if (actionVoiceView != null) {
+            radialActionViews.add(actionVoiceView);
+            actionVoiceView.setOnClickListener(v -> handleVoiceAction());
+        }
+        if (actionCameraView != null) {
+            radialActionViews.add(actionCameraView);
+            actionCameraView.setOnClickListener(v -> handleCameraAction());
+        }
+        if (actionTaskView != null) {
+            radialActionViews.add(actionTaskView);
+            actionTaskView.setOnClickListener(v -> handleTaskAction());
+        }
+        if (actionHomeView != null) {
+            radialActionViews.add(actionHomeView);
+            actionHomeView.setOnClickListener(v -> handleHomeAction());
+        }
+        resetRadialActionViews();
 
         final int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
         final float clickThreshold = Math.max(touchSlop * 4f, 48f);
@@ -715,6 +928,9 @@ public class FloatingAssistantService extends Service {
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        if (isRadialAnimating) {
+                            return true;
+                        }
                         initialX = bubbleParams.x;
                         initialY = bubbleParams.y;
                         initialTouchX = event.getRawX();
@@ -731,6 +947,11 @@ public class FloatingAssistantService extends Service {
                         int deltaY = (int) (event.getRawY() - initialTouchY);
                         if (!isDragging && (Math.abs(deltaX) > touchSlop || Math.abs(deltaY) > touchSlop)) {
                             isDragging = true;
+                            collapseRadialMenu(false);
+                            initialX = bubbleParams.x;
+                            initialY = bubbleParams.y;
+                            initialTouchX = event.getRawX();
+                            initialTouchY = event.getRawY();
                             if (mainHandler != null) {
                                 mainHandler.removeCallbacks(bubbleLongPressRunnable);
                             }
@@ -780,7 +1001,7 @@ public class FloatingAssistantService extends Service {
                         }
 
                         if (upDeltaX < clickThreshold && upDeltaY < clickThreshold) {
-                            openChatView();
+                            toggleRadialMenu();
                         } else {
                             saveBubblePosition(bubbleParams.x, bubbleParams.y);
                         }
@@ -792,9 +1013,317 @@ public class FloatingAssistantService extends Service {
             }
         };
 
-        floatingBubbleView.setClickable(true);
-        floatingBubbleView.setOnTouchListener(bubbleTouchListener);
-        ivBubble.setOnTouchListener(null);
+        ivBubble.setClickable(true);
+        ivBubble.setOnTouchListener(bubbleTouchListener);
+        floatingBubbleView.setClickable(false);
+        floatingBubbleView.setOnTouchListener(null);
+    }
+
+    private void toggleRadialMenu() {
+        if (isRadialAnimating || bubbleParams == null || floatingBubbleView == null || !isBubbleAttached()) {
+            return;
+        }
+        if (isRadialMenuExpanded) {
+            collapseRadialMenu(true);
+        } else {
+            expandRadialMenu();
+        }
+    }
+
+    private void handleChatAction() {
+        long delay = (isRadialMenuExpanded || isRadialAnimating) ? BUBBLE_COLLAPSE_DURATION_MS : 0L;
+        collapseRadialMenu(true);
+        safePostMainDelayed(() -> {
+            openChatView();
+            enterChatOnlyMode(true, true);
+        }, delay);
+    }
+
+    private void handleVoiceAction() {
+        long delay = (isRadialMenuExpanded || isRadialAnimating) ? BUBBLE_COLLAPSE_DURATION_MS : 0L;
+        collapseRadialMenu(true);
+        safePostMainDelayed(() -> {
+            openChatView();
+            enterVoiceOnlyMode();
+            activateTemporaryVoiceSession();
+        }, delay);
+    }
+
+    private void handleCameraAction() {
+        long delay = (isRadialMenuExpanded || isRadialAnimating) ? BUBBLE_COLLAPSE_DURATION_MS : 0L;
+        collapseRadialMenu(true);
+        safePostMainDelayed(() -> Toast.makeText(
+                this,
+                R.string.floating_action_camera_todo,
+                Toast.LENGTH_SHORT
+        ).show(), delay);
+    }
+
+    private void handleTaskAction() {
+        long delay = (isRadialMenuExpanded || isRadialAnimating) ? BUBBLE_COLLAPSE_DURATION_MS : 0L;
+        collapseRadialMenu(true);
+        safePostMainDelayed(this::launchFloatingQuickAddPopup, delay);
+    }
+
+    private void handleHomeAction() {
+        long delay = (isRadialMenuExpanded || isRadialAnimating) ? BUBBLE_COLLAPSE_DURATION_MS : 0L;
+        collapseRadialMenu(true);
+        safePostMainDelayed(() -> launchMainActivity(false), delay);
+    }
+
+    private void launchMainActivity(boolean openAddTaskSheet) {
+        try {
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            if (openAddTaskSheet) {
+                intent.putExtra(MainActivity.EXTRA_OPEN_ADD_TASK_SHEET, true);
+            }
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.w(TAG, "Unable to launch MainActivity from radial action", e);
+        }
+    }
+
+    private void launchFloatingQuickAddPopup() {
+        try {
+            Intent intent = new Intent(this, FloatingQuickAddActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.w(TAG, "Unable to launch floating quick add popup", e);
+            launchMainActivity(true);
+        }
+    }
+
+    private void expandRadialMenu() {
+        if (isRadialMenuExpanded || isRadialAnimating || bubbleParams == null || floatingBubbleView == null || !isBubbleAttached()) {
+            return;
+        }
+
+        isRadialAnimating = true;
+        resizeBubbleWindowKeepingCenter(bubbleExpandedSizePx);
+
+        if (bubbleIcon != null) {
+            bubbleIcon.animate().rotationBy(360f).setDuration(BUBBLE_EXPAND_DURATION_MS).start();
+        }
+
+        if (radialActionViews.isEmpty()) {
+            isRadialMenuExpanded = true;
+            isRadialAnimating = false;
+            return;
+        }
+
+        float[] targetAngles = shouldOpenRadialToLeft()
+                ? BUBBLE_OPEN_LEFT_ANGLES
+                : BUBBLE_OPEN_RIGHT_ANGLES;
+
+        for (int i = 0; i < radialActionViews.size(); i++) {
+            View actionView = radialActionViews.get(i);
+            float angle = i < targetAngles.length ? targetAngles[i] : 180f;
+            float radian = (float) Math.toRadians(angle);
+            float targetX = (float) (Math.cos(radian) * bubbleRadialRadiusPx);
+            float targetY = (float) (-Math.sin(radian) * bubbleRadialRadiusPx);
+
+            actionView.animate().cancel();
+            actionView.setVisibility(View.VISIBLE);
+            actionView.setEnabled(true);
+            actionView.setAlpha(0f);
+            actionView.setScaleX(0.6f);
+            actionView.setScaleY(0.6f);
+            actionView.setTranslationX(0f);
+            actionView.setTranslationY(0f);
+
+            int index = i;
+            actionView.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .translationX(targetX)
+                    .translationY(targetY)
+                    .setStartDelay(BUBBLE_ACTION_STAGGER_MS * i)
+                    .setDuration(BUBBLE_EXPAND_DURATION_MS)
+                    .withEndAction(() -> {
+                        if (index == radialActionViews.size() - 1) {
+                            isRadialAnimating = false;
+                            isRadialMenuExpanded = true;
+                        }
+                    })
+                    .start();
+        }
+    }
+
+    private boolean shouldOpenRadialToLeft() {
+        if (bubbleParams == null) {
+            return true;
+        }
+
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int currentWidth = bubbleParams.width > 0 ? bubbleParams.width : bubbleCollapsedSizePx;
+        int bubbleCenterX = bubbleParams.x + currentWidth / 2;
+        return bubbleCenterX >= (screenWidth / 2);
+    }
+
+    private void collapseRadialMenu(boolean animated) {
+        if (bubbleParams == null || floatingBubbleView == null) {
+            return;
+        }
+        if (!isRadialMenuExpanded && !isRadialAnimating && bubbleParams.width == bubbleCollapsedSizePx) {
+            return;
+        }
+
+        if (!animated || radialActionViews.isEmpty()) {
+            finalizeRadialCollapse();
+            return;
+        }
+
+        isRadialAnimating = true;
+        for (int i = 0; i < radialActionViews.size(); i++) {
+            View actionView = radialActionViews.get(i);
+            int index = i;
+            actionView.animate().cancel();
+            actionView.animate()
+                    .alpha(0f)
+                    .scaleX(0.6f)
+                    .scaleY(0.6f)
+                    .translationX(0f)
+                    .translationY(0f)
+                    .setDuration(BUBBLE_COLLAPSE_DURATION_MS)
+                    .withEndAction(() -> {
+                        if (index == radialActionViews.size() - 1) {
+                            finalizeRadialCollapse();
+                        }
+                    })
+                    .start();
+        }
+    }
+
+    private void finalizeRadialCollapse() {
+        resetRadialActionViews();
+        resizeBubbleWindowKeepingCenter(bubbleCollapsedSizePx);
+        if (bubbleIcon != null) {
+            bubbleIcon.animate().rotation(0f).setDuration(120L).start();
+        }
+        isRadialMenuExpanded = false;
+        isRadialAnimating = false;
+    }
+
+    private void resetRadialActionViews() {
+        for (View actionView : radialActionViews) {
+            actionView.animate().cancel();
+            actionView.setEnabled(false);
+            actionView.setAlpha(0f);
+            actionView.setScaleX(0.6f);
+            actionView.setScaleY(0.6f);
+            actionView.setTranslationX(0f);
+            actionView.setTranslationY(0f);
+            actionView.setVisibility(View.INVISIBLE);
+        }
+    }
+
+    private void resizeBubbleWindowKeepingCenter(int newSizePx) {
+        if (newSizePx <= 0 || bubbleParams == null || windowManager == null || floatingBubbleView == null) {
+            return;
+        }
+
+        int currentWidth = bubbleParams.width > 0 ? bubbleParams.width : bubbleCollapsedSizePx;
+        int currentHeight = bubbleParams.height > 0 ? bubbleParams.height : bubbleCollapsedSizePx;
+        int centerX = bubbleParams.x + currentWidth / 2;
+        int centerY = bubbleParams.y + currentHeight / 2;
+
+        bubbleParams.width = newSizePx;
+        bubbleParams.height = newSizePx;
+        bubbleParams.x = centerX - newSizePx / 2;
+        bubbleParams.y = centerY - newSizePx / 2;
+
+        try {
+            if (floatingBubbleView.getParent() != null) {
+                windowManager.updateViewLayout(floatingBubbleView, bubbleParams);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Unable to resize bubble window", e);
+        }
+    }
+
+    private void activateTemporaryVoiceSession() {
+        runWorkerSafely(() -> {
+            try {
+                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
+                long previousSessionId = currentSessionId;
+
+                if (tempVoiceSessionActive && tempVoiceSessionId > 0L) {
+                    dao.deleteSessionById(tempVoiceSessionId);
+                }
+
+                long newTempSessionId = createHistorySessionSync(dao, CHAT_SOURCE_FLOATING_TEMP_VOICE, "Voice tam thoi");
+                tempVoiceSessionActive = true;
+                tempVoiceSessionId = newTempSessionId;
+                previousPersistentSessionId = (previousSessionId > 0L && previousSessionId != newTempSessionId)
+                        ? previousSessionId
+                        : -1L;
+                currentSessionId = newTempSessionId;
+
+                safePostMain(() -> {
+                    conversationMemory.clear();
+                    if (floatingChatAdapter != null) {
+                        floatingChatAdapter.clearMessages();
+                    }
+                    showAssistantMessage("Da mo phien voice tam thoi. Dong popup de tu xoa phien nay.", false, false);
+                    startVoiceListening(false);
+                });
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to activate temporary voice session", e);
+                safePostMain(() -> Toast.makeText(
+                        this,
+                        "Khong the bat phien voice tam thoi luc nay.",
+                        Toast.LENGTH_SHORT
+                ).show());
+            }
+        });
+    }
+
+    private void cleanupTemporaryVoiceSessionIfNeeded() {
+        if (!tempVoiceSessionActive || tempVoiceSessionId <= 0L) {
+            return;
+        }
+
+        long deleteSessionId = tempVoiceSessionId;
+        long restoreSessionId = previousPersistentSessionId;
+        tempVoiceSessionActive = false;
+        tempVoiceSessionId = -1L;
+        previousPersistentSessionId = -1L;
+        currentSessionId = restoreSessionId > 0L ? restoreSessionId : -1L;
+        conversationMemory.clear();
+
+        runWorkerSafely(() -> {
+            try {
+                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
+                dao.deleteSessionById(deleteSessionId);
+
+                if (restoreSessionId > 0L && dao.getSessionByIdSync(restoreSessionId) != null) {
+                    currentSessionId = restoreSessionId;
+                } else {
+                    ChatSession latest = dao.getLatestSessionSync();
+                    currentSessionId = latest != null ? latest.id : -1L;
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to cleanup temporary voice session", e);
+            }
+        });
+    }
+
+    private long createHistorySessionSync(ChatHistoryDao dao, String source, String title) {
+        long now = System.currentTimeMillis();
+        ChatSession session = new ChatSession();
+        session.title = title == null ? "" : title;
+        session.source = source;
+        session.lastMessage = "";
+        session.createdAt = now;
+        session.updatedAt = now;
+        return dao.insertSession(session);
     }
 
     private void initFloatingChat() {
@@ -825,6 +1354,7 @@ public class FloatingAssistantService extends Service {
         EditText etInput = floatingChatView.findViewById(R.id.et_message_floating);
         View btnSend = floatingChatView.findViewById(R.id.btn_send_floating);
         View btnMic = floatingChatView.findViewById(R.id.btn_mic_floating);
+        floatingModeText = floatingChatView.findViewById(R.id.tv_floating_chat_mode);
         dailyReviewLayout = floatingChatView.findViewById(R.id.layout_daily_review_action);
         dailyReviewContent = floatingChatView.findViewById(R.id.tv_daily_review_content);
         moveUnfinishedButton = floatingChatView.findViewById(R.id.btn_move_unfinished_tasks);
@@ -833,6 +1363,8 @@ public class FloatingAssistantService extends Service {
         debugTraceContent = floatingChatView.findViewById(R.id.tv_agent_debug_trace);
         debugTraceScroll = floatingChatView.findViewById(R.id.sv_agent_debug_trace);
         debugTraceClear = floatingChatView.findViewById(R.id.btn_clear_debug_trace);
+        floatingInputField = etInput;
+        floatingSendButton = btnSend;
         voiceMicButton = btnMic;
         voicePulseIndicator = floatingChatView.findViewById(R.id.voice_pulse_indicator);
         voiceStatusText = floatingChatView.findViewById(R.id.tv_voice_status_floating);
@@ -860,6 +1392,12 @@ public class FloatingAssistantService extends Service {
 
         if (btnSend != null && etInput != null) {
             btnSend.setOnClickListener(v -> {
+                if (overlayInteractionMode != OverlayInteractionMode.CHAT_ONLY) {
+                    Toast.makeText(FloatingAssistantService.this,
+                            R.string.floating_chat_voice_mode_no_typing,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 try {
                     String msg = etInput.getText().toString().trim();
                     if (!msg.isEmpty()) {
@@ -883,6 +1421,12 @@ public class FloatingAssistantService extends Service {
                 return false;
             });
             btnMic.setOnClickListener(v -> {
+                if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+                    Toast.makeText(FloatingAssistantService.this,
+                            R.string.floating_chat_chat_mode_no_voice,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 try {
                     toggleVoiceListening();
                 } catch (Exception e) {
@@ -891,8 +1435,9 @@ public class FloatingAssistantService extends Service {
             });
         }
 
+        applyOverlayInteractionModeUi(false);
         applyChatAlpha(currentChatAlpha, false);
-        updateVoiceUiState(false, "Chạm mic để bắt đầu ghi âm");
+        updateVoiceUiState(false, null);
         runWorkerSafely(this::restoreFloatingHistory);
         appendDebugTrace("DEBUG_PANEL", "Agent trace panel is ready. Toggle 'Hiện Trace' to watch tool-call flow.");
     }
@@ -901,6 +1446,8 @@ public class FloatingAssistantService extends Service {
         if (windowManager == null || floatingBubbleView == null || floatingChatView == null) {
             return;
         }
+
+        collapseRadialMenu(false);
 
         if (floatingChatView.getParent() != null) {
             return;
@@ -926,6 +1473,7 @@ public class FloatingAssistantService extends Service {
         try {
             windowManager.addView(floatingChatView, chatParams);
             applyChatAlpha(currentChatAlpha, false);
+            applyOverlayInteractionModeUi(false);
             synchronized (OVERLAY_LOCK) {
                 sWindowManager = windowManager;
                 sBubbleView = floatingBubbleView;
@@ -939,6 +1487,7 @@ public class FloatingAssistantService extends Service {
                     chatCompatMode = true;
                     windowManager.addView(floatingChatView, chatParams);
                     applyChatAlpha(currentChatAlpha, false);
+                    applyOverlayInteractionModeUi(false);
                     synchronized (OVERLAY_LOCK) {
                         sWindowManager = windowManager;
                         sBubbleView = floatingBubbleView;
@@ -954,6 +1503,84 @@ public class FloatingAssistantService extends Service {
             }
 
             restoreBubbleAfterOpenFailure();
+        }
+    }
+
+    private void enterChatOnlyMode(boolean cleanupTemporarySession, boolean restoreHistoryAfterSwitch) {
+        overlayInteractionMode = OverlayInteractionMode.CHAT_ONLY;
+        stopVoiceCaptureForOverlay();
+        if (cleanupTemporarySession) {
+            cleanupTemporaryVoiceSessionIfNeeded();
+        }
+        applyOverlayInteractionModeUi(true);
+
+        if (restoreHistoryAfterSwitch) {
+            runWorkerSafely(this::restoreFloatingHistory);
+        }
+    }
+
+    private void enterVoiceOnlyMode() {
+        overlayInteractionMode = OverlayInteractionMode.VOICE_ONLY;
+        applyOverlayInteractionModeUi(true);
+    }
+
+    private void applyOverlayInteractionModeUi(boolean updateStatusChip) {
+        if (floatingInputField != null) {
+            if (overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY) {
+                floatingInputField.setEnabled(true);
+                floatingInputField.setFocusable(true);
+                floatingInputField.setFocusableInTouchMode(true);
+                floatingInputField.setCursorVisible(true);
+                floatingInputField.setHint(R.string.floating_chat_input_hint_chat);
+                floatingInputField.setVisibility(View.VISIBLE);
+            } else {
+                floatingInputField.setText("");
+                floatingInputField.setEnabled(false);
+                floatingInputField.setFocusable(false);
+                floatingInputField.setFocusableInTouchMode(false);
+                floatingInputField.setCursorVisible(false);
+                floatingInputField.setHint(R.string.floating_chat_input_hint_voice);
+                floatingInputField.setVisibility(View.VISIBLE);
+                hideOverlayKeyboard();
+            }
+        }
+
+        if (floatingSendButton != null) {
+            boolean chatOnly = overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY;
+            floatingSendButton.setEnabled(chatOnly);
+            floatingSendButton.setVisibility(chatOnly ? View.VISIBLE : View.GONE);
+        }
+
+        if (voiceMicButton != null) {
+            boolean voiceOnly = overlayInteractionMode == OverlayInteractionMode.VOICE_ONLY;
+            voiceMicButton.setEnabled(voiceOnly);
+            voiceMicButton.setVisibility(voiceOnly ? View.VISIBLE : View.GONE);
+        }
+
+        if (floatingModeText != null) {
+            floatingModeText.setText(overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY
+                    ? R.string.floating_chat_mode_chat
+                    : R.string.floating_chat_mode_voice);
+        }
+
+        if (overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY) {
+            updateVoiceUiState(false, null);
+        } else if (updateStatusChip) {
+            updateVoiceUiState(false, getString(R.string.floating_chat_voice_mode_ready));
+        }
+    }
+
+    private void hideOverlayKeyboard() {
+        if (floatingInputField == null) {
+            return;
+        }
+
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(floatingInputField.getWindowToken(), 0);
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -987,6 +1614,11 @@ public class FloatingAssistantService extends Service {
     }
 
     private void toggleVoiceListening() {
+        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+            Toast.makeText(this, R.string.floating_chat_chat_mode_no_voice, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             updateVoiceUiState(false, "Thiếu quyền Microphone. Chuyển sang màn hình cấp quyền...");
@@ -1019,6 +1651,7 @@ public class FloatingAssistantService extends Service {
                 releaseVoiceAudioFocus();
                 speechRecognizer.stopListening();
                 isVoiceListening = false;
+                updateState(AssistantState.IDLE);
                 updateVoiceUiState(false, "Đang dừng nghe...");
                 Toast.makeText(this, "Đang dừng nghe...", Toast.LENGTH_SHORT).show();
             } else {
@@ -1033,6 +1666,10 @@ public class FloatingAssistantService extends Service {
     }
 
     private void startVoiceListening(boolean fromRetry) {
+        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+            return;
+        }
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             updateVoiceUiState(false, "Thiếu quyền Microphone.");
@@ -1073,6 +1710,7 @@ public class FloatingAssistantService extends Service {
         try {
             speechRecognizer.startListening(speechRecognizerIntent);
             isVoiceListening = true;
+            updateState(AssistantState.LISTENING);
             updateVoiceUiState(true,
                     fromRetry
                             ? "Đang thử nghe lại..."
@@ -1208,6 +1846,7 @@ public class FloatingAssistantService extends Service {
                 fromPartial
                         ? "Đã dùng kết quả nghe tạm thời."
                         : "Đã nhận giọng nói.");
+        updateState(AssistantState.THINKING);
         appendDebugTrace("VOICE_TEXT", text);
 
         updateVoicePreviewText(text);
@@ -1216,6 +1855,10 @@ public class FloatingAssistantService extends Service {
     }
 
     private void updateVoicePreviewText(String text) {
+        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+            return;
+        }
+
         if (floatingChatView == null) {
             return;
         }
@@ -1367,6 +2010,7 @@ public class FloatingAssistantService extends Service {
         } catch (Exception ignored) {
         }
         isVoiceListening = false;
+        updateState(AssistantState.IDLE);
         updateVoiceUiState(false, null);
     }
 
@@ -1618,6 +2262,7 @@ public class FloatingAssistantService extends Service {
             return;
         }
 
+        collapseRadialMenu(false);
         bubbleLongPressTriggered = true;
 
         if (bubbleVoiceGlow != null) {
@@ -1645,12 +2290,8 @@ public class FloatingAssistantService extends Service {
         if (!isChatAttached()) {
             openChatView();
         }
-
-        safePostMainDelayed(() -> {
-            if (!isVoiceListening) {
-                startVoiceListening(false);
-            }
-        }, 180L);
+        enterVoiceOnlyMode();
+        safePostMainDelayed(this::activateTemporaryVoiceSession, 180L);
     }
 
     private WindowManager.LayoutParams createSettingsOverlayLayoutParams() {
@@ -1691,6 +2332,8 @@ public class FloatingAssistantService extends Service {
         View btnFullscreen = chatSettingsOverlayView.findViewById(R.id.btn_overlay_fullscreen);
         SeekBar alphaSeekBar = chatSettingsOverlayView.findViewById(R.id.seek_overlay_alpha);
         TextView alphaValueText = chatSettingsOverlayView.findViewById(R.id.tv_overlay_alpha_value);
+        SeekBar bargeInSeekBar = chatSettingsOverlayView.findViewById(R.id.seek_overlay_barge_in_threshold);
+        TextView bargeInValueText = chatSettingsOverlayView.findViewById(R.id.tv_overlay_barge_in_value);
         Switch autoTurnTakingSwitch = chatSettingsOverlayView.findViewById(R.id.switch_overlay_auto_turn_taking);
         Switch speakRepliesSwitch = chatSettingsOverlayView.findViewById(R.id.switch_overlay_speak_replies);
 
@@ -1747,6 +2390,31 @@ public class FloatingAssistantService extends Service {
                     setVoiceSpeakRepliesEnabled(isChecked));
         }
 
+        if (bargeInSeekBar != null) {
+            bargeInSeekBar.setProgress(bargeInThresholdToProgress(voiceBargeInThreshold));
+            if (bargeInValueText != null) {
+                bargeInValueText.setText(formatBargeInThreshold(voiceBargeInThreshold));
+            }
+            bargeInSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progressValue, boolean fromUser) {
+                    float nextThreshold = progressToBargeInThreshold(progressValue);
+                    setVoiceBargeInThreshold(nextThreshold);
+                    if (bargeInValueText != null) {
+                        bargeInValueText.setText(formatBargeInThreshold(nextThreshold));
+                    }
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                }
+            });
+        }
+
         if (chatSettingsOverlayParams == null) {
             chatSettingsOverlayParams = createSettingsOverlayLayoutParams();
         }
@@ -1775,6 +2443,7 @@ public class FloatingAssistantService extends Service {
 
     private void openAssistantFullscreen() {
         try {
+            cleanupTemporaryVoiceSessionIfNeeded();
             Intent intent = new Intent(this, AiAssistantActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             if (currentSessionId > 0L) {
@@ -1806,7 +2475,11 @@ public class FloatingAssistantService extends Service {
             return;
         }
 
+        overlayInteractionMode = OverlayInteractionMode.CHAT_ONLY;
+        applyOverlayInteractionModeUi(false);
+        collapseRadialMenu(false);
         stopVoiceCaptureForOverlay();
+        cleanupTemporaryVoiceSessionIfNeeded();
         hideChatSettingsOverlay();
         if (chatParams != null) {
             saveChatPosition(chatParams.x, chatParams.y);
@@ -1920,31 +2593,182 @@ public class FloatingAssistantService extends Service {
         runWorkerSafely(() -> {
             String prompt = buildAgentPrompt(userMessage);
             appendDebugTrace("LEGACY_PROMPT", prompt);
-            geminiManager.generateResponse(prompt, new GeminiManager.ResponseCallback() {
+            updateState(AssistantState.THINKING);
+
+            StringBuilder jsonAccumulator = new StringBuilder();
+            StringBuilder speechAccumulator = new StringBuilder();
+            final int[] lastSpokenIndex = {0};
+            final boolean[] streamedAnySentence = {false};
+
+            geminiManager.generateResponseStream(prompt, new hcmute.edu.vn.tickticktodo.helper.GeminiManager.StreamResponseCallback() {
                 @Override
-                public void onSuccess(String responseText) {
-                    if (!isServiceAlive) {
+                public void onNext(String chunk) {
+                    if (!isServiceAlive) return;
+                    jsonAccumulator.append(chunk);
+
+                    String currentReply = extractReplyFieldFromPartialJson(jsonAccumulator.toString());
+                    if (TextUtils.isEmpty(currentReply)) {
                         return;
                     }
-                    appendDebugTrace("LEGACY_MODEL_RAW", responseText);
-                    runWorkerSafely(() -> handleAIResponse(responseText));
+
+                    if (currentReply.length() > lastSpokenIndex[0]) {
+                        String newText = currentReply.substring(lastSpokenIndex[0]);
+                        speechAccumulator.append(newText);
+                        lastSpokenIndex[0] = currentReply.length();
+                        if (speakCompletedSentencesFromBuffer(speechAccumulator)) {
+                            streamedAnySentence[0] = true;
+                        }
+                    }
                 }
 
                 @Override
                 public void onError(String errorMessage) {
-                    if (!isServiceAlive) {
-                        return;
-                    }
+                    if (!isServiceAlive) return;
                     appendDebugTrace("LEGACY_MODEL_ERROR", errorMessage);
                     showAssistantMessage(errorMessage);
+                    updateState(AssistantState.IDLE);
+                }
+
+                @Override
+                public void onComplete() {
+                    if (!isServiceAlive) return;
+
+                    if (flushRemainingSpeechBuffer(speechAccumulator)) {
+                        streamedAnySentence[0] = true;
+                    }
+
+                    if (streamedAnySentence[0]) {
+                        autoListenAfterAssistantReply = voiceAutoTurnTakingEnabled;
+                        if (!isAssistantSpeaking && voiceAutoTurnTakingEnabled) {
+                            safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
+                        }
+                    }
+
+                    boolean shouldSpeakParsedReply = !streamedAnySentence[0];
+                    runWorkerSafely(() -> handleAIResponse(jsonAccumulator.toString(), shouldSpeakParsedReply));
                 }
             });
         });
     }
 
+    private String extractReplyFieldFromPartialJson(String jsonBuffer) {
+        if (TextUtils.isEmpty(jsonBuffer)) {
+            return "";
+        }
+
+        int keyIndex = jsonBuffer.indexOf("\"reply\"");
+        if (keyIndex < 0) {
+            return "";
+        }
+
+        int colonIndex = jsonBuffer.indexOf(':', keyIndex);
+        if (colonIndex < 0) {
+            return "";
+        }
+
+        int firstQuote = jsonBuffer.indexOf('"', colonIndex + 1);
+        if (firstQuote < 0) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        boolean escaping = false;
+        for (int i = firstQuote + 1; i < jsonBuffer.length(); i++) {
+            char ch = jsonBuffer.charAt(i);
+
+            if (escaping) {
+                switch (ch) {
+                    case 'n':
+                    case 'r':
+                    case 't':
+                        builder.append(' ');
+                        break;
+                    case '\\':
+                    case '/':
+                    case '"':
+                        builder.append(ch);
+                        break;
+                    default:
+                        builder.append(ch);
+                        break;
+                }
+                escaping = false;
+                continue;
+            }
+
+            if (ch == '\\') {
+                escaping = true;
+                continue;
+            }
+
+            if (ch == '"') {
+                return builder.toString().trim();
+            }
+
+            builder.append(ch);
+        }
+
+        return builder.toString().trim();
+    }
+
+    private boolean speakCompletedSentencesFromBuffer(StringBuilder speechBuffer) {
+        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+            return false;
+        }
+
+        if (speechBuffer == null || speechBuffer.length() == 0) {
+            return false;
+        }
+
+        Matcher matcher = Pattern.compile(".*?[.?!,](?:\\s+|$)", Pattern.DOTALL)
+                .matcher(speechBuffer.toString());
+        int lastMatchEnd = 0;
+        boolean spokeAny = false;
+
+        while (matcher.find()) {
+            String sentence = matcher.group().trim();
+            if (!TextUtils.isEmpty(sentence)) {
+                speakAssistantMessage(sentence, TextToSpeech.QUEUE_ADD, false);
+                spokeAny = true;
+            }
+            lastMatchEnd = matcher.end();
+        }
+
+        if (lastMatchEnd > 0) {
+            speechBuffer.delete(0, lastMatchEnd);
+        }
+        return spokeAny;
+    }
+
+    private boolean flushRemainingSpeechBuffer(StringBuilder speechBuffer) {
+        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+            if (speechBuffer != null) {
+                speechBuffer.setLength(0);
+            }
+            return false;
+        }
+
+        if (speechBuffer == null) {
+            return false;
+        }
+        String remaining = speechBuffer.toString().trim();
+        speechBuffer.setLength(0);
+        if (remaining.isEmpty()) {
+            return false;
+        }
+        speakAssistantMessage(remaining, TextToSpeech.QUEUE_ADD, true);
+        return true;
+    }
+
     private void handleAIResponse(String responseText) {
+        handleAIResponse(responseText, true);
+    }
+
+    private void handleAIResponse(String responseText, boolean allowAssistantReply) {
         if (responseText == null || responseText.trim().isEmpty()) {
-            showAssistantMessage("AI chưa trả về nội dung. Bạn thử lại nhé.");
+            if (allowAssistantReply) {
+                showAssistantMessage("AI chưa trả về nội dung. Bạn thử lại nhé.");
+            }
             return;
         }
 
@@ -1956,38 +2780,52 @@ public class FloatingAssistantService extends Service {
 
         switch (action) {
             case AgentAction.CREATE_TASK:
-                createTaskFromPayload(payload, reply);
+                createTaskFromPayload(payload, reply, allowAssistantReply);
                 break;
             case AgentAction.COMPLETE_TASK:
-                completeTaskFromPayload(payload, reply);
+                completeTaskFromPayload(payload, reply, allowAssistantReply);
                 break;
             case AgentAction.LIST_TODAY:
-                listTodayTasks(reply);
+                listTodayTasks(reply, allowAssistantReply);
                 break;
             case AgentAction.WIFI_ON:
-                executeWifiCommand(true);
-                if (!TextUtils.isEmpty(reply)) {
-                    showAssistantMessage(reply);
-                }
+                executeWifiCommand(true, reply, allowAssistantReply);
                 break;
             case AgentAction.WIFI_OFF:
-                executeWifiCommand(false);
-                if (!TextUtils.isEmpty(reply)) {
-                    showAssistantMessage(reply);
-                }
+                executeWifiCommand(false, reply, allowAssistantReply);
                 break;
             case AgentAction.CHAT:
             default:
-                showAssistantMessage(TextUtils.isEmpty(reply) ? response.getRawText() : reply);
+                String fallbackReply = TextUtils.isEmpty(reply) ? response.getRawText() : reply;
+                if (allowAssistantReply) {
+                    showAssistantMessage(fallbackReply);
+                } else if (!TextUtils.isEmpty(fallbackReply)) {
+                    showAssistantMessage(fallbackReply, true, false);
+                }
                 break;
         }
     }
 
+    private void maybeShowAssistantReply(String reply, String fallbackMessage, boolean allowAssistantReply) {
+        String finalMessage = TextUtils.isEmpty(reply) ? fallbackMessage : reply;
+        if (TextUtils.isEmpty(finalMessage)) {
+            return;
+        }
+
+        if (allowAssistantReply) {
+            showAssistantMessage(finalMessage);
+        } else {
+            showAssistantMessage(finalMessage, true, false);
+        }
+    }
+
     private void createTaskFromPayload(JSONObject payload, String reply) {
+        createTaskFromPayload(payload, reply, true);
+    }
+
+    private void createTaskFromPayload(JSONObject payload, String reply, boolean allowAssistantReply) {
         if (payload == null) {
-            showAssistantMessage(TextUtils.isEmpty(reply)
-                    ? "Mình chưa đọc được dữ liệu task để tạo."
-                    : reply);
+            maybeShowAssistantReply(reply, "Mình chưa đọc được dữ liệu task để tạo.", allowAssistantReply);
             return;
         }
 
@@ -1997,9 +2835,7 @@ public class FloatingAssistantService extends Service {
         int priority = clampPriority(payload.optInt("priority", 1));
 
         if (title.isEmpty()) {
-            showAssistantMessage(TextUtils.isEmpty(reply)
-                    ? "Bạn nói rõ tên công việc để mình tạo giúp nhé."
-                    : reply);
+            maybeShowAssistantReply(reply, "Bạn nói rõ tên công việc để mình tạo giúp nhé.", allowAssistantReply);
             return;
         }
 
@@ -2016,9 +2852,9 @@ public class FloatingAssistantService extends Service {
             task.setId(newId);
             ReminderScheduler.scheduleReminder(this, task);
 
-            showAssistantMessage(TextUtils.isEmpty(reply)
-                    ? "Đã tạo công việc \"" + title + "\" thành công."
-                    : reply);
+            maybeShowAssistantReply(reply,
+                    "Đã tạo công việc \"" + title + "\" thành công.",
+                    allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Failed to create task", e);
             showAssistantMessage("Không thể tạo công việc lúc này. Bạn thử lại nhé.");
@@ -2026,10 +2862,14 @@ public class FloatingAssistantService extends Service {
     }
 
     private void completeTaskFromPayload(JSONObject payload, String reply) {
+        completeTaskFromPayload(payload, reply, true);
+    }
+
+    private void completeTaskFromPayload(JSONObject payload, String reply, boolean allowAssistantReply) {
         if (payload == null) {
-            showAssistantMessage(TextUtils.isEmpty(reply)
-                    ? "Mình chưa nhận được thông tin task cần hoàn thành."
-                    : reply);
+            maybeShowAssistantReply(reply,
+                    "Mình chưa nhận được thông tin task cần hoàn thành.",
+                    allowAssistantReply);
             return;
         }
 
@@ -2063,18 +2903,18 @@ public class FloatingAssistantService extends Service {
             }
 
             if (target == null) {
-                showAssistantMessage(TextUtils.isEmpty(reply)
-                        ? "Mình chưa tìm thấy task phù hợp để hoàn thành."
-                        : reply);
+                maybeShowAssistantReply(reply,
+                        "Mình chưa tìm thấy task phù hợp để hoàn thành.",
+                        allowAssistantReply);
                 return;
             }
 
             TaskDatabase.getInstance(this).taskDao()
                     .markTaskAsCompletedWithDate(target.getId(), true, System.currentTimeMillis());
 
-            showAssistantMessage(TextUtils.isEmpty(reply)
-                    ? "Đã hoàn thành task: \"" + target.getTitle() + "\"."
-                    : reply);
+                maybeShowAssistantReply(reply,
+                    "Đã hoàn thành task: \"" + target.getTitle() + "\".",
+                    allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Failed to complete task", e);
             showAssistantMessage("Không thể cập nhật task lúc này. Bạn thử lại nhé.");
@@ -2082,6 +2922,10 @@ public class FloatingAssistantService extends Service {
     }
 
     private void listTodayTasks(String reply) {
+        listTodayTasks(reply, true);
+    }
+
+    private void listTodayTasks(String reply, boolean allowAssistantReply) {
         try {
             long start = startOfDayMillis();
             long end = endOfDayMillis();
@@ -2105,13 +2949,10 @@ public class FloatingAssistantService extends Service {
                 }
             }
 
-            if (!TextUtils.isEmpty(reply)) {
-                showAssistantMessage(reply);
-            } else if (count == 0) {
-                showAssistantMessage("Hôm nay bạn chưa có task nào.");
-            } else {
-                showAssistantMessage("Danh sách hôm nay:\n" + builder.toString().trim());
-            }
+            String fallback = count == 0
+                    ? "Hôm nay bạn chưa có task nào."
+                    : "Danh sách hôm nay:\n" + builder.toString().trim();
+            maybeShowAssistantReply(reply, fallback, allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Failed to list today tasks", e);
             showAssistantMessage("Mình chưa lấy được danh sách task hôm nay. Bạn thử lại nhé.");
@@ -2119,15 +2960,22 @@ public class FloatingAssistantService extends Service {
     }
 
     private void executeWifiCommand(boolean enable) {
+        executeWifiCommand(enable, null, true);
+    }
+
+    private void executeWifiCommand(boolean enable, String reply, boolean allowAssistantReply) {
         WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifiManager == null) {
+            maybeShowAssistantReply(reply,
+                    "Mình chưa truy cập được Wifi Manager trên thiết bị này.",
+                    allowAssistantReply);
             return;
         }
 
         try {
             boolean result = wifiManager.setWifiEnabled(enable);
             String state = enable ? "Bật" : "Tắt";
-            showAssistantMessage("Đã " + state + " Wifi: " + result);
+            maybeShowAssistantReply(reply, "Đã " + state + " Wifi: " + result, allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Wifi toggle failed", e);
             showAssistantMessage("Từ Android 10+, không thể bật/tắt Wifi trực tiếp từ app thường.");
@@ -2317,7 +3165,7 @@ public class FloatingAssistantService extends Service {
         }
         safePostMain(() -> appendChatMessage(message, false));
 
-        if (allowVoiceOutput) {
+        if (allowVoiceOutput && overlayInteractionMode == OverlayInteractionMode.VOICE_ONLY) {
             boolean shouldAutoContinue = autoListenAfterAssistantReply && voiceAutoTurnTakingEnabled;
             speakAssistantMessage(message, shouldAutoContinue);
             if (!shouldAutoContinue) {
@@ -2395,7 +3243,9 @@ public class FloatingAssistantService extends Service {
                 row.sessionId = sessionId;
                 row.role = role;
                 row.content = message;
-                row.source = CHAT_SOURCE_FLOATING;
+                row.source = tempVoiceSessionActive
+                    ? CHAT_SOURCE_FLOATING_TEMP_VOICE
+                    : CHAT_SOURCE_FLOATING;
                 row.createdAt = now;
                 dao.insertMessage(row);
 
@@ -2421,14 +3271,10 @@ public class FloatingAssistantService extends Service {
             return currentSessionId;
         }
 
-        long now = System.currentTimeMillis();
-        ChatSession session = new ChatSession();
-        session.title = "";
-        session.source = CHAT_SOURCE_FLOATING;
-        session.lastMessage = "";
-        session.createdAt = now;
-        session.updatedAt = now;
-        currentSessionId = dao.insertSession(session);
+        String source = tempVoiceSessionActive
+            ? CHAT_SOURCE_FLOATING_TEMP_VOICE
+            : CHAT_SOURCE_FLOATING;
+        currentSessionId = createHistorySessionSync(dao, source, "");
         return currentSessionId;
     }
 
@@ -2626,7 +3472,9 @@ public class FloatingAssistantService extends Service {
             return;
         }
 
+        collapseRadialMenu(false);
         stopVoiceCaptureForOverlay();
+        cleanupTemporaryVoiceSessionIfNeeded();
         hideDismissTarget();
         hideChatSettingsOverlay();
 
@@ -2765,6 +3613,8 @@ public class FloatingAssistantService extends Service {
     }
 
     private void refreshOverlayTheme(boolean force) {
+        collapseRadialMenu(false);
+
         int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         if (!force && currentNightMode == lastUiNightMode) {
             return;
@@ -2833,6 +3683,7 @@ public class FloatingAssistantService extends Service {
             return;
         }
 
+        collapseRadialMenu(false);
         hideDismissTarget();
         hideChatSettingsOverlay();
 
@@ -2890,6 +3741,21 @@ public class FloatingAssistantService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        if (tempVoiceSessionActive && tempVoiceSessionId > 0L) {
+            long deleteSessionId = tempVoiceSessionId;
+            try {
+                TaskDatabase.getInstance(this).chatHistoryDao().deleteSessionById(deleteSessionId);
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to delete temporary voice session on destroy", e);
+            }
+            tempVoiceSessionActive = false;
+            tempVoiceSessionId = -1L;
+            previousPersistentSessionId = -1L;
+        }
+
+        collapseRadialMenu(false);
+
         isServiceAlive = false;
 
         if (bubbleParams != null) {

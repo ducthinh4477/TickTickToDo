@@ -9,6 +9,10 @@ import com.google.ai.client.generativeai.GenerativeModel;
 import com.google.ai.client.generativeai.java.GenerativeModelFutures;
 import com.google.ai.client.generativeai.type.Content;
 import com.google.ai.client.generativeai.type.GenerateContentResponse;
+
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -20,6 +24,13 @@ import java.util.concurrent.TimeUnit;
 import hcmute.edu.vn.tickticktodo.BuildConfig;
 
 public class GeminiManager {
+
+    public interface StreamResponseCallback {
+        void onNext(String chunk);
+        void onComplete();
+        void onError(String errorMessage);
+    }
+
 
     private static final String TAG = "GeminiManager";
 
@@ -65,6 +76,56 @@ public class GeminiManager {
 
     public boolean hasConfiguredApiKey() {
         return modelFutures != null;
+    }
+
+    
+    public void generateResponseStream(String prompt, StreamResponseCallback callback) {
+        if (callback == null) return;
+        if (modelFutures == null) {
+            mainHandler.post(() -> callback.onError(CONFIG_ERROR_MESSAGE));
+            return;
+        }
+        if (prompt == null || prompt.trim().isEmpty()) {
+            mainHandler.post(() -> callback.onError("Tin nhắn không hợp lệ. Vui lòng thử lại."));
+            return;
+        }
+
+        try {
+            Content content = new Content.Builder().addText(prompt).build();
+            Publisher<GenerateContentResponse> publisher = modelFutures.generateContentStream(content);
+            
+            publisher.subscribe(new Subscriber<GenerateContentResponse>() {
+                Subscription subscription;
+                
+                @Override
+                public void onSubscribe(Subscription s) {
+                    this.subscription = s;
+                    s.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(GenerateContentResponse generateContentResponse) {
+                    String text = generateContentResponse.getText();
+                    if (text != null) {
+                        mainHandler.post(() -> callback.onNext(text));
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    Log.e(TAG, "Gemini stream error", t);
+                    mainHandler.post(() -> callback.onError(mapErrorMessage(t)));
+                }
+
+                @Override
+                public void onComplete() {
+                    mainHandler.post(callback::onComplete);
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Gemini stream setup failed", e);
+            mainHandler.post(() -> callback.onError(mapErrorMessage(e)));
+        }
     }
 
     public void generateResponse(String prompt, ResponseCallback callback) {

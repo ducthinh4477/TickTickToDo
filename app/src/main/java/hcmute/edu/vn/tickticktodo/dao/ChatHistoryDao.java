@@ -40,6 +40,9 @@ public interface ChatHistoryDao {
     @Query("UPDATE chat_sessions SET title = :title WHERE id = :sessionId AND (title IS NULL OR title = '')")
     void updateSessionTitleIfEmpty(long sessionId, String title);
 
+    @Query("DELETE FROM chat_sessions WHERE id = :sessionId")
+    void deleteSessionById(long sessionId);
+
     @Query("DELETE FROM chat_messages")
     void deleteAllMessages();
 

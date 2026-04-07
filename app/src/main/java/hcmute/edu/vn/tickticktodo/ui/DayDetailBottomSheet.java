@@ -4,15 +4,21 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import java.text.SimpleDateFormat;
@@ -57,6 +63,8 @@ public class DayDetailBottomSheet extends BottomSheetDialogFragment {
     private TextView tvDetailTaskCount;
     private RecyclerView rvDayTasks;
     private View layoutDayEmpty;
+    private View layoutDayHeader;
+    private ImageButton btnBack;
     private ImageButton btnAddTaskForDay;
 
     private long dayMillis;
@@ -84,6 +92,28 @@ public class DayDetailBottomSheet extends BottomSheetDialogFragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        if (!(getDialog() instanceof BottomSheetDialog)) {
+            return;
+        }
+
+        BottomSheetDialog dialog = (BottomSheetDialog) getDialog();
+        FrameLayout bottomSheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        if (bottomSheet == null) {
+            return;
+        }
+
+        ViewGroup.LayoutParams layoutParams = bottomSheet.getLayoutParams();
+        layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        bottomSheet.setLayoutParams(layoutParams);
+
+        BottomSheetBehavior<FrameLayout> behavior = BottomSheetBehavior.from(bottomSheet);
+        behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        behavior.setSkipCollapsed(true);
+    }
+
+    @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
@@ -92,8 +122,10 @@ public class DayDetailBottomSheet extends BottomSheetDialogFragment {
         bindViews(view);
         setupTaskList();
         setupHeader();
+        setupBackButton();
         observeTasks();
         setupAddButton();
+        applyWindowInsets(view);
     }
 
     // ─── Init ────────────────────────────────────────────────────────────────────
@@ -103,6 +135,8 @@ public class DayDetailBottomSheet extends BottomSheetDialogFragment {
         tvDetailTaskCount = view.findViewById(R.id.tv_detail_task_count);
         rvDayTasks        = view.findViewById(R.id.rv_day_tasks);
         layoutDayEmpty    = view.findViewById(R.id.layout_day_empty);
+        layoutDayHeader   = view.findViewById(R.id.layout_day_detail_header);
+        btnBack           = view.findViewById(R.id.btn_day_detail_back);
         btnAddTaskForDay  = view.findViewById(R.id.btn_add_task_for_day);
     }
 
@@ -117,8 +151,54 @@ public class DayDetailBottomSheet extends BottomSheetDialogFragment {
                 (task, isChecked) -> taskViewModel.markTaskAsCompleted(task, isChecked),
                 task -> TaskDetailBottomSheet.newInstance(task.getId()).show(getParentFragmentManager(), "TaskDetail")
         );
+        taskAdapter.setShowExpandedAttachments(true);
         rvDayTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvDayTasks.setAdapter(taskAdapter);
+    }
+
+    private void setupBackButton() {
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> dismiss());
+        }
+    }
+
+    private void applyWindowInsets(View root) {
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            if (layoutDayHeader != null) {
+                layoutDayHeader.setPadding(
+                        layoutDayHeader.getPaddingLeft(),
+                        insets.top + dp(8),
+                        layoutDayHeader.getPaddingRight(),
+                        layoutDayHeader.getPaddingBottom()
+                );
+            }
+
+            rvDayTasks.setPadding(
+                    rvDayTasks.getPaddingLeft(),
+                    rvDayTasks.getPaddingTop(),
+                    rvDayTasks.getPaddingRight(),
+                    insets.bottom + dp(12)
+            );
+
+            if (layoutDayEmpty != null) {
+                layoutDayEmpty.setPadding(
+                        layoutDayEmpty.getPaddingLeft(),
+                        layoutDayEmpty.getPaddingTop(),
+                        layoutDayEmpty.getPaddingRight(),
+                        insets.bottom + dp(12)
+                );
+            }
+
+            return windowInsets;
+        });
+
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void observeTasks() {
