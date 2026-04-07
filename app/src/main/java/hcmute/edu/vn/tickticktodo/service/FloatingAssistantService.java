@@ -1,7 +1,10 @@
 package hcmute.edu.vn.tickticktodo.service;
 
 import android.Manifest;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -13,7 +16,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
-import android.graphics.Rect;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -41,6 +43,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -100,6 +103,7 @@ public class FloatingAssistantService extends Service {
     public static final String ACTION_SHOW_DAILY_REVIEW = "hcmute.edu.vn.tickticktodo.action.SHOW_DAILY_REVIEW";
     public static final String ACTION_SHOW_HABIT_NUDGE = "hcmute.edu.vn.tickticktodo.action.SHOW_HABIT_NUDGE";
     public static final String ACTION_REFRESH_THEME = "hcmute.edu.vn.tickticktodo.action.REFRESH_THEME";
+    public static final String ACTION_TOGGLE_BUBBLE = "hcmute.edu.vn.tickticktodo.action.TOGGLE_BUBBLE";
 
     public static final String EXTRA_DAILY_REVIEW_TEXT = "extra_daily_review_text";
     public static final String EXTRA_UNFINISHED_TASK_IDS = "extra_unfinished_task_ids";
@@ -135,6 +139,15 @@ public class FloatingAssistantService extends Service {
     private static final int BUBBLE_COLLAPSED_SIZE_DP = 90;
     private static final int BUBBLE_EXPANDED_SIZE_DP = 248;
     private static final int BUBBLE_RADIAL_RADIUS_DP = 96;
+    private static final int BUBBLE_DRAG_START_THRESHOLD_DP = 6;
+    private static final int BUBBLE_DISMISS_MIN_DRAG_DP = 72;
+    private static final int BUBBLE_DISMISS_MIN_DOWNWARD_DP = 24;
+    private static final float BUBBLE_DISMISS_BOTTOM_ZONE_RATIO = 0.30f;
+    private static final float BUBBLE_DISMISS_CIRCLE_DIAMETER_RATIO = 0.30f;
+    private static final int BUBBLE_DISMISS_MIN_RADIUS_DP = 24;
+    private static final int BUBBLE_DISMISS_TARGET_SIZE_DP = 90;
+    private static final int BUBBLE_DISMISS_TARGET_BOTTOM_MARGIN_DP = 24;
+    private static final long BUBBLE_EDGE_SNAP_DURATION_MS = 180L;
     private static final long BUBBLE_EXPAND_DURATION_MS = 280L;
     private static final long BUBBLE_COLLAPSE_DURATION_MS = 220L;
     private static final long BUBBLE_ACTION_STAGGER_MS = 26L;
@@ -267,10 +280,15 @@ public class FloatingAssistantService extends Service {
 
         try {
             createNotificationChannel();
+            Intent toggleIntent = new Intent(this, FloatingAssistantService.class);
+            toggleIntent.setAction(ACTION_TOGGLE_BUBBLE);
+            android.app.PendingIntent togglePendingIntent = android.app.PendingIntent.getService(
+                    this, 0, toggleIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
             Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle("Trợ lý AI TickTickToDo")
                     .setContentText("Trợ lý nổi đang hoạt động")
                     .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .addAction(android.R.drawable.ic_dialog_info, "Bật / Tắt trợ lý", togglePendingIntent)
                     .build();
             startForegroundSafely(notification);
 
@@ -865,13 +883,14 @@ public class FloatingAssistantService extends Service {
             bubbleCollapsedSizePx,
             bubbleCollapsedSizePx,
                 layoutFlag,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT
         );
 
         bubbleParams.gravity = Gravity.TOP | Gravity.START;
-        bubbleParams.x = getSavedBubbleX();
-        bubbleParams.y = getSavedBubbleY();
+        bubbleParams.x = clampBubbleX(getSavedBubbleX(), bubbleCollapsedSizePx);
+        bubbleParams.y = clampBubbleY(getSavedBubbleY(), bubbleCollapsedSizePx);
 
         try {
             windowManager.addView(floatingBubbleView, bubbleParams);
@@ -916,13 +935,19 @@ public class FloatingAssistantService extends Service {
         resetRadialActionViews();
 
         final int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
+        final int dragStartThreshold = Math.max(touchSlop * 2, dpToPx(BUBBLE_DRAG_START_THRESHOLD_DP));
+        final int dismissMinDragDistancePx = dpToPx(BUBBLE_DISMISS_MIN_DRAG_DP);
+        final int dismissMinDownwardPx = dpToPx(BUBBLE_DISMISS_MIN_DOWNWARD_DP);
         final float clickThreshold = Math.max(touchSlop * 4f, 48f);
         View.OnTouchListener bubbleTouchListener = new View.OnTouchListener() {
             private int initialX;
             private int initialY;
             private float initialTouchX;
             private float initialTouchY;
+            private float downTouchX;
+            private float downTouchY;
             private boolean isDragging;
+            private boolean dismissTargetHovered;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -935,8 +960,11 @@ public class FloatingAssistantService extends Service {
                         initialY = bubbleParams.y;
                         initialTouchX = event.getRawX();
                         initialTouchY = event.getRawY();
+                        downTouchX = initialTouchX;
+                        downTouchY = initialTouchY;
                         bubbleLongPressTriggered = false;
                         isDragging = false;
+                        dismissTargetHovered = false;
                         if (mainHandler != null) {
                             mainHandler.removeCallbacks(bubbleLongPressRunnable);
                             mainHandler.postDelayed(bubbleLongPressRunnable, BUBBLE_LONG_PRESS_TRIGGER_MS);
@@ -945,33 +973,54 @@ public class FloatingAssistantService extends Service {
                     case MotionEvent.ACTION_MOVE:
                         int deltaX = (int) (event.getRawX() - initialTouchX);
                         int deltaY = (int) (event.getRawY() - initialTouchY);
-                        if (!isDragging && (Math.abs(deltaX) > touchSlop || Math.abs(deltaY) > touchSlop)) {
+                        if (!isDragging && Math.hypot(deltaX, deltaY) > dragStartThreshold) {
                             isDragging = true;
                             collapseRadialMenu(false);
-                            initialX = bubbleParams.x;
-                            initialY = bubbleParams.y;
-                            initialTouchX = event.getRawX();
-                            initialTouchY = event.getRawY();
                             if (mainHandler != null) {
                                 mainHandler.removeCallbacks(bubbleLongPressRunnable);
                             }
                         }
                         if (isDragging) {
-                            bubbleParams.x = initialX + deltaX;
-                            bubbleParams.y = initialY + deltaY;
+                            deltaX = (int) (event.getRawX() - initialTouchX);
+                            deltaY = (int) (event.getRawY() - initialTouchY);
+                            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                            int screenHeight = getResources().getDisplayMetrics().heightPixels;
+                            int bubbleWidth = Math.max(1, bubbleParams.width);
+                            int bubbleHeight = Math.max(1, bubbleParams.height);
+
+                            int minX = 0;
+                            int maxX = Math.max(0, screenWidth - bubbleWidth);
+                            int minY = 0;
+                            int maxY = Math.max(0, screenHeight - bubbleHeight);
+
+                            bubbleParams.x = Math.max(minX, Math.min(initialX + deltaX, maxX));
+                            bubbleParams.y = Math.max(minY, Math.min(initialY + deltaY, maxY));
                             try {
                                 windowManager.updateViewLayout(floatingBubbleView, bubbleParams);
                             } catch (Exception e) {
                                 Log.w(TAG, "Unable to update bubble position", e);
                             }
-                            showDismissTarget();
-                            updateDismissTargetHighlight(isBubbleOverDismissTarget());
+
+                            float totalDragDistance = (float) Math.hypot(
+                                    event.getRawX() - downTouchX,
+                                    event.getRawY() - downTouchY
+                            );
+                            float downwardDelta = event.getRawY() - downTouchY;
+                            if (isBubbleInDismissBottomBand()) {
+                                showDismissTarget();
+                                dismissTargetHovered = isBubbleOverDismissTarget();
+                                updateDismissTargetHighlight(dismissTargetHovered);
+                            } else {
+                                dismissTargetHovered = false;
+                                hideDismissTarget();
+                            }
                         }
                         return true;
                     case MotionEvent.ACTION_CANCEL:
                         if (mainHandler != null) {
                             mainHandler.removeCallbacks(bubbleLongPressRunnable);
                         }
+                        dismissTargetHovered = false;
                         hideDismissTarget();
                         return true;
                     case MotionEvent.ACTION_UP:
@@ -987,7 +1036,12 @@ public class FloatingAssistantService extends Service {
                         }
 
                         if (isDragging) {
-                            boolean shouldHide = isBubbleOverDismissTarget();
+                            float downwardDelta = event.getRawY() - downTouchY;
+                            boolean isFlingDown = downwardDelta > dpToPx(120) && (downwardDelta / Math.max(1, event.getEventTime() - event.getDownTime())) > 1.2f;
+                            boolean shouldHide = dismissTargetHovered
+                                    || (isBubbleInDismissBottomBand() && isBubbleOverDismissTarget())
+                                    || isFlingDown;
+                            dismissTargetHovered = false;
                             hideDismissTarget();
                             if (shouldHide) {
                                 hideAssistantOverlay();
@@ -995,7 +1049,7 @@ public class FloatingAssistantService extends Service {
                                         R.string.floating_chat_hidden_toast,
                                         Toast.LENGTH_SHORT).show();
                             } else {
-                                saveBubblePosition(bubbleParams.x, bubbleParams.y);
+                                snapBubbleToNearestHorizontalEdge(true);
                             }
                             return true;
                         }
@@ -2246,15 +2300,50 @@ public class FloatingAssistantService extends Service {
     }
 
     private boolean isBubbleOverDismissTarget() {
-        if (!isBubbleAttached() || dismissTargetView == null || dismissTargetView.getParent() == null) {
+        if (!isBubbleAttached() || bubbleParams == null) {
             return false;
         }
 
-        Rect bubbleRect = new Rect();
-        Rect dismissRect = new Rect();
-        boolean bubbleVisible = floatingBubbleView.getGlobalVisibleRect(bubbleRect);
-        boolean dismissVisible = dismissTargetView.getGlobalVisibleRect(dismissRect);
-        return bubbleVisible && dismissVisible && Rect.intersects(bubbleRect, dismissRect);
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+        int bottomZoneTop = Math.round(screenHeight * (1f - BUBBLE_DISMISS_BOTTOM_ZONE_RATIO));
+
+        int bubbleWidth = Math.max(1, bubbleParams.width > 0 ? bubbleParams.width : bubbleCollapsedSizePx);
+        int bubbleHeight = Math.max(1, bubbleParams.height > 0 ? bubbleParams.height : bubbleCollapsedSizePx);
+        int bubbleCenterX = bubbleParams.x + bubbleWidth / 2;
+        int bubbleCenterY = bubbleParams.y + bubbleHeight / 2;
+        if (bubbleCenterY < bottomZoneTop) {
+            return false;
+        }
+
+        int dismissTargetSizePx = dpToPx(BUBBLE_DISMISS_TARGET_SIZE_DP);
+        int dismissBottomMarginPx = dismissTargetParams != null
+            ? dismissTargetParams.y
+            : dpToPx(BUBBLE_DISMISS_TARGET_BOTTOM_MARGIN_DP);
+        int dismissCenterX = screenWidth / 2;
+        int dismissCenterY = screenHeight - dismissBottomMarginPx - dismissTargetSizePx / 2;
+
+        int screenBasedDiameter = Math.round(Math.min(screenWidth, screenHeight)
+                * BUBBLE_DISMISS_CIRCLE_DIAMETER_RATIO);
+        int allowedDistance = Math.max(
+                dpToPx(120),
+            Math.max(screenBasedDiameter, dismissTargetSizePx)
+        );
+        double distance = Math.hypot(bubbleCenterX - dismissCenterX, bubbleCenterY - dismissCenterY);
+        boolean isNearBottomCenter = bubbleCenterY > screenHeight - dpToPx(150) && Math.abs(bubbleCenterX - dismissCenterX) < dpToPx(100);
+        return distance <= allowedDistance || isNearBottomCenter;
+    }
+
+    private boolean isBubbleInDismissBottomBand() {
+        if (bubbleParams == null) {
+            return false;
+        }
+
+        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+        int bottomZoneTop = Math.round(screenHeight * (1f - BUBBLE_DISMISS_BOTTOM_ZONE_RATIO));
+        int bubbleHeight = Math.max(1, bubbleParams.height);
+        int bubbleCenterY = bubbleParams.y + bubbleHeight / 2;
+        return bubbleCenterY >= bottomZoneTop;
     }
 
     private void triggerBubbleLongPressVoice() {
@@ -3567,7 +3656,15 @@ public class FloatingAssistantService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (mainHandler != null) {
             String action = intent != null ? intent.getAction() : null;
-            if (ACTION_REFRESH_THEME.equals(action)) {
+            if (ACTION_TOGGLE_BUBBLE.equals(action)) {
+                refreshOverlayTheme(false);
+                boolean isBubbleVisible = floatingBubbleView != null && floatingBubbleView.getParent() != null && floatingBubbleView.getVisibility() == View.VISIBLE;
+                if (isBubbleVisible || isChatAttached()) {
+                    safePostMain(this::hideAssistantOverlay);
+                } else {
+                    safePostMain(this::ensureBubbleVisible);
+                }
+            } else if (ACTION_REFRESH_THEME.equals(action)) {
                 safePostMain(() -> refreshOverlayTheme(true));
             } else if (ACTION_HIDE_BUBBLE.equals(action)) {
                 refreshOverlayTheme(false);
@@ -3653,8 +3750,11 @@ public class FloatingAssistantService extends Service {
         initFloatingChat();
 
         if (bubbleParams != null && floatingBubbleView != null && floatingBubbleView.getParent() != null) {
-            bubbleParams.x = savedX;
-            bubbleParams.y = savedY;
+            int collapsedSize = bubbleCollapsedSizePx > 0 ? bubbleCollapsedSizePx : dpToPx(BUBBLE_COLLAPSED_SIZE_DP);
+            bubbleParams.width = collapsedSize;
+            bubbleParams.height = collapsedSize;
+            bubbleParams.x = clampBubbleX(savedX, collapsedSize);
+            bubbleParams.y = clampBubbleY(savedY, collapsedSize);
             try {
                 windowManager.updateViewLayout(floatingBubbleView, bubbleParams);
             } catch (Exception ignored) {
@@ -3695,14 +3795,24 @@ public class FloatingAssistantService extends Service {
                 return;
             }
 
+            if (bubbleParams != null) {
+                int collapsedSize = bubbleCollapsedSizePx > 0 ? bubbleCollapsedSizePx : dpToPx(BUBBLE_COLLAPSED_SIZE_DP);
+                bubbleParams.width = collapsedSize;
+                bubbleParams.height = collapsedSize;
+            }
+
             if (floatingBubbleView.getParent() == null && bubbleParams != null) {
-                bubbleParams.x = getSavedBubbleX();
-                bubbleParams.y = getSavedBubbleY();
+                bubbleParams.x = clampBubbleX(getSavedBubbleX(), bubbleParams.width);
+                bubbleParams.y = clampBubbleY(getSavedBubbleY(), bubbleParams.height);
                 windowManager.addView(floatingBubbleView, bubbleParams);
                 synchronized (OVERLAY_LOCK) {
                     sWindowManager = windowManager;
                     sBubbleView = floatingBubbleView;
                 }
+            } else if (bubbleParams != null) {
+                bubbleParams.x = clampBubbleX(bubbleParams.x, bubbleParams.width);
+                bubbleParams.y = clampBubbleY(bubbleParams.y, bubbleParams.height);
+                windowManager.updateViewLayout(floatingBubbleView, bubbleParams);
             }
             floatingBubbleView.setVisibility(View.VISIBLE);
         } catch (Exception e) {
@@ -3711,31 +3821,125 @@ public class FloatingAssistantService extends Service {
     }
 
     private int getSavedBubbleX() {
-        return positionPrefs != null
+        int saved = positionPrefs != null
                 ? positionPrefs.getInt(KEY_BUBBLE_X, DEFAULT_BUBBLE_X)
                 : DEFAULT_BUBBLE_X;
+        int collapsedSize = bubbleCollapsedSizePx > 0 ? bubbleCollapsedSizePx : dpToPx(BUBBLE_COLLAPSED_SIZE_DP);
+        return clampBubbleX(saved, collapsedSize);
     }
 
     private int getSavedBubbleY() {
-        return positionPrefs != null
+        int saved = positionPrefs != null
                 ? positionPrefs.getInt(KEY_BUBBLE_Y, DEFAULT_BUBBLE_Y)
                 : DEFAULT_BUBBLE_Y;
+        int collapsedSize = bubbleCollapsedSizePx > 0 ? bubbleCollapsedSizePx : dpToPx(BUBBLE_COLLAPSED_SIZE_DP);
+        return clampBubbleY(saved, collapsedSize);
     }
 
     private void saveBubblePosition(int x, int y) {
         if (positionPrefs == null) {
             return;
         }
+        int collapsedSize = bubbleCollapsedSizePx > 0 ? bubbleCollapsedSizePx : dpToPx(BUBBLE_COLLAPSED_SIZE_DP);
+        int safeX = clampBubbleX(x, collapsedSize);
+        int safeY = clampBubbleY(y, collapsedSize);
         positionPrefs.edit()
-                .putInt(KEY_BUBBLE_X, x)
-                .putInt(KEY_BUBBLE_Y, y)
+                .putInt(KEY_BUBBLE_X, safeX)
+                .putInt(KEY_BUBBLE_Y, safeY)
                 .apply();
+    }
+
+    private void snapBubbleToNearestHorizontalEdge(boolean animated) {
+        if (bubbleParams == null || windowManager == null || floatingBubbleView == null) {
+            return;
+        }
+
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int bubbleWidth = Math.max(1, bubbleParams.width > 0 ? bubbleParams.width : bubbleCollapsedSizePx);
+        int bubbleHeight = Math.max(1, bubbleParams.height > 0 ? bubbleParams.height : bubbleCollapsedSizePx);
+        int maxX = Math.max(0, screenWidth - bubbleWidth);
+
+        int currentX = clampBubbleX(bubbleParams.x, bubbleWidth);
+        int targetX = currentX <= (maxX / 2) ? 0 : maxX;
+        int safeY = clampBubbleY(bubbleParams.y, bubbleHeight);
+
+        if (!animated || Math.abs(targetX - currentX) <= dpToPx(2)) {
+            bubbleParams.x = targetX;
+            bubbleParams.y = safeY;
+            try {
+                if (floatingBubbleView.getParent() != null) {
+                    windowManager.updateViewLayout(floatingBubbleView, bubbleParams);
+                }
+            } catch (Exception ignored) {
+            }
+            saveBubblePosition(targetX, safeY);
+            return;
+        }
+
+        ValueAnimator snapAnimator = ValueAnimator.ofInt(currentX, targetX);
+        snapAnimator.setDuration(BUBBLE_EDGE_SNAP_DURATION_MS);
+        snapAnimator.setInterpolator(new DecelerateInterpolator());
+        snapAnimator.addUpdateListener(animation -> {
+            if (bubbleParams == null || windowManager == null || floatingBubbleView == null) {
+                return;
+            }
+            bubbleParams.x = (int) animation.getAnimatedValue();
+            bubbleParams.y = safeY;
+            try {
+                if (floatingBubbleView.getParent() != null) {
+                    windowManager.updateViewLayout(floatingBubbleView, bubbleParams);
+                }
+            } catch (Exception ignored) {
+            }
+        });
+        snapAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                saveBubblePosition(targetX, safeY);
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                saveBubblePosition(targetX, safeY);
+            }
+        });
+        snapAnimator.start();
+    }
+
+    private int clampBubbleX(int x, int bubbleWidth) {
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int safeWidth = Math.max(1, bubbleWidth);
+        int maxX = Math.max(0, screenWidth - safeWidth);
+        return Math.max(0, Math.min(x, maxX));
+    }
+
+    private int clampBubbleY(int y, int bubbleHeight) {
+        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+        int safeHeight = Math.max(1, bubbleHeight);
+        int maxY = Math.max(0, screenHeight - safeHeight);
+        return Math.max(0, Math.min(y, maxY));
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        int currentNightMode = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        if (currentNightMode != lastUiNightMode) {
+            lastUiNightMode = currentNightMode;
+            refreshOverlayTheme(true);
+        }
+
+        if (bubbleParams != null && floatingBubbleView != null && floatingBubbleView.getParent() != null) {
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                snapBubbleToNearestHorizontalEdge(false);
+            }, 100);
+        }
     }
 
     @Override
