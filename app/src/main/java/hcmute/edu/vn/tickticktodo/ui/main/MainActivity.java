@@ -1,4 +1,4 @@
-package hcmute.edu.vn.tickticktodo;
+package hcmute.edu.vn.tickticktodo.ui.main;
 
 import android.app.TimePickerDialog;
 import android.content.Intent;
@@ -46,6 +46,8 @@ import java.util.List;
 import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
+import hcmute.edu.vn.tickticktodo.R;
+import hcmute.edu.vn.tickticktodo.databinding.ActivityMainBinding;
 import hcmute.edu.vn.tickticktodo.ui.list.HeaderAdapter;
 import hcmute.edu.vn.tickticktodo.ui.list.ListPanelAdapter;
 import hcmute.edu.vn.tickticktodo.ui.task.TaskAdapter;
@@ -71,6 +73,10 @@ public class MainActivity extends BaseActivity {
     private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
     public static final String EXTRA_OPEN_ADD_TASK_SHEET = "extra_open_add_task_sheet";
 
+    private ActivityMainBinding binding;
+    private MainNavigationHelper mainNavigationHelper;
+    private MainPermissionHandler mainPermissionHandler;
+    private MainViewModel mainStateViewModel;
     private TaskViewModel taskViewModel;
 
     // UI — Menu overlay
@@ -110,11 +116,6 @@ public class MainActivity extends BaseActivity {
     private TaskAdapter completedAdapter;
     private ConcatAdapter concatAdapter;
     
-    // View Options State
-    private boolean isHideCompleted = false;
-    private boolean isShowDetails = true;
-    private int currentMode = 0; // 0 = Today, 1 = 7 Days
-
     // Cache list cho Expand/Collapse
     private List<Task> currentOverdueTasks = new ArrayList<>();
     private List<Task> currentIncompleteTasks = new ArrayList<>();
@@ -127,7 +128,12 @@ public class MainActivity extends BaseActivity {
         // Bật edge-to-edge để layout nhận đúng window insets (tai thỏ / status bar)
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
-        setContentView(R.layout.activity_main);
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        mainNavigationHelper = new MainNavigationHelper(this);
+        mainPermissionHandler = new MainPermissionHandler(this);
+        mainStateViewModel = new ViewModelProvider(this).get(MainViewModel.class);
 
         initViews();
         setupNavRailInsets();   // ← xử lý paddingTop theo status bar
@@ -141,6 +147,9 @@ public class MainActivity extends BaseActivity {
         setupQuickAdd();
         setupFab();
         handleExternalIntent(getIntent());
+
+        Integer selectedNavId = mainStateViewModel.getSelectedNavItem().getValue();
+        selectNavItem(selectedNavId == null || selectedNavId == 0 ? R.id.nav_item_home : selectedNavId);
     }
 
     @Override
@@ -261,8 +270,8 @@ public class MainActivity extends BaseActivity {
 
                 @Override
                 public void onHideCompletedToggled() {
-                    isHideCompleted = !isHideCompleted;
-                    if (isHideCompleted) {
+                    mainStateViewModel.toggleHideCompleted();
+                    if (mainStateViewModel.isHideCompleted()) {
                         concatAdapter.removeAdapter(completedHeaderAdapter);
                         concatAdapter.removeAdapter(completedAdapter);
                     } else {
@@ -274,10 +283,11 @@ public class MainActivity extends BaseActivity {
 
                 @Override
                 public void onShowDetailsToggled() {
-                    isShowDetails = !isShowDetails;
-                    overdueAdapter.setShowDetails(isShowDetails);
-                    incompleteAdapter.setShowDetails(isShowDetails);
-                    completedAdapter.setShowDetails(isShowDetails);
+                    mainStateViewModel.toggleShowDetails();
+                    boolean showDetails = mainStateViewModel.isShowDetails();
+                    overdueAdapter.setShowDetails(showDetails);
+                    incompleteAdapter.setShowDetails(showDetails);
+                    completedAdapter.setShowDetails(showDetails);
                 }
 
                 @Override
@@ -338,13 +348,13 @@ public class MainActivity extends BaseActivity {
 
         setClickListenerIfPresent(R.id.panel_item_today, v -> {
             closeMenu();
-            currentMode = 0;
+            mainStateViewModel.setCurrentMode(0);
             tvHeaderTitle.setText(R.string.header_today);
             updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
         });
         setClickListenerIfPresent(R.id.panel_item_next7days, v -> {
             closeMenu();
-            currentMode = 1;
+            mainStateViewModel.setCurrentMode(1);
             tvHeaderTitle.setText("7 Ngày tới");
             updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
@@ -496,55 +506,29 @@ public class MainActivity extends BaseActivity {
     }
 
     private void setupNavRail() {
-        if (navItemHome != null) {
-            navItemHome.setOnClickListener(v -> selectNavItem(R.id.nav_item_home));
-        }
+        mainNavigationHelper.setupNavRail(
+                navItemHome,
+                navItemCalendar,
+                navItemFocus,
+                navItemSchool,
+                navItemHabits,
+                navItemSettings,
+                navItemAiAssistant,
+                new MainNavigationHelper.NavSelectionCallback() {
+                    @Override
+                    public void onNavSelected(int selectedId) {
+                        selectNavItem(selectedId);
+                    }
 
-        if (navItemCalendar != null) {
-            navItemCalendar.setOnClickListener(v -> {
-                selectNavItem(R.id.nav_item_calendar);
-                startActivity(CalendarActivity.newIntent(this));
-            });
-        }
+                    @Override
+                    public void onOpenSettings() {
+                        showSettingsDialog();
+                    }
+                }
+        );
 
-        if (navItemFocus != null) {
-            navItemFocus.setOnClickListener(v -> {
-                selectNavItem(R.id.nav_item_focus);
-                startActivity(CountdownActivity.newIntent(this));
-            });
-        }
-
-        if (navItemSchool != null) {
-            navItemSchool.setOnClickListener(v -> {
-                selectNavItem(R.id.nav_item_school);
-                Intent intent = new Intent(this, hcmute.edu.vn.tickticktodo.ui.MoodleActivity.class);
-                startActivity(intent);
-            });
-        }
-
-        if (navItemHabits != null) {
-            navItemHabits.setOnClickListener(v -> {
-                selectNavItem(R.id.nav_item_habits);
-                startActivity(HabitTrackerActivity.newIntent(this));
-            });
-        }
-
-        if (navItemSettings != null) {
-            navItemSettings.setOnClickListener(v -> {
-                selectNavItem(R.id.nav_item_settings);
-                showSettingsDialog();
-            });
-        }
-
-        if (navItemAiAssistant != null) {
-            navItemAiAssistant.setOnClickListener(v -> {
-                selectNavItem(R.id.nav_item_ai_assistant);
-                startActivity(new Intent(this, hcmute.edu.vn.tickticktodo.ui.chat.AiAssistantActivity.class));
-            });
-        }
-
-        // Highlight Home by default
-        selectNavItem(R.id.nav_item_home);
+        Integer selectedNavId = mainStateViewModel.getSelectedNavItem().getValue();
+        selectNavItem(selectedNavId == null || selectedNavId == 0 ? R.id.nav_item_home : selectedNavId);
     }
 
     private void showSettingsDialog() {
@@ -596,61 +580,19 @@ public class MainActivity extends BaseActivity {
     }
 
     private void selectNavItem(int selectedId) {
+        mainStateViewModel.setSelectedNavItem(selectedId);
         int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_habits, R.id.nav_item_settings, R.id.nav_item_ai_assistant};
         ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant};
         TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant};
-
-        int accent    = super.getResources().getColor(hcmute.edu.vn.tickticktodo.R.color.accent_primary, getTheme());
-        int secondary = super.getResources().getColor(hcmute.edu.vn.tickticktodo.R.color.text_secondary, getTheme());
-
-        for (int i = 0; i < ids.length; i++) {
-            if (icons[i] == null || labels[i] == null) continue;
-            boolean selected = ids[i] == selectedId;
-            int color = selected ? accent : secondary;
-            icons[i].setImageTintList(android.content.res.ColorStateList.valueOf(color));
-            labels[i].setTextColor(color);
-        }
+        mainNavigationHelper.selectNavItem(selectedId, ids, icons, labels);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        syncFloatingAssistantState();
-        selectNavItem(R.id.nav_item_home);
-    }
-
-    private void syncFloatingAssistantState() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        boolean enabled = prefs.getBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false);
-        boolean hasOverlayPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
-
-        Intent serviceIntent = new Intent(this, FloatingAssistantService.class);
-        if (enabled && hasOverlayPermission) {
-            startFloatingServiceSafely(prefs, FloatingAssistantService.ACTION_HIDE_BUBBLE);
-        } else {
-            stopService(serviceIntent);
-            if (enabled && !hasOverlayPermission) {
-                prefs.edit().putBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false).apply();
-            }
-        }
-    }
-
-    private void startFloatingServiceSafely(SharedPreferences prefs, String action) {
-        Intent serviceIntent = new Intent(this, FloatingAssistantService.class);
-        serviceIntent.setAction(action);
-        try {
-            ContextCompat.startForegroundService(this, serviceIntent);
-        } catch (Exception firstException) {
-            try {
-                // Fallback cho một số thiết bị ROM tùy biến không cho startForegroundService ở thời điểm này.
-                startService(serviceIntent);
-            } catch (Exception secondException) {
-                // Không để crash app nếu service khởi động lỗi trên một số thiết bị/API.
-                stopService(serviceIntent);
-                prefs.edit().putBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false).apply();
-                Toast.makeText(this, "Không thể khởi động Trợ lý nổi trên thiết bị này.", Toast.LENGTH_SHORT).show();
-            }
-        }
+        mainPermissionHandler.syncFloatingAssistantState(PREFS_NAME, KEY_FLOATING_ASSISTANT_ENABLED);
+        Integer selectedNavId = mainStateViewModel.getSelectedNavItem().getValue();
+        selectNavItem(selectedNavId == null || selectedNavId == 0 ? R.id.nav_item_home : selectedNavId);
     }
 
     // ─── Adapters ───────────────────────────────────────────────────────────
@@ -706,8 +648,8 @@ public class MainActivity extends BaseActivity {
         int overdue = overdueAdapter.getItemCount();
         int todayHead = todayHeaderAdapter.getItemCount();
         int incomplete = incompleteAdapter.getItemCount();
-        int compHead = isHideCompleted ? 0 : completedHeaderAdapter.getItemCount();
-        int comp = isHideCompleted ? 0 : completedAdapter.getItemCount();
+        int compHead = mainStateViewModel.isHideCompleted() ? 0 : completedHeaderAdapter.getItemCount();
+        int comp = mainStateViewModel.isHideCompleted() ? 0 : completedAdapter.getItemCount();
 
         Task deletedTask = null;
         if (position < overdueHead) {
@@ -809,8 +751,8 @@ public class MainActivity extends BaseActivity {
 
     private void setupViewModel() {
         taskViewModel.getSortModeLiveData().observe(this, mode -> {
-            if (currentMode == 0) updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
-            else if (currentMode == 1) updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
+            if (mainStateViewModel.getCurrentModeValue() == 0) updateIncompleteList(taskViewModel.getTodayIncompleteTasks().getValue());
+            else if (mainStateViewModel.getCurrentModeValue() == 1) updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
 
         taskViewModel.getOverdueTasks().observe(this, overdueTasks -> {
@@ -823,11 +765,11 @@ public class MainActivity extends BaseActivity {
         });
 
         taskViewModel.getTodayIncompleteTasks().observe(this, incompleteTasks -> {
-            if (currentMode == 0) updateIncompleteList(incompleteTasks);
+            if (mainStateViewModel.getCurrentModeValue() == 0) updateIncompleteList(incompleteTasks);
         });
 
         taskViewModel.getNext7DaysTasks().observe(this, nextTasks -> {
-            if (currentMode == 1) updateIncompleteList(nextTasks);
+            if (mainStateViewModel.getCurrentModeValue() == 1) updateIncompleteList(nextTasks);
         });
 
         taskViewModel.getTodayCompletedTasks().observe(this, completedTasks -> {
@@ -864,13 +806,13 @@ public class MainActivity extends BaseActivity {
         if (todayHeaderAdapter.isExpanded()) {
             incompleteAdapter.submitList(new ArrayList<>(currentIncompleteTasks));
         }
-        todayHeaderAdapter.setHeader(currentMode == 0 ? "Hôm nay" : "7 ngày tới", currentIncompleteTasks.size());
+        todayHeaderAdapter.setHeader(mainStateViewModel.getCurrentModeValue() == 0 ? "Hôm nay" : "7 ngày tới", currentIncompleteTasks.size());
         updateEmptyStateCheck();
     }
 
     private void updateEmptyStateCheck() {
         int total = currentIncompleteTasks.size() + currentOverdueTasks.size() + 
-                    (isHideCompleted ? 0 : currentCompletedTasks.size());
+                    (mainStateViewModel.isHideCompleted() ? 0 : currentCompletedTasks.size());
         boolean isEmpty = total == 0;
         layoutEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         rvTasks.setVisibility(isEmpty ? View.GONE : View.VISIBLE);

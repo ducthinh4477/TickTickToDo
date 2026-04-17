@@ -17,7 +17,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import hcmute.edu.vn.tickticktodo.MainActivity;
+import hcmute.edu.vn.tickticktodo.ui.main.MainActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.ui.task.NotificationActionReceiver;
 import hcmute.edu.vn.tickticktodo.ui.countdown.TimerService;

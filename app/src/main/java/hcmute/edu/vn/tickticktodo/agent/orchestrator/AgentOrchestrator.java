@@ -1,4 +1,4 @@
-package hcmute.edu.vn.tickticktodo.agent;
+package hcmute.edu.vn.tickticktodo.agent.orchestrator;
 
 import android.app.Application;
 import android.os.Handler;
@@ -12,6 +12,11 @@ import org.json.JSONObject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import hcmute.edu.vn.tickticktodo.agent.AgentAction;
+import hcmute.edu.vn.tickticktodo.agent.AgentContextAssembler;
+import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
+import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
+import hcmute.edu.vn.tickticktodo.agent.AgentToolRegistry;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
@@ -31,18 +36,11 @@ public class AgentOrchestrator {
         }
     }
 
-    private static final String ORCHESTRATOR_SYSTEM_PROMPT =
-            "Bạn là Agent của TickTickToDo. Trả về JSON thuần, không markdown, không text ngoài JSON. " +
-            "Nếu cần chạy công cụ, action phải là đúng tên tool có trong [TOOLS]. " +
-            "Schema bắt buộc: {\"action\":\"<TOOL_NAME hoặc CHAT>\",\"payload\":{...},\"reply\":\"...\"}. " +
-            "reply luôn viết tiếng Việt tự nhiên, đầy đủ ngữ cảnh app, ưu tiên 2-4 câu thay vì quá ngắn. " +
-            "Nếu là thao tác tạo/cập nhật task, reply cần nêu rõ kết quả (tên task, hạn, độ ưu tiên nếu có).";
-
-    private final Application application;
     private final GeminiManager geminiManager;
     private final AgentContextAssembler contextAssembler;
-    private final AgentToolRegistry toolRegistry;
     private final AgentResponseParser responseParser;
+    private final PromptTemplateManager promptTemplateManager;
+    private final ToolExecutionBridge toolExecutionBridge;
     private final ExecutorService workerExecutor;
     private final Handler mainHandler;
 
@@ -61,11 +59,11 @@ public class AgentOrchestrator {
                              AgentContextAssembler contextAssembler,
                              AgentToolRegistry toolRegistry,
                              AgentResponseParser responseParser) {
-        this.application = application;
         this.geminiManager = geminiManager;
         this.contextAssembler = contextAssembler;
-        this.toolRegistry = toolRegistry;
         this.responseParser = responseParser;
+        this.promptTemplateManager = new PromptTemplateManager();
+        this.toolExecutionBridge = new ToolExecutionBridge(application, toolRegistry);
         this.workerExecutor = Executors.newSingleThreadExecutor();
         this.mainHandler = new Handler(Looper.getMainLooper());
     }
@@ -84,7 +82,7 @@ public class AgentOrchestrator {
         workerExecutor.execute(() -> {
             try {
                 String contextBlock = contextAssembler.buildTieredContextBlock(userMessage);
-                String toolSchemas = toolRegistry.getToolSchemas().toString();
+                String toolSchemas = toolExecutionBridge.getToolSchemas().toString();
                 String prompt = buildPrompt(userMessage, contextBlock, toolSchemas);
 
                 postDebugTrace(callback, "CONTEXT", contextBlock);
@@ -112,7 +110,7 @@ public class AgentOrchestrator {
     }
 
     public JSONArray getToolSchemas() {
-        return toolRegistry.getToolSchemas();
+        return toolExecutionBridge.getToolSchemas();
     }
 
     private void processModelResponse(String modelText, Callback callback) {
@@ -128,9 +126,9 @@ public class AgentOrchestrator {
         }
 
         ToolCall call = ToolCall.fromEnvelope(envelope);
-    postDebugTrace(callback, "TOOL_CALL", call.toJson().toString());
+        postDebugTrace(callback, "TOOL_CALL", call.toJson().toString());
         ToolResult result = dispatchToolCall(call);
-    postDebugTrace(callback, "TOOL_RESULT", result.toJson().toString());
+        postDebugTrace(callback, "TOOL_RESULT", result.toJson().toString());
         postToolResult(callback, result);
 
         if (!TextUtils.isEmpty(envelope.getReply())) {
@@ -146,45 +144,11 @@ public class AgentOrchestrator {
     }
 
     private ToolResult dispatchToolCall(ToolCall call) {
-        AgentTool tool = toolRegistry.get(call.getToolName());
-        if (tool == null) {
-            return ToolResult.failure(
-                    call.getCallId(),
-                    call.getToolName(),
-                    "TOOL_NOT_FOUND",
-                    "Không tìm thấy công cụ: " + call.getToolName()
-            );
-        }
-
-        if (tool.requiresConfirmation(call)) {
-            return ToolResult.failure(
-                    call.getCallId(),
-                    call.getToolName(),
-                    "CONFIRMATION_REQUIRED",
-                    "Công cụ yêu cầu xác nhận người dùng trước khi chạy."
-            );
-        }
-
-        try {
-            return tool.execute(call, AgentExecutionContext.create(application));
-        } catch (Exception e) {
-            return ToolResult.failure(
-                    call.getCallId(),
-                    call.getToolName(),
-                    "TOOL_EXECUTION_FAILED",
-                    e.getMessage() == null ? "Tool execution failed" : e.getMessage()
-            );
-        }
+        return toolExecutionBridge.dispatchToolCall(call);
     }
 
     private String buildPrompt(String userMessage, String contextBlock, String toolsBlock) {
-        String systemPrompt = ORCHESTRATOR_SYSTEM_PROMPT + "\n[TOOLS]\n" + toolsBlock;
-        return AgentPromptContract.buildPrompt(
-                systemPrompt,
-                contextBlock,
-                "(managed-by-orchestrator)",
-                userMessage
-        );
+        return promptTemplateManager.buildPrompt(userMessage, contextBlock, toolsBlock);
     }
 
     private JSONObject envelopeToTraceJson(AgentResponseEnvelope envelope) {
@@ -198,51 +162,7 @@ public class AgentOrchestrator {
     }
 
     private String renderToolResultSummary(ToolResult result) {
-        if (result == null) {
-            return "Mình chưa có kết quả từ công cụ.";
-        }
-
-        if (!result.isSuccess()) {
-            return "Công cụ " + result.getToolName() + " lỗi: " + result.getErrorMessage();
-        }
-
-        JSONObject data = result.getData();
-        String toolName = result.getToolName();
-
-        if (AgentToolNames.CREATE_TASK_WITH_SUBTASKS.equals(toolName)) {
-            JSONObject parentTask = data == null ? null : data.optJSONObject("parentTask");
-            String title = parentTask == null ? "" : parentTask.optString("title", "").trim();
-            int subtaskCount = data == null ? 0 : data.optInt("createdSubtasksCount", 0);
-            if (!TextUtils.isEmpty(title)) {
-                if (subtaskCount > 0) {
-                    return "Đã tạo task \"" + title + "\" cùng " + subtaskCount + " subtask.";
-                }
-                return "Đã tạo task \"" + title + "\" thành công.";
-            }
-            return "Đã tạo task mới thành công.";
-        }
-
-        if (AgentToolNames.GET_TODAY_TASKS.equals(toolName)
-                || AgentToolNames.GET_OVERDUE_TASKS.equals(toolName)
-                || AgentToolNames.FIND_TASKS.equals(toolName)) {
-            int count = data == null ? 0 : data.optInt("count", 0);
-            JSONArray tasks = data == null ? null : data.optJSONArray("tasks");
-            if (tasks != null && tasks.length() > 0) {
-                JSONObject first = tasks.optJSONObject(0);
-                String firstTitle = first == null ? "" : first.optString("title", "").trim();
-                if (!TextUtils.isEmpty(firstTitle)) {
-                    return "Mình tìm thấy " + count + " task. Gợi ý đầu tiên: \"" + firstTitle + "\".";
-                }
-            }
-            return "Mình tìm thấy " + count + " task phù hợp.";
-        }
-
-        if (AgentToolNames.RESCHEDULE_BULK_TASKS.equals(toolName)) {
-            int count = data == null ? 0 : data.optInt("rescheduledCount", 0);
-            return "Đã dời lịch " + count + " task thành công.";
-        }
-
-        return "Đã chạy công cụ " + toolName + " thành công.";
+        return toolExecutionBridge.renderToolResultSummary(result);
     }
 
     private void postAssistantReply(Callback callback, String replyText) {

@@ -16,12 +16,9 @@ import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
-import android.media.AudioAttributes;
-import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -30,7 +27,6 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
-import android.speech.tts.UtteranceProgressListener;
 import android.text.TextUtils;
 import android.util.Log;
 import android.content.res.Configuration;
@@ -57,33 +53,26 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.MainActivity;
-import hcmute.edu.vn.tickticktodo.agent.AgentAction;
-import hcmute.edu.vn.tickticktodo.agent.AgentOrchestrator;
-import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
-import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
+import hcmute.edu.vn.tickticktodo.ui.main.MainActivity;
+import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
-import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
+import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantAiController;
+import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantStateMonitor;
+import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantStateMonitor.AssistantState;
+import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantSpeechHandler;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.BubbleWindowManager;
-import hcmute.edu.vn.tickticktodo.core.background.assistant.VoiceInputHandler;
+import hcmute.edu.vn.tickticktodo.core.background.assistant.BubbleUiManager;
 import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
@@ -158,13 +147,6 @@ public class FloatingAssistantService extends Service {
     private static final float[] BUBBLE_OPEN_LEFT_ANGLES = new float[]{120f, 150f, 180f, 210f, 240f};
     private static final float[] BUBBLE_OPEN_RIGHT_ANGLES = new float[]{60f, 30f, 0f, 330f, 300f};
 
-    private enum AssistantState {
-        IDLE,
-        LISTENING,
-        THINKING,
-        SPEAKING
-    }
-
     private enum OverlayInteractionMode {
         CHAT_ONLY,
         VOICE_ONLY
@@ -190,7 +172,6 @@ public class FloatingAssistantService extends Service {
     private WindowManager.LayoutParams chatSettingsOverlayParams;
     private boolean chatCompatMode;
     private boolean isServiceAlive;
-    private boolean hasVoiceAudioFocus;
     private boolean bubbleLongPressTriggered;
     private boolean isRadialMenuExpanded;
     private boolean isRadialAnimating;
@@ -198,16 +179,16 @@ public class FloatingAssistantService extends Service {
     private int bubbleExpandedSizePx;
     private int bubbleRadialRadiusPx;
     private float currentChatAlpha = MAX_CHAT_ALPHA;
-    private AssistantState currentState = AssistantState.IDLE;
+    private final AssistantStateMonitor assistantStateMonitor = new AssistantStateMonitor();
 
     private GeminiManager geminiManager;
     private ExecutorService workerExecutor;
-    private VoiceInputHandler voiceInputHandler;
     private BubbleWindowManager bubbleWindowManager;
-    private TextToSpeech assistantTts;
+    private BubbleUiManager bubbleUiManager;
+    private AssistantSpeechHandler assistantSpeechHandler;
+    private AssistantAiController assistantAiController;
     private boolean isVoiceListening;
     private boolean isAssistantSpeaking;
-    private boolean assistantTtsReady;
     private boolean voiceSessionRequested;
     private boolean autoListenAfterAssistantReply;
     private boolean voiceAutoTurnTakingEnabled = true;
@@ -220,8 +201,6 @@ public class FloatingAssistantService extends Service {
     private String latestPartialTranscript = "";
     private boolean voiceStopRequestedByUser;
     private Handler mainHandler;
-    private AudioManager audioManager;
-    private AudioFocusRequest voiceAudioFocusRequest;
     private RecyclerView floatingChatRecyclerView;
     private ChatAdapter floatingChatAdapter;
     private SharedPreferences positionPrefs;
@@ -300,12 +279,11 @@ public class FloatingAssistantService extends Service {
             cleanupStaleOverlayIfAny();
 
             mainHandler = new Handler(Looper.getMainLooper());
-            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             workerExecutor = Executors.newSingleThreadExecutor();
             geminiManager = GeminiManager.getInstance();
             agentOrchestrator = new AgentOrchestrator(getApplication());
             positionPrefs = getSharedPreferences(POSITION_PREFS, MODE_PRIVATE);
-                bubbleWindowManager = new BubbleWindowManager(
+            bubbleWindowManager = new BubbleWindowManager(
                     this,
                     windowManager,
                     positionPrefs,
@@ -319,7 +297,173 @@ public class FloatingAssistantService extends Service {
                     BUBBLE_DISMISS_TARGET_SIZE_DP,
                     BUBBLE_DISMISS_TARGET_BOTTOM_MARGIN_DP,
                     BUBBLE_EDGE_SNAP_DURATION_MS
-                );
+            );
+            bubbleUiManager = new BubbleUiManager(
+                    this,
+                    windowManager,
+                    positionPrefs,
+                    KEY_CHAT_X,
+                    KEY_CHAT_Y,
+                    KEY_CHAT_ALPHA,
+                    MIN_CHAT_ALPHA,
+                    MAX_CHAT_ALPHA,
+                    TAG
+            );
+
+            assistantSpeechHandler = new AssistantSpeechHandler(this, TAG, new AssistantSpeechHandler.Callback() {
+                @Override
+                public void onDebugTrace(String stage, String payload) {
+                    appendDebugTrace(stage, payload);
+                }
+
+                @Override
+                public void onAssistantSpeechStarted() {
+                    isAssistantSpeaking = true;
+                    updateState(AssistantState.SPEAKING);
+                }
+
+                @Override
+                public void onAssistantSpeechCompleted() {
+                    safePostMain(() -> {
+                        isAssistantSpeaking = false;
+                        updateState(AssistantState.IDLE);
+                        if (voiceAutoTurnTakingEnabled && autoListenAfterAssistantReply) {
+                            safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
+                        }
+                    });
+                }
+
+                @Override
+                public void onAssistantSpeechFailed(String utteranceId) {
+                    safePostMain(() -> {
+                        isAssistantSpeaking = false;
+                        updateState(AssistantState.IDLE);
+                        appendDebugTrace("VOICE_TTS_ERROR", "utteranceId=" + utteranceId);
+                        if (voiceAutoTurnTakingEnabled && autoListenAfterAssistantReply) {
+                            safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
+                        }
+                    });
+                }
+
+                @Override
+                public void onVoiceReadyForSpeech(android.os.Bundle params) {
+                    handleVoiceReadyForSpeech();
+                }
+
+                @Override
+                public void onVoiceBeginningOfSpeech() {
+                    handleVoiceBeginningOfSpeech();
+                }
+
+                @Override
+                public void onVoiceRmsChanged(float rmsdB) {
+                    handleVoiceRmsChanged(rmsdB);
+                }
+
+                @Override
+                public void onVoiceEndOfSpeech() {
+                    handleVoiceEndOfSpeech();
+                }
+
+                @Override
+                public void onVoiceError(int error) {
+                    handleVoiceRecognitionError(error);
+                }
+
+                @Override
+                public void onVoiceResults(ArrayList<String> results) {
+                    handleVoiceResults(results);
+                }
+
+                @Override
+                public void onVoicePartialResults(ArrayList<String> partialResults) {
+                    handleVoicePartialResults(partialResults);
+                }
+
+                @Override
+                public void onAssistantStateChanged(AssistantState state) {
+                    updateState(state);
+                }
+            });
+
+            assistantAiController = new AssistantAiController(
+                    this,
+                    geminiManager,
+                    agentOrchestrator,
+                    responseParser,
+                    new AssistantAiController.Host() {
+                        @Override
+                        public boolean isServiceAlive() {
+                            return FloatingAssistantService.this.isServiceAlive;
+                        }
+
+                        @Override
+                        public void runWorkerSafely(Runnable task) {
+                            FloatingAssistantService.this.runWorkerSafely(task);
+                        }
+
+                        @Override
+                        public void appendDebugTrace(String stage, String payload) {
+                            FloatingAssistantService.this.appendDebugTrace(stage, payload);
+                        }
+
+                        @Override
+                        public void updateState(AssistantState state) {
+                            FloatingAssistantService.this.updateState(state);
+                        }
+
+                        @Override
+                        public void showUserMessage(String message) {
+                            FloatingAssistantService.this.showUserMessage(message);
+                        }
+
+                        @Override
+                        public void showAssistantMessage(String message) {
+                            FloatingAssistantService.this.showAssistantMessage(message);
+                        }
+
+                        @Override
+                        public void showAssistantMessage(String message, boolean persist, boolean allowVoiceOutput) {
+                            FloatingAssistantService.this.showAssistantMessage(message, persist, allowVoiceOutput);
+                        }
+
+                        @Override
+                        public String buildConversationMemoryBlock() {
+                            return FloatingAssistantService.this.buildConversationMemoryBlock();
+                        }
+
+                        @Override
+                        public boolean isVoiceOnlyMode() {
+                            return overlayInteractionMode == OverlayInteractionMode.VOICE_ONLY;
+                        }
+
+                        @Override
+                        public void speakAssistantMessage(String message, int queueMode, boolean shouldAutoContinueListening) {
+                            FloatingAssistantService.this.speakAssistantMessage(message, queueMode, shouldAutoContinueListening);
+                        }
+
+                        @Override
+                        public boolean isAssistantSpeaking() {
+                            return FloatingAssistantService.this.isAssistantSpeaking;
+                        }
+
+                        @Override
+                        public boolean isVoiceAutoTurnTakingEnabled() {
+                            return FloatingAssistantService.this.voiceAutoTurnTakingEnabled;
+                        }
+
+                        @Override
+                        public void setAutoListenAfterAssistantReply(boolean enabled) {
+                            autoListenAfterAssistantReply = enabled;
+                        }
+
+                        @Override
+                        public void scheduleAutoListenAfterSpeech() {
+                            safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
+                        }
+                    }
+            );
+
             currentChatAlpha = getSavedChatAlpha();
             loadVoiceBehaviorSettings();
             lastUiNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
@@ -344,11 +488,26 @@ public class FloatingAssistantService extends Service {
     }
 
     private boolean isChatAttached() {
-        return floatingChatView != null && floatingChatView.getParent() != null;
+        return bubbleUiManager != null && bubbleUiManager.isAttached(floatingChatView);
     }
 
     private boolean isBubbleAttached() {
         return floatingBubbleView != null && floatingBubbleView.getParent() != null;
+    }
+
+    private boolean attachOverlayView(View view, WindowManager.LayoutParams params, String overlayName) {
+        return bubbleUiManager != null
+                && bubbleUiManager.attachOverlayView(view, params, overlayName);
+    }
+
+    private boolean detachOverlayView(View view, String overlayName) {
+        return bubbleUiManager != null
+                && bubbleUiManager.detachOverlayView(view, overlayName);
+    }
+
+    private boolean updateOverlayView(View view, WindowManager.LayoutParams params, String overlayName) {
+        return bubbleUiManager != null
+                && bubbleUiManager.updateOverlayView(view, params, overlayName);
     }
 
     private void safePostMain(Runnable runnable) {
@@ -395,10 +554,9 @@ public class FloatingAssistantService extends Service {
     }
 
     private void updateState(AssistantState newState) {
-        if (newState == null || currentState == newState) {
+        if (!assistantStateMonitor.transitionTo(newState)) {
             return;
         }
-        currentState = newState;
         appendDebugTrace("VOICE_STATE", newState.name());
 
         safePostMain(() -> {
@@ -485,80 +643,15 @@ public class FloatingAssistantService extends Service {
     }
 
     private void initAssistantTts() {
-        try {
-            if (assistantTts != null) {
-                assistantTts.stop();
-                assistantTts.shutdown();
-            }
-        } catch (Exception ignored) {
-        }
-
-        assistantTtsReady = false;
-        assistantTts = new TextToSpeech(getApplicationContext(), status -> {
-            if (!isServiceAlive || assistantTts == null) {
-                return;
-            }
-            if (status != TextToSpeech.SUCCESS) {
-                appendDebugTrace("VOICE_TTS_INIT", "failed status=" + status);
-                return;
-            }
-
-            int lang = assistantTts.setLanguage(new Locale("vi", "VN"));
-            if (lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
-                appendDebugTrace("VOICE_TTS_LANG", "vi-VN unavailable, fallback default locale.");
-                assistantTts.setLanguage(Locale.getDefault());
-            }
-
-            assistantTts.setSpeechRate(1.0f);
-            assistantTts.setPitch(1.0f);
-            assistantTtsReady = true;
-            appendDebugTrace("VOICE_TTS_INIT", "ready");
-        });
-
-        if (assistantTts != null) {
-            assistantTts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                @Override
-                public void onStart(String utteranceId) {
-                    isAssistantSpeaking = true;
-                    updateState(AssistantState.SPEAKING);
-                }
-
-                @Override
-                public void onDone(String utteranceId) {
-                    safePostMain(() -> {
-                        isAssistantSpeaking = false;
-                        updateState(AssistantState.IDLE);
-                        if (voiceAutoTurnTakingEnabled && autoListenAfterAssistantReply) {
-                            safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
-                        }
-                    });
-                }
-
-                @Override
-                public void onError(String utteranceId) {
-                    safePostMain(() -> {
-                        isAssistantSpeaking = false;
-                        updateState(AssistantState.IDLE);
-                        appendDebugTrace("VOICE_TTS_ERROR", "utteranceId=" + utteranceId);
-                        if (voiceAutoTurnTakingEnabled && autoListenAfterAssistantReply) {
-                            safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
-                        }
-                    });
-                }
-            });
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.initAssistantTts();
         }
     }
 
     private void shutdownAssistantTts() {
-        try {
-            if (assistantTts != null) {
-                assistantTts.stop();
-                assistantTts.shutdown();
-            }
-        } catch (Exception ignored) {
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.shutdownAssistantTts();
         }
-        assistantTts = null;
-        assistantTtsReady = false;
         isAssistantSpeaking = false;
     }
 
@@ -570,11 +663,8 @@ public class FloatingAssistantService extends Service {
             }
         }
         isAssistantSpeaking = false;
-        try {
-            if (assistantTts != null) {
-                assistantTts.stop();
-            }
-        } catch (Exception ignored) {
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.stopAssistantSpeech();
         }
     }
 
@@ -604,8 +694,8 @@ public class FloatingAssistantService extends Service {
             return;
         }
 
-        if (assistantTts == null || !assistantTtsReady) {
-            appendDebugTrace("VOICE_TTS_SKIP", "TTS not ready.");
+        if (assistantSpeechHandler == null) {
+            appendDebugTrace("VOICE_TTS_SKIP", "Speech handler not ready.");
             if (shouldAutoContinueListening) {
                 safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
             }
@@ -613,20 +703,12 @@ public class FloatingAssistantService extends Service {
         }
 
         updateState(AssistantState.SPEAKING);
-        String utteranceId = "floating-tts-" + SystemClock.elapsedRealtime();
         appendDebugTrace("VOICE_TTS_SPEAK", abbreviateForStatus(message));
 
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                assistantTts.speak(message, queueMode, null, utteranceId);
-            } else {
-                HashMap<String, String> params = new HashMap<>();
-                params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId);
-                assistantTts.speak(message, queueMode, params);
-            }
-        } catch (Exception e) {
+        boolean spoken = assistantSpeechHandler.speakAssistantMessage(message, queueMode);
+        if (!spoken) {
             isAssistantSpeaking = false;
-            appendDebugTrace("VOICE_TTS_EXCEPTION", e.getMessage());
+            appendDebugTrace("VOICE_TTS_EXCEPTION", "speak() returned false");
             if (shouldAutoContinueListening) {
                 safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
             }
@@ -634,112 +716,19 @@ public class FloatingAssistantService extends Service {
     }
 
     private boolean requestVoiceAudioFocus() {
-        if (audioManager == null) {
-            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        }
-        if (audioManager == null) {
-            hasVoiceAudioFocus = false;
-            return false;
-        }
-
-        AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build();
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            if (voiceAudioFocusRequest == null) {
-                voiceAudioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                        .setAudioAttributes(audioAttributes)
-                        .setAcceptsDelayedFocusGain(true)
-                        .setOnAudioFocusChangeListener(focusChange -> {
-                            if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
-                                focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                                if (assistantTts != null) assistantTts.stop();
-                                updateState(AssistantState.IDLE);
-                            }
-                        })
-                        .build();
-            }
-            int result = audioManager.requestAudioFocus(voiceAudioFocusRequest);
-            hasVoiceAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-            appendDebugTrace("VOICE_AUDIO_FOCUS", hasVoiceAudioFocus ? "granted" : "denied");
-            return hasVoiceAudioFocus;
-        } else {
-            int result = audioManager.requestAudioFocus(
-                    focusChange -> {
-                        if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
-                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                            if (assistantTts != null) assistantTts.stop();
-                            updateState(AssistantState.IDLE);
-                        }
-                    },
-                    AudioManager.STREAM_MUSIC,
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-            );
-            hasVoiceAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-            appendDebugTrace("VOICE_AUDIO_FOCUS", hasVoiceAudioFocus ? "granted" : "denied");
-            return hasVoiceAudioFocus;
-        }
+        return assistantSpeechHandler != null
+                && assistantSpeechHandler.requestVoiceAudioFocus();
     }
 
     private void releaseVoiceAudioFocus() {
-        if (audioManager == null || !hasVoiceAudioFocus) {
-            return;
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.releaseVoiceAudioFocus();
         }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && voiceAudioFocusRequest != null) {
-                audioManager.abandonAudioFocusRequest(voiceAudioFocusRequest);
-            } else {
-                audioManager.abandonAudioFocus(null);
-            }
-        } catch (Exception ignored) {
-        }
-        hasVoiceAudioFocus = false;
     }
 
     private void initSpeechRecognizer() {
-        if (voiceInputHandler == null) {
-            voiceInputHandler = new VoiceInputHandler(this, TAG, new VoiceInputHandler.Callback() {
-                @Override
-                public void onReadyForSpeech(android.os.Bundle params) {
-                    handleVoiceReadyForSpeech();
-                }
-
-                @Override
-                public void onBeginningOfSpeech() {
-                    handleVoiceBeginningOfSpeech();
-                }
-
-                @Override
-                public void onRmsChanged(float rmsdB) {
-                    handleVoiceRmsChanged(rmsdB);
-                }
-
-                @Override
-                public void onEndOfSpeech() {
-                    handleVoiceEndOfSpeech();
-                }
-
-                @Override
-                public void onError(int error) {
-                    handleVoiceRecognitionError(error);
-                }
-
-                @Override
-                public void onResults(ArrayList<String> results) {
-                    handleVoiceResults(results);
-                }
-
-                @Override
-                public void onPartialResults(ArrayList<String> partialResults) {
-                    handleVoicePartialResults(partialResults);
-                }
-            });
-        }
-
-        if (!voiceInputHandler.initialize()) {
-            appendDebugTrace("VOICE_INIT", "Speech recognition is not available.");
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.initSpeechRecognizer();
         }
     }
 
@@ -765,7 +754,7 @@ public class FloatingAssistantService extends Service {
             voicePulseIndicator.setAlpha(alpha);
         }
 
-        if (currentState == AssistantState.SPEAKING
+        if (assistantStateMonitor.getCurrentState() == AssistantState.SPEAKING
                 && isAssistantSpeaking
                 && rmsdB > voiceBargeInThreshold) {
             Log.d(TAG, "Voice interruption detected. Stop TTS and resume listening.");
@@ -1529,7 +1518,9 @@ public class FloatingAssistantService extends Service {
         }
 
         try {
-            windowManager.addView(floatingChatView, chatParams);
+            if (!attachOverlayView(floatingChatView, chatParams, "chat overlay")) {
+                throw new IllegalStateException("Unable to attach chat overlay");
+            }
             applyChatAlpha(currentChatAlpha, false);
             applyOverlayInteractionModeUi(false);
             synchronized (OVERLAY_LOCK) {
@@ -1543,7 +1534,9 @@ public class FloatingAssistantService extends Service {
                 try {
                     chatParams = createChatLayoutParams(true);
                     chatCompatMode = true;
-                    windowManager.addView(floatingChatView, chatParams);
+                    if (!attachOverlayView(floatingChatView, chatParams, "chat overlay compat")) {
+                        throw new IllegalStateException("Unable to attach chat overlay in compatibility mode");
+                    }
                     applyChatAlpha(currentChatAlpha, false);
                     applyOverlayInteractionModeUi(false);
                     synchronized (OVERLAY_LOCK) {
@@ -1643,32 +1636,17 @@ public class FloatingAssistantService extends Service {
     }
 
     private WindowManager.LayoutParams createChatLayoutParams(boolean compatMode) {
-        int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                : WindowManager.LayoutParams.TYPE_PHONE;
-
-        int flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
-        if (compatMode) {
-            flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        if (bubbleUiManager == null) {
+            return null;
         }
-
-        int maxWidth = getResources().getDisplayMetrics().widthPixels - dpToPx(24);
-        int desiredWidth = Math.min(dpToPx(380), maxWidth);
-
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                Math.max(desiredWidth, dpToPx(280)),
-            WindowManager.LayoutParams.WRAP_CONTENT,
-                layoutFlag,
-                flags,
-                PixelFormat.TRANSLUCENT
+        return bubbleUiManager.createChatLayoutParams(
+            compatMode,
+            getSavedChatX(),
+            getSavedChatY(),
+            280,
+            380,
+            24
         );
-        params.gravity = Gravity.TOP | Gravity.START;
-        params.x = getSavedChatX();
-        params.y = getSavedChatY();
-        params.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
-                | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN;
-        return params;
     }
 
     private void toggleVoiceListening() {
@@ -1707,8 +1685,8 @@ public class FloatingAssistantService extends Service {
                 voiceStopRequestedByUser = true;
                 cancelVoiceRetry();
                 releaseVoiceAudioFocus();
-                if (voiceInputHandler != null) {
-                    voiceInputHandler.stopListening();
+                if (assistantSpeechHandler != null) {
+                    assistantSpeechHandler.stopListening();
                 }
                 isVoiceListening = false;
                 updateState(AssistantState.IDLE);
@@ -1767,7 +1745,7 @@ public class FloatingAssistantService extends Service {
         requestVoiceAudioFocus();
 
         try {
-            boolean started = voiceInputHandler != null && voiceInputHandler.startListening();
+            boolean started = assistantSpeechHandler != null && assistantSpeechHandler.startListening();
             if (!started) {
                 throw new IllegalStateException("Speech recognizer start failed");
             }
@@ -1835,27 +1813,13 @@ public class FloatingAssistantService extends Service {
     }
 
     private boolean ensureSpeechRecognizerReady() {
-        if (voiceInputHandler == null) {
-            try {
-                initSpeechRecognizer();
-            } catch (Exception e) {
-                Log.w(TAG, "Unable to initialize speech recognizer", e);
-            }
-        }
-
-        if (voiceInputHandler == null) {
-            return false;
-        }
-
-        return voiceInputHandler.ensureReady();
+        return assistantSpeechHandler != null
+                && assistantSpeechHandler.ensureSpeechRecognizerReady();
     }
 
     private void resetSpeechRecognizer(String reason) {
-        appendDebugTrace("VOICE_RESET", reason == null ? "unspecified" : reason);
-        if (voiceInputHandler != null) {
-            voiceInputHandler.reset();
-        } else {
-            initSpeechRecognizer();
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.resetSpeechRecognizer(reason);
         }
     }
 
@@ -2020,27 +1984,7 @@ public class FloatingAssistantService extends Service {
     }
 
     private String mapSpeechErrorMessage(int error) {
-        switch (error) {
-            case SpeechRecognizer.ERROR_AUDIO:
-                return "Lỗi audio từ microphone.";
-            case SpeechRecognizer.ERROR_CLIENT:
-                return "Voice đã dừng.";
-            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                return "Thiếu quyền Microphone.";
-            case SpeechRecognizer.ERROR_NETWORK:
-            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                return "Lỗi mạng khi nhận diện giọng nói.";
-            case SpeechRecognizer.ERROR_NO_MATCH:
-                return "Không nhận diện được nội dung. Hãy nói chậm, rõ và gần mic hơn.";
-            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                return "Recognizer đang bận. Thử lại sau vài giây.";
-            case SpeechRecognizer.ERROR_SERVER:
-                return "Lỗi máy chủ nhận diện giọng nói.";
-            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                return "Không phát hiện giọng nói.";
-            default:
-                return "Lỗi thu âm: " + error;
-        }
+        return AssistantSpeechHandler.mapSpeechErrorMessage(error);
     }
 
     private void openAppSettings() {
@@ -2064,8 +2008,8 @@ public class FloatingAssistantService extends Service {
         if (mainHandler != null) {
             mainHandler.removeCallbacks(autoListenAfterSpeechRunnable);
         }
-        if (voiceInputHandler != null) {
-            voiceInputHandler.stopListening();
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.stopListening();
         }
         isVoiceListening = false;
         updateState(AssistantState.IDLE);
@@ -2077,161 +2021,75 @@ public class FloatingAssistantService extends Service {
     }
 
     private int getDefaultChatX() {
-        int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        int maxWidth = screenWidth - dpToPx(24);
-        int desiredWidth = Math.min(dpToPx(380), maxWidth);
-        int popupWidth = Math.max(desiredWidth, dpToPx(280));
-        return Math.max(dpToPx(12), (screenWidth - popupWidth) / 2);
+        if (bubbleUiManager == null) {
+            return dpToPx(12);
+        }
+        return bubbleUiManager.getDefaultChatX(24, 380, 280);
     }
 
     private int getSavedChatX() {
-        return positionPrefs != null
-                ? positionPrefs.getInt(KEY_CHAT_X, getDefaultChatX())
-                : getDefaultChatX();
+        return bubbleUiManager == null
+                ? getDefaultChatX()
+                : bubbleUiManager.getSavedChatX(getDefaultChatX());
     }
 
     private int getSavedChatY() {
-        return positionPrefs != null
-                ? positionPrefs.getInt(KEY_CHAT_Y, dpToPx(20))
-                : dpToPx(20);
+        return bubbleUiManager == null
+                ? dpToPx(20)
+                : bubbleUiManager.getSavedChatY(dpToPx(20));
     }
 
     private void saveChatPosition(int x, int y) {
-        if (positionPrefs == null) {
-            return;
+        if (bubbleUiManager != null) {
+            bubbleUiManager.saveChatPosition(x, y);
         }
-        positionPrefs.edit()
-                .putInt(KEY_CHAT_X, x)
-                .putInt(KEY_CHAT_Y, y)
-                .apply();
     }
 
     private float getSavedChatAlpha() {
-        if (positionPrefs == null) {
+        if (bubbleUiManager == null) {
             return MAX_CHAT_ALPHA;
         }
-        float stored = positionPrefs.getFloat(KEY_CHAT_ALPHA, MAX_CHAT_ALPHA);
-        return Math.max(MIN_CHAT_ALPHA, Math.min(MAX_CHAT_ALPHA, stored));
+        return bubbleUiManager.getSavedChatAlpha();
     }
 
     private void saveChatAlpha(float alpha) {
-        if (positionPrefs == null) {
-            return;
+        if (bubbleUiManager != null) {
+            bubbleUiManager.saveChatAlpha(alpha);
         }
-        positionPrefs.edit().putFloat(KEY_CHAT_ALPHA, alpha).apply();
     }
 
     private void applyChatAlpha(float alpha, boolean persist) {
-        float safeAlpha = Math.max(MIN_CHAT_ALPHA, Math.min(MAX_CHAT_ALPHA, alpha));
-        currentChatAlpha = safeAlpha;
-        if (persist) {
-            saveChatAlpha(safeAlpha);
-        }
-
-        if (floatingChatView == null) {
+        if (bubbleUiManager == null) {
+            currentChatAlpha = Math.max(MIN_CHAT_ALPHA, Math.min(MAX_CHAT_ALPHA, alpha));
             return;
         }
-
-        try {
-            floatingChatView.setAlpha(safeAlpha);
-            if (isChatAttached() && windowManager != null && chatParams != null) {
-                windowManager.updateViewLayout(floatingChatView, chatParams);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Unable to apply chat alpha", e);
-        }
+        currentChatAlpha = bubbleUiManager.applyChatAlpha(
+                floatingChatView,
+                chatParams,
+                alpha,
+                persist,
+                "chat overlay alpha"
+        );
     }
 
     private void attachChatHeaderDrag(View dragHandle, View[] excludedViews) {
-        if (dragHandle == null) {
+        if (bubbleUiManager == null) {
             return;
         }
-
-        final int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
-        dragHandle.setOnTouchListener(new View.OnTouchListener() {
-            private int initialX;
-            private int initialY;
-            private float initialTouchX;
-            private float initialTouchY;
-            private boolean isDragging;
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (chatParams == null) {
-                    return false;
+        bubbleUiManager.attachChatHeaderDrag(
+                dragHandle,
+                floatingChatView,
+                chatParams,
+                4,
+                12,
+                excludedViews,
+                (x, y) -> {
+                    if (chatParams != null) {
+                        chatParams.x = x;
+                        chatParams.y = y;
+                    }
                 }
-
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        if (isTouchInsideAnyExcluded(event, excludedViews)) {
-                            return false;
-                        }
-                        initialX = chatParams.x;
-                        initialY = chatParams.y;
-                        initialTouchX = event.getRawX();
-                        initialTouchY = event.getRawY();
-                        isDragging = false;
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
-                        int deltaX = (int) (event.getRawX() - initialTouchX);
-                        int deltaY = (int) (event.getRawY() - initialTouchY);
-                        if (!isDragging && (Math.abs(deltaX) > touchSlop || Math.abs(deltaY) > touchSlop)) {
-                            isDragging = true;
-                        }
-                        if (!isDragging) {
-                            return true;
-                        }
-
-                        int nextX = initialX + deltaX;
-                        int nextY = initialY + deltaY;
-                        if (floatingChatView != null) {
-                            int screenWidth = getResources().getDisplayMetrics().widthPixels;
-                            int screenHeight = getResources().getDisplayMetrics().heightPixels;
-                            int maxX = Math.max(0, screenWidth - floatingChatView.getWidth());
-                            int maxY = Math.max(dpToPx(4), screenHeight - floatingChatView.getHeight() - dpToPx(12));
-                            nextX = Math.max(0, Math.min(nextX, maxX));
-                            nextY = Math.max(dpToPx(4), Math.min(nextY, maxY));
-                        }
-
-                        chatParams.x = nextX;
-                        chatParams.y = nextY;
-                        try {
-                            if (isChatAttached()) {
-                                windowManager.updateViewLayout(floatingChatView, chatParams);
-                            }
-                        } catch (Exception e) {
-                            Log.w(TAG, "Unable to drag chat header", e);
-                        }
-                        return true;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        if (isDragging) {
-                            saveChatPosition(chatParams.x, chatParams.y);
-                        }
-                        return isDragging;
-                    default:
-                        return false;
-                }
-            }
-        });
-    }
-
-    private boolean isTouchInsideAnyExcluded(MotionEvent event, View... views) {
-        if (event == null || views == null || views.length == 0) {
-            return false;
-        }
-        float x = event.getX();
-        float y = event.getY();
-        for (View view : views) {
-            if (view == null || view.getVisibility() != View.VISIBLE) {
-                continue;
-            }
-            if (x >= view.getLeft() && x <= view.getRight()
-                    && y >= view.getTop() && y <= view.getBottom()) {
-                return true;
-            }
-        }
-        return false;
+        );
     }
 
     private void showDismissTarget() {
@@ -2428,10 +2286,7 @@ public class FloatingAssistantService extends Service {
             chatSettingsOverlayParams = createSettingsOverlayLayoutParams();
         }
 
-        try {
-            windowManager.addView(chatSettingsOverlayView, chatSettingsOverlayParams);
-        } catch (Exception e) {
-            Log.w(TAG, "Unable to show chat settings overlay", e);
+        if (!attachOverlayView(chatSettingsOverlayView, chatSettingsOverlayParams, "chat settings overlay")) {
             chatSettingsOverlayView = null;
         }
     }
@@ -2440,13 +2295,7 @@ public class FloatingAssistantService extends Service {
         if (windowManager == null || chatSettingsOverlayView == null) {
             return;
         }
-        try {
-            if (chatSettingsOverlayView.getParent() != null) {
-                windowManager.removeView(chatSettingsOverlayView);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Unable to hide chat settings overlay", e);
-        }
+        detachOverlayView(chatSettingsOverlayView, "chat settings overlay");
         chatSettingsOverlayView = null;
     }
 
@@ -2494,13 +2343,7 @@ public class FloatingAssistantService extends Service {
             saveChatPosition(chatParams.x, chatParams.y);
         }
 
-        try {
-            if (floatingChatView.getParent() != null) {
-                windowManager.removeView(floatingChatView);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Unable to close floating chat view", e);
-        }
+        detachOverlayView(floatingChatView, "chat overlay close");
 
         synchronized (OVERLAY_LOCK) {
             sChatView = null;
@@ -2523,513 +2366,9 @@ public class FloatingAssistantService extends Service {
     }
 
     private void sendToGemini(String message) {
-        if (geminiManager == null || agentOrchestrator == null) {
-            appendDebugTrace("GUARD", "Gemini or orchestrator is null.");
-            showAssistantMessage("Vui lòng kiểm tra cấu hình API Key trong local.properties");
-            return;
+        if (assistantAiController != null) {
+            assistantAiController.sendToGemini(message);
         }
-
-        String userMessage = message == null ? "" : message.trim();
-        if (userMessage.isEmpty()) {
-            return;
-        }
-
-        appendDebugTrace("USER_INPUT", userMessage);
-        showUserMessage(userMessage);
-
-        if (tryHandleQuickCreateIntent(userMessage)) {
-            appendDebugTrace("SHORTCUT", "Handled by quick-create intent parser (no tool call).");
-            return;
-        }
-
-        final boolean[] suppressNextAssistantReply = {false};
-        runWorkerSafely(() -> agentOrchestrator.handleUserMessage(userMessage, new AgentOrchestrator.Callback() {
-            @Override
-            public void onAssistantReply(String replyText) {
-                if (!isServiceAlive) {
-                    return;
-                }
-                if (suppressNextAssistantReply[0]) {
-                    suppressNextAssistantReply[0] = false;
-                    return;
-                }
-                if (!TextUtils.isEmpty(replyText)) {
-                    appendDebugTrace("ASSISTANT_REPLY", replyText);
-                    showAssistantMessage(replyText);
-                }
-            }
-
-            @Override
-            public void onToolResult(ToolResult toolResult) {
-                if (!isServiceAlive) {
-                    return;
-                }
-                if (toolResult == null) {
-                    return;
-                }
-
-                appendDebugTrace("TOOL_RESULT_CALLBACK", toolResult.toJson().toString());
-
-                if (!toolResult.isSuccess() && "TOOL_NOT_FOUND".equals(toolResult.getErrorCode())) {
-                    suppressNextAssistantReply[0] = true;
-                    appendDebugTrace("FALLBACK", "TOOL_NOT_FOUND => switching to legacy parser flow.");
-                    fallbackToLegacyAgentFlow(userMessage);
-                }
-            }
-
-            @Override
-            public void onDebugTrace(String stage, String payload) {
-                if (!isServiceAlive) {
-                    return;
-                }
-                appendDebugTrace(stage, payload);
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                if (!isServiceAlive) {
-                    return;
-                }
-                // Keep the app usable even if orchestrator flow fails.
-                appendDebugTrace("ORCHESTRATOR_ERROR", errorMessage);
-                fallbackToLegacyAgentFlow(userMessage);
-            }
-        }));
-    }
-
-    private void fallbackToLegacyAgentFlow(String userMessage) {
-        appendDebugTrace("FALLBACK_PATH", "Running legacy prompt + response parser.");
-        runWorkerSafely(() -> {
-            String prompt = buildAgentPrompt(userMessage);
-            appendDebugTrace("LEGACY_PROMPT", prompt);
-            updateState(AssistantState.THINKING);
-
-            StringBuilder jsonAccumulator = new StringBuilder();
-            StringBuilder speechAccumulator = new StringBuilder();
-            final int[] lastSpokenIndex = {0};
-            final boolean[] streamedAnySentence = {false};
-
-            geminiManager.generateResponseStream(prompt, new hcmute.edu.vn.tickticktodo.helper.GeminiManager.StreamResponseCallback() {
-                @Override
-                public void onNext(String chunk) {
-                    if (!isServiceAlive) return;
-                    jsonAccumulator.append(chunk);
-
-                    String currentReply = extractReplyFieldFromPartialJson(jsonAccumulator.toString());
-                    if (TextUtils.isEmpty(currentReply)) {
-                        return;
-                    }
-
-                    if (currentReply.length() > lastSpokenIndex[0]) {
-                        String newText = currentReply.substring(lastSpokenIndex[0]);
-                        speechAccumulator.append(newText);
-                        lastSpokenIndex[0] = currentReply.length();
-                        if (speakCompletedSentencesFromBuffer(speechAccumulator)) {
-                            streamedAnySentence[0] = true;
-                        }
-                    }
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    if (!isServiceAlive) return;
-                    appendDebugTrace("LEGACY_MODEL_ERROR", errorMessage);
-                    showAssistantMessage(errorMessage);
-                    updateState(AssistantState.IDLE);
-                }
-
-                @Override
-                public void onComplete() {
-                    if (!isServiceAlive) return;
-
-                    if (flushRemainingSpeechBuffer(speechAccumulator)) {
-                        streamedAnySentence[0] = true;
-                    }
-
-                    if (streamedAnySentence[0]) {
-                        autoListenAfterAssistantReply = voiceAutoTurnTakingEnabled;
-                        if (!isAssistantSpeaking && voiceAutoTurnTakingEnabled) {
-                            safePostMainDelayed(autoListenAfterSpeechRunnable, VOICE_AUTO_LISTEN_AFTER_SPEAK_DELAY_MS);
-                        }
-                    }
-
-                    boolean shouldSpeakParsedReply = !streamedAnySentence[0];
-                    runWorkerSafely(() -> handleAIResponse(jsonAccumulator.toString(), shouldSpeakParsedReply));
-                }
-            });
-        });
-    }
-
-    private String extractReplyFieldFromPartialJson(String jsonBuffer) {
-        if (TextUtils.isEmpty(jsonBuffer)) {
-            return "";
-        }
-
-        int keyIndex = jsonBuffer.indexOf("\"reply\"");
-        if (keyIndex < 0) {
-            return "";
-        }
-
-        int colonIndex = jsonBuffer.indexOf(':', keyIndex);
-        if (colonIndex < 0) {
-            return "";
-        }
-
-        int firstQuote = jsonBuffer.indexOf('"', colonIndex + 1);
-        if (firstQuote < 0) {
-            return "";
-        }
-
-        StringBuilder builder = new StringBuilder();
-        boolean escaping = false;
-        for (int i = firstQuote + 1; i < jsonBuffer.length(); i++) {
-            char ch = jsonBuffer.charAt(i);
-
-            if (escaping) {
-                switch (ch) {
-                    case 'n':
-                    case 'r':
-                    case 't':
-                        builder.append(' ');
-                        break;
-                    case '\\':
-                    case '/':
-                    case '"':
-                        builder.append(ch);
-                        break;
-                    default:
-                        builder.append(ch);
-                        break;
-                }
-                escaping = false;
-                continue;
-            }
-
-            if (ch == '\\') {
-                escaping = true;
-                continue;
-            }
-
-            if (ch == '"') {
-                return builder.toString().trim();
-            }
-
-            builder.append(ch);
-        }
-
-        return builder.toString().trim();
-    }
-
-    private boolean speakCompletedSentencesFromBuffer(StringBuilder speechBuffer) {
-        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
-            return false;
-        }
-
-        if (speechBuffer == null || speechBuffer.length() == 0) {
-            return false;
-        }
-
-        Matcher matcher = Pattern.compile(".*?[.?!,](?:\\s+|$)", Pattern.DOTALL)
-                .matcher(speechBuffer.toString());
-        int lastMatchEnd = 0;
-        boolean spokeAny = false;
-
-        while (matcher.find()) {
-            String sentence = matcher.group().trim();
-            if (!TextUtils.isEmpty(sentence)) {
-                speakAssistantMessage(sentence, TextToSpeech.QUEUE_ADD, false);
-                spokeAny = true;
-            }
-            lastMatchEnd = matcher.end();
-        }
-
-        if (lastMatchEnd > 0) {
-            speechBuffer.delete(0, lastMatchEnd);
-        }
-        return spokeAny;
-    }
-
-    private boolean flushRemainingSpeechBuffer(StringBuilder speechBuffer) {
-        if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
-            if (speechBuffer != null) {
-                speechBuffer.setLength(0);
-            }
-            return false;
-        }
-
-        if (speechBuffer == null) {
-            return false;
-        }
-        String remaining = speechBuffer.toString().trim();
-        speechBuffer.setLength(0);
-        if (remaining.isEmpty()) {
-            return false;
-        }
-        speakAssistantMessage(remaining, TextToSpeech.QUEUE_ADD, true);
-        return true;
-    }
-
-    private void handleAIResponse(String responseText) {
-        handleAIResponse(responseText, true);
-    }
-
-    private void handleAIResponse(String responseText, boolean allowAssistantReply) {
-        if (responseText == null || responseText.trim().isEmpty()) {
-            if (allowAssistantReply) {
-                showAssistantMessage("AI chưa trả về nội dung. Bạn thử lại nhé.");
-            }
-            return;
-        }
-
-        AgentResponseEnvelope response = responseParser.parse(responseText);
-        String action = response.getAction();
-        JSONObject payload = response.getPayload();
-        String reply = response.getReply();
-        appendDebugTrace("LEGACY_PARSED_ENVELOPE", envelopeTraceJson(response).toString());
-
-        switch (action) {
-            case AgentAction.CREATE_TASK:
-                createTaskFromPayload(payload, reply, allowAssistantReply);
-                break;
-            case AgentAction.COMPLETE_TASK:
-                completeTaskFromPayload(payload, reply, allowAssistantReply);
-                break;
-            case AgentAction.LIST_TODAY:
-                listTodayTasks(reply, allowAssistantReply);
-                break;
-            case AgentAction.WIFI_ON:
-                executeWifiCommand(true, reply, allowAssistantReply);
-                break;
-            case AgentAction.WIFI_OFF:
-                executeWifiCommand(false, reply, allowAssistantReply);
-                break;
-            case AgentAction.CHAT:
-            default:
-                String fallbackReply = TextUtils.isEmpty(reply) ? response.getRawText() : reply;
-                if (allowAssistantReply) {
-                    showAssistantMessage(fallbackReply);
-                } else if (!TextUtils.isEmpty(fallbackReply)) {
-                    showAssistantMessage(fallbackReply, true, false);
-                }
-                break;
-        }
-    }
-
-    private void maybeShowAssistantReply(String reply, String fallbackMessage, boolean allowAssistantReply) {
-        String finalMessage = TextUtils.isEmpty(reply) ? fallbackMessage : reply;
-        if (TextUtils.isEmpty(finalMessage)) {
-            return;
-        }
-
-        if (allowAssistantReply) {
-            showAssistantMessage(finalMessage);
-        } else {
-            showAssistantMessage(finalMessage, true, false);
-        }
-    }
-
-    private void createTaskFromPayload(JSONObject payload, String reply) {
-        createTaskFromPayload(payload, reply, true);
-    }
-
-    private void createTaskFromPayload(JSONObject payload, String reply, boolean allowAssistantReply) {
-        if (payload == null) {
-            maybeShowAssistantReply(reply, "Mình chưa đọc được dữ liệu task để tạo.", allowAssistantReply);
-            return;
-        }
-
-        String title = payload.optString("title", "").trim();
-        String description = payload.optString("description", "").trim();
-        long dueDate = payload.optLong("dueDate", 0L);
-        int priority = clampPriority(payload.optInt("priority", 1));
-
-        if (title.isEmpty()) {
-            maybeShowAssistantReply(reply, "Bạn nói rõ tên công việc để mình tạo giúp nhé.", allowAssistantReply);
-            return;
-        }
-
-        try {
-            Task task = new Task();
-            task.setTitle(title);
-            task.setDescription(description);
-            task.setPriority(priority);
-            task.setSource("AI_AGENT");
-            if (dueDate > 0L) {
-                task.setDueDate(dueDate);
-            }
-            long newId = TaskDatabase.getInstance(this).taskDao().insert(task);
-            task.setId(newId);
-            ReminderScheduler.scheduleReminder(this, task);
-
-            maybeShowAssistantReply(reply,
-                    "Đã tạo công việc \"" + title + "\" thành công.",
-                    allowAssistantReply);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to create task", e);
-            showAssistantMessage("Không thể tạo công việc lúc này. Bạn thử lại nhé.");
-        }
-    }
-
-    private void completeTaskFromPayload(JSONObject payload, String reply) {
-        completeTaskFromPayload(payload, reply, true);
-    }
-
-    private void completeTaskFromPayload(JSONObject payload, String reply, boolean allowAssistantReply) {
-        if (payload == null) {
-            maybeShowAssistantReply(reply,
-                    "Mình chưa nhận được thông tin task cần hoàn thành.",
-                    allowAssistantReply);
-            return;
-        }
-
-        long taskId = payload.optLong("id", -1L);
-        String title = payload.optString("title", "").trim();
-
-        try {
-            List<Task> allTasks = TaskDatabase.getInstance(this).taskDao().getAllTasksSync();
-            Task target = null;
-
-            if (taskId > 0L) {
-                for (Task task : allTasks) {
-                    if (task.getId() == taskId) {
-                        target = task;
-                        break;
-                    }
-                }
-            }
-
-            if (target == null && !title.isEmpty()) {
-                String normalized = title.toLowerCase(Locale.ROOT);
-                for (Task task : allTasks) {
-                    String taskTitle = task.getTitle() == null
-                            ? ""
-                            : task.getTitle().toLowerCase(Locale.ROOT);
-                    if (taskTitle.contains(normalized) || normalized.contains(taskTitle)) {
-                        target = task;
-                        break;
-                    }
-                }
-            }
-
-            if (target == null) {
-                maybeShowAssistantReply(reply,
-                        "Mình chưa tìm thấy task phù hợp để hoàn thành.",
-                        allowAssistantReply);
-                return;
-            }
-
-            TaskDatabase.getInstance(this).taskDao()
-                    .markTaskAsCompletedWithDate(target.getId(), true, System.currentTimeMillis());
-
-                maybeShowAssistantReply(reply,
-                    "Đã hoàn thành task: \"" + target.getTitle() + "\".",
-                    allowAssistantReply);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to complete task", e);
-            showAssistantMessage("Không thể cập nhật task lúc này. Bạn thử lại nhé.");
-        }
-    }
-
-    private void listTodayTasks(String reply) {
-        listTodayTasks(reply, true);
-    }
-
-    private void listTodayTasks(String reply, boolean allowAssistantReply) {
-        try {
-            long start = startOfDayMillis();
-            long end = endOfDayMillis();
-            List<Task> allTasks = TaskDatabase.getInstance(this).taskDao().getAllTasksSync();
-
-            StringBuilder builder = new StringBuilder();
-            int count = 0;
-            for (Task task : allTasks) {
-                Long dueDate = task.getDueDate();
-                if (dueDate == null || dueDate < start || dueDate >= end) {
-                    continue;
-                }
-                count++;
-                builder.append(count)
-                        .append(". ")
-                        .append(task.getTitle())
-                        .append(task.isCompleted() ? " [Hoàn thành]" : "")
-                        .append("\n");
-                if (count >= 8) {
-                    break;
-                }
-            }
-
-            String fallback = count == 0
-                    ? "Hôm nay bạn chưa có task nào."
-                    : "Danh sách hôm nay:\n" + builder.toString().trim();
-            maybeShowAssistantReply(reply, fallback, allowAssistantReply);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to list today tasks", e);
-            showAssistantMessage("Mình chưa lấy được danh sách task hôm nay. Bạn thử lại nhé.");
-        }
-    }
-
-    private void executeWifiCommand(boolean enable) {
-        executeWifiCommand(enable, null, true);
-    }
-
-    private void executeWifiCommand(boolean enable, String reply, boolean allowAssistantReply) {
-        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        if (wifiManager == null) {
-            maybeShowAssistantReply(reply,
-                    "Mình chưa truy cập được Wifi Manager trên thiết bị này.",
-                    allowAssistantReply);
-            return;
-        }
-
-        try {
-            boolean result = wifiManager.setWifiEnabled(enable);
-            String state = enable ? "Bật" : "Tắt";
-            maybeShowAssistantReply(reply, "Đã " + state + " Wifi: " + result, allowAssistantReply);
-        } catch (Exception e) {
-            Log.e(TAG, "Wifi toggle failed", e);
-            showAssistantMessage("Từ Android 10+, không thể bật/tắt Wifi trực tiếp từ app thường.");
-        }
-    }
-
-    private String buildAgentPrompt(String userMessage) {
-        return AgentPromptContract.buildPrompt(
-            AgentPromptContract.FLOATING_ASSISTANT_PROMPT,
-            buildRuntimeContext(),
-            buildConversationMemoryBlock(),
-            userMessage
-        );
-    }
-
-    private String buildRuntimeContext() {
-        StringBuilder context = new StringBuilder();
-        long now = System.currentTimeMillis();
-        context.append("nowMillis=").append(now).append("\n");
-        context.append("timezone=").append(TimeZone.getDefault().getID()).append("\n");
-
-        try {
-            long start = startOfDayMillis();
-            long end = endOfDayMillis();
-            List<Task> todayIncomplete = TaskDatabase.getInstance(this)
-                    .taskDao()
-                    .getIncompleteTasksForDaySync(start, end);
-
-            context.append("todayIncompleteCount=").append(todayIncomplete.size()).append("\n");
-            int limit = Math.min(4, todayIncomplete.size());
-            for (int i = 0; i < limit; i++) {
-                Task task = todayIncomplete.get(i);
-                context.append("task[")
-                        .append(i + 1)
-                        .append("]=")
-                        .append(task.getTitle())
-                        .append(" | priority=")
-                        .append(task.getPriority())
-                        .append("\n");
-            }
-        } catch (Exception e) {
-            context.append("todayIncompleteCount=unknown\n");
-        }
-
-        return context.toString().trim();
     }
 
     private String buildConversationMemoryBlock() {
@@ -3135,16 +2474,6 @@ public class FloatingAssistantService extends Service {
         if (debugTraceScroll != null) {
             debugTraceScroll.post(() -> debugTraceScroll.fullScroll(View.FOCUS_DOWN));
         }
-    }
-
-    private JSONObject envelopeTraceJson(AgentResponseEnvelope envelope) {
-        JSONObject json = new JSONObject();
-        safePut(json, "action", envelope == null ? "" : envelope.getAction());
-        safePut(json, "payload", envelope == null ? new JSONObject() : envelope.getPayload());
-        safePut(json, "reply", envelope == null ? "" : envelope.getReply());
-        safePut(json, "structured", envelope != null && envelope.isStructured());
-        safePut(json, "rawText", envelope == null ? "" : envelope.getRawText());
-        return json;
     }
 
     private void showUserMessage(String message) {
@@ -3295,149 +2624,6 @@ public class FloatingAssistantService extends Service {
         return clean.substring(0, 64) + "...";
     }
 
-    private boolean tryHandleQuickCreateIntent(String userText) {
-        String lower = userText.toLowerCase(Locale.ROOT).trim();
-        String normalized = lower.replaceAll("\\s+", " ");
-        boolean hasCreateVerb = normalized.startsWith("nhắc tôi")
-            || normalized.startsWith("nhac toi")
-            || normalized.startsWith("tạo task")
-            || normalized.startsWith("tao task")
-            || normalized.startsWith("thêm task")
-            || normalized.startsWith("them task")
-            || normalized.startsWith("tạo việc")
-            || normalized.startsWith("tao viec")
-            || normalized.startsWith("thêm việc")
-            || normalized.startsWith("them viec")
-            || normalized.startsWith("tạo công việc")
-            || normalized.startsWith("tao cong viec")
-            || normalized.startsWith("thêm công việc")
-            || normalized.startsWith("them cong viec")
-            || normalized.startsWith("create task")
-            || normalized.startsWith("add task");
-        boolean hasTaskNoun = normalized.contains("task")
-            || normalized.contains("việc")
-            || normalized.contains("viec")
-            || normalized.contains("công việc")
-            || normalized.contains("cong viec");
-        boolean likelyCreate = hasCreateVerb
-            || (hasTaskNoun
-            && (normalized.contains("tạo")
-            || normalized.contains("tao")
-            || normalized.contains("thêm")
-            || normalized.contains("them")
-            || normalized.contains("nhắc")
-            || normalized.contains("nhac")));
-
-        if (!likelyCreate) {
-            return false;
-        }
-
-        String title = userText
-            .replaceFirst("(?i)^(nhắc tôi|nhac toi|tạo task|tao task|thêm task|them task|tạo việc|tao viec|thêm việc|them viec|tạo công việc|tao cong viec|thêm công việc|them cong viec|create task|add task)\\s*", "")
-            .replaceFirst("(?i)^(cho tôi|cho toi|giúp tôi|giup toi)\\s*", "")
-                .trim();
-
-        Long dueDate = parseNaturalDueDate(lower);
-        title = title.replace("chiều nay", "")
-                .replace("chieu nay", "")
-            .replace("trưa nay", "")
-            .replace("trua nay", "")
-                .replace("sáng mai", "")
-                .replace("sang mai", "")
-                .replace("chiều mai", "")
-                .replace("chieu mai", "")
-            .replace("ngày mai", "")
-            .replace("ngay mai", "")
-                .replace("tối nay", "")
-                .replace("toi nay", "")
-                .replace("hôm nay", "")
-                .replace("hom nay", "")
-                .replace("mai", "")
-                .trim();
-
-        if (title.isEmpty()) {
-            return false;
-        }
-
-        JSONObject payload = new JSONObject();
-        try {
-            payload.put("title", title);
-            payload.put("description", "");
-            payload.put("priority", 1);
-            if (dueDate != null) {
-                payload.put("dueDate", dueDate);
-            }
-        } catch (JSONException ignored) {
-        }
-
-        final JSONObject quickPayload = payload;
-        final String quickTitle = title;
-        runWorkerSafely(() -> createTaskFromPayload(quickPayload, "Mình đã tạo nhanh công việc \"" + quickTitle + "\" cho bạn."));
-        return true;
-    }
-
-    private Long parseNaturalDueDate(String lowerText) {
-        Calendar c = Calendar.getInstance();
-
-        if (lowerText.contains("chiều mai") || lowerText.contains("chieu mai")) {
-            c.add(Calendar.DATE, 1);
-            c.set(Calendar.HOUR_OF_DAY, 17);
-        } else if (lowerText.contains("ngày mai") || lowerText.contains("ngay mai")) {
-            c.add(Calendar.DATE, 1);
-            c.set(Calendar.HOUR_OF_DAY, 9);
-        } else if (lowerText.contains("sáng mai") || lowerText.contains("sang mai")) {
-            c.add(Calendar.DATE, 1);
-            c.set(Calendar.HOUR_OF_DAY, 8);
-        } else if (lowerText.contains("mai")) {
-            c.add(Calendar.DATE, 1);
-            c.set(Calendar.HOUR_OF_DAY, 9);
-        } else if (lowerText.contains("trưa nay") || lowerText.contains("trua nay")) {
-            c.set(Calendar.HOUR_OF_DAY, 12);
-        } else if (lowerText.contains("chiều nay") || lowerText.contains("chieu nay")) {
-            c.set(Calendar.HOUR_OF_DAY, 17);
-        } else if (lowerText.contains("tối nay") || lowerText.contains("toi nay")) {
-            c.set(Calendar.HOUR_OF_DAY, 20);
-        } else if (lowerText.contains("hôm nay") || lowerText.contains("hom nay")) {
-            c.set(Calendar.HOUR_OF_DAY, Math.max(c.get(Calendar.HOUR_OF_DAY) + 1, 9));
-        } else {
-            return null;
-        }
-
-        c.set(Calendar.MINUTE, 0);
-        c.set(Calendar.SECOND, 0);
-        c.set(Calendar.MILLISECOND, 0);
-        return c.getTimeInMillis();
-    }
-
-    private int clampPriority(int priority) {
-        return Math.max(0, Math.min(priority, 3));
-    }
-
-    private void safePut(JSONObject target, String key, Object value) {
-        try {
-            target.put(key, value);
-        } catch (JSONException ignored) {
-        }
-    }
-
-    private long startOfDayMillis() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
-    }
-
-    private long endOfDayMillis() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, 23);
-        calendar.set(Calendar.MINUTE, 59);
-        calendar.set(Calendar.SECOND, 59);
-        calendar.set(Calendar.MILLISECOND, 999);
-        return calendar.getTimeInMillis();
-    }
-
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -3490,13 +2676,7 @@ public class FloatingAssistantService extends Service {
             bubbleWindowManager.release();
         }
 
-        try {
-            if (floatingChatView != null && floatingChatView.getParent() != null) {
-                windowManager.removeView(floatingChatView);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Unable to hide chat overlay", e);
-        }
+        detachOverlayView(floatingChatView, "chat overlay hide");
 
         try {
             if (floatingBubbleView != null && floatingBubbleView.getParent() != null) {
@@ -3655,12 +2835,7 @@ public class FloatingAssistantService extends Service {
 
         hideChatSettingsOverlay();
 
-        try {
-            if (floatingChatView != null && floatingChatView.getParent() != null) {
-                windowManager.removeView(floatingChatView);
-            }
-        } catch (Exception ignored) {
-        }
+        detachOverlayView(floatingChatView, "chat overlay refresh");
 
         try {
             if (floatingBubbleView != null && floatingBubbleView.getParent() != null) {
@@ -3849,9 +3024,9 @@ public class FloatingAssistantService extends Service {
             mainHandler.removeCallbacksAndMessages(null);
         }
 
-        if (voiceInputHandler != null) {
-            voiceInputHandler.destroy();
-            voiceInputHandler = null;
+        if (assistantSpeechHandler != null) {
+            assistantSpeechHandler.destroy();
+            assistantSpeechHandler = null;
         }
         isVoiceListening = false;
         voiceSessionRequested = false;
@@ -3879,13 +3054,10 @@ public class FloatingAssistantService extends Service {
                 }
             } catch (Exception ignored) {
             }
-            try {
-                if (floatingChatView != null && floatingChatView.getParent() != null) {
-                    windowManager.removeView(floatingChatView);
-                }
-            } catch (Exception ignored) {
-            }
+            detachOverlayView(floatingChatView, "chat overlay destroy");
         }
+
+        assistantStateMonitor.reset();
 
         synchronized (OVERLAY_LOCK) {
             sWindowManager = null;

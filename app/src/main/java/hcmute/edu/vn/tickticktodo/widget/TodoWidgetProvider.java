@@ -13,7 +13,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.RemoteViews;
 
-import hcmute.edu.vn.tickticktodo.MainActivity;
+import hcmute.edu.vn.tickticktodo.ui.main.MainActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.data.repository.TaskRepository;
 import hcmute.edu.vn.tickticktodo.ui.task.TaskDetailActivity;

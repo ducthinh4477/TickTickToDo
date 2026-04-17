@@ -6,7 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
-import hcmute.edu.vn.tickticktodo.MainActivity;
+import hcmute.edu.vn.tickticktodo.ui.main.MainActivity;
 import hcmute.edu.vn.tickticktodo.R;
 
 /**
