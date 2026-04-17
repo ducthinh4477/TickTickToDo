@@ -19,6 +19,9 @@ public interface HabitDao {
     @Query("SELECT * FROM habits ORDER BY id ASC")
     LiveData<List<Habit>> getAllHabits();
 
+    @Query("SELECT * FROM habits ORDER BY id ASC")
+    List<Habit> getAllHabitsSync();
+
     @Insert
     long insertHabit(Habit habit);
 

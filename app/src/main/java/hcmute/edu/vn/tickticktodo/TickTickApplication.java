@@ -26,6 +26,7 @@ import hcmute.edu.vn.tickticktodo.core.background.DailyReviewWorker;
 import hcmute.edu.vn.tickticktodo.core.background.SyncWorker;
 import hcmute.edu.vn.tickticktodo.core.background.DailyDigestWorker;
 import hcmute.edu.vn.tickticktodo.core.background.OverdueCheckWorker;
+import hcmute.edu.vn.tickticktodo.helper.AppRuntimeState;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
 import hcmute.edu.vn.tickticktodo.helper.UsageStreakManager;
 import hcmute.edu.vn.tickticktodo.core.background.SystemStateReceiver;
@@ -52,6 +53,7 @@ public class TickTickApplication extends Application {
         scheduleWorkers();
 
         registerSystemStateReceiver();
+        AppRuntimeState.initialize(this);
 
                 registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
                         @Override
@@ -65,10 +67,19 @@ public class TickTickApplication extends Application {
                                         syncFloatingAssistantOverlay(true);
                                 }
                                 startedActivities++;
+                                AppRuntimeState.updateOnActivityStarted(
+                                        activity.getApplicationContext(),
+                                        activity.getClass().getSimpleName(),
+                                        startedActivities
+                                );
                         }
 
                         @Override
                         public void onActivityResumed(Activity activity) {
+                                AppRuntimeState.updateOnActivityResumed(
+                                        activity.getApplicationContext(),
+                                        activity.getClass().getSimpleName()
+                                );
                         }
 
                         @Override
@@ -79,6 +90,10 @@ public class TickTickApplication extends Application {
                         public void onActivityStopped(Activity activity) {
                                 boolean changingConfigurations = activity.isChangingConfigurations();
                                 startedActivities = Math.max(0, startedActivities - 1);
+                                AppRuntimeState.updateOnActivityStopped(
+                                        activity.getApplicationContext(),
+                                        startedActivities
+                                );
                                 if (startedActivities == 0 && !changingConfigurations) {
                                         syncFloatingAssistantOverlay(false);
                                 }

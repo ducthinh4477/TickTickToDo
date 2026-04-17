@@ -27,7 +27,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/countdown_back_desc"
             android:src="@drawable/ic_close"
-            android:tint="#FFFFFFFF" />
+            app:tint="#FFFFFFFF" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -47,7 +47,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/countdown_sound_desc"
             android:src="@drawable/ic_timer"
-            android:tint="#FFFFFFFF" />
+            app:tint="#FFFFFFFF" />
 
     </RelativeLayout>
 

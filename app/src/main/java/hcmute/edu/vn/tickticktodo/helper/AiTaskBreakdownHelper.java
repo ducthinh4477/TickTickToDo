@@ -17,10 +17,10 @@ public final class AiTaskBreakdownHelper {
     }
 
     public static String buildPrompt(String taskTitle) {
-        return "Toi co mot cong viec la: " + taskTitle + ". " +
-                "Hay chia nho no thanh 3-5 buoc thuc hien cu the. " +
-                "Tra ve CHI dung JSON array, moi phan tu la chuoi String. " +
-                "Vi du: [\\\"Buoc 1\\\", \\\"Buoc 2\\\"]";
+        return "Tôi có một công việc là: " + taskTitle + ". " +
+                "Hãy chia nhỏ nó thành 3-5 bước thực hiện cụ thể. " +
+                "Trả về CHỈ dùng JSON array, mỗi phần tử là chuỗi String. " +
+                "Ví dụ: [\\\"Bước 1\\\", \\\"Bước 2\\\"]";
     }
 
     public static List<String> parseSteps(String rawResponse) throws JSONException {

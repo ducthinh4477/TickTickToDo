@@ -3,6 +3,7 @@ package hcmute.edu.vn.tickticktodo.model;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
@@ -83,6 +84,7 @@ public class Task {
     public Task() {
     }
 
+    @Ignore
     public Task(String title, String description, Long dueDate, boolean isCompleted, int priority) {
         this.title = title;
         this.description = description;

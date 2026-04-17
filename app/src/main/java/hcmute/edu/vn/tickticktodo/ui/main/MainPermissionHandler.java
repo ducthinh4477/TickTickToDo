@@ -48,7 +48,7 @@ public class MainPermissionHandler {
                 activity.stopService(serviceIntent);
                 prefs.edit().putBoolean(keyFloatingAssistantEnabled, false).apply();
                 Toast.makeText(activity,
-                        "Khong the khoi dong Tro ly noi tren thiet bi nay.",
+                        "Không thể khởi động Trợ lý nổi trên thiết bị này.",
                         Toast.LENGTH_SHORT).show();
             }
         }

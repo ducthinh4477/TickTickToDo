@@ -130,9 +130,9 @@ public class HabitTrackerViewModel extends AndroidViewModel {
             return;
         }
 
-        String fallback = "Ban da nghi " + habit.getName() + " 3 ngay roi, hom nay thu lam lai 10 phut nhe.";
-        String prompt = "Nguoi dung da bo lo thoi quen '" + habit.getName() + "' 3 ngay lien tiep. "
-                + "Hay viet mot cau dong vien ngan, than thien, thuc te, khuyen ho bat dau lai voi muc tieu nho.";
+        String fallback = "Bạn đã nghỉ " + habit.getName() + " 3 ngày rồi, hôm nay thử làm lại 10 phút nhé.";
+        String prompt = "Người dùng đã bỏ lỡ thói quen '" + habit.getName() + "' 3 ngày liên tiếp. "
+            + "Hãy viết một câu động viên ngắn, thân thiện, thực tế, khuyên họ bắt đầu lại với mục tiêu nhỏ.";
 
         GeminiManager.getInstance().generateResponse(prompt, new GeminiManager.ResponseCallback() {
             @Override

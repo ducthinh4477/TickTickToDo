@@ -1,5 +1,6 @@
 package hcmute.edu.vn.tickticktodo.ui.assistant;
 
+import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Build;
@@ -23,6 +24,7 @@ public class VoiceTaskTileService extends TileService {
     }
 
     @Override
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     public void onClick() {
         super.onClick();
 

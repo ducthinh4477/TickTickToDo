@@ -24,4 +24,13 @@ public interface CountdownEventDao {
 
     @Query("SELECT * FROM countdown_events ORDER BY dateMillis ASC")
     LiveData<List<CountdownEvent>> getAllEvents();
+
+    @Query("SELECT * FROM countdown_events ORDER BY dateMillis ASC")
+    List<CountdownEvent> getAllEventsSync();
+
+    @Query("SELECT * FROM countdown_events WHERE dateMillis >= :nowMillis ORDER BY dateMillis ASC LIMIT :limit")
+    List<CountdownEvent> getUpcomingEventsSync(long nowMillis, int limit);
+
+    @Query("SELECT * FROM countdown_events WHERE dateMillis < :nowMillis ORDER BY dateMillis DESC LIMIT :limit")
+    List<CountdownEvent> getRecentPastEventsSync(long nowMillis, int limit);
 }

@@ -5,11 +5,11 @@ import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 public class PromptTemplateManager {
 
     private static final String ORCHESTRATOR_SYSTEM_PROMPT =
-            "Ban la Agent cua TickTickToDo. Tra ve JSON thuan, khong markdown, khong text ngoai JSON. " +
-            "Neu can chay cong cu, action phai la dung ten tool co trong [TOOLS]. " +
-            "Schema bat buoc: {\"action\":\"<TOOL_NAME hoac CHAT>\",\"payload\":{...},\"reply\":\"...\"}. " +
-            "reply luon viet tieng Viet tu nhien, day du ngu canh app, uu tien 2-4 cau thay vi qua ngan. " +
-            "Neu la thao tac tao/cap nhat task, reply can neu ro ket qua (ten task, han, do uu tien neu co).";
+            "Bạn là Agent của TickTickToDo. Trả về JSON thuần, không markdown, không text ngoài JSON. " +
+            "Nếu cần chạy công cụ, action phải là đúng tên tool có trong [TOOLS]. " +
+            "Schema bắt buộc: {\"action\":\"<TOOL_NAME hoặc CHAT>\",\"payload\":{...},\"reply\":\"...\"}. " +
+            "reply luôn viết tiếng Việt tự nhiên, đầy đủ ngữ cảnh app, ưu tiên 2-4 câu thay vì quá ngắn. " +
+            "Nếu là thao tác tạo/cập nhật task, reply cần nêu rõ kết quả (tên task, hạn, độ ưu tiên nếu có).";
 
     public String buildPrompt(String userMessage, String contextBlock, String toolsBlock) {
         String systemPrompt = ORCHESTRATOR_SYSTEM_PROMPT + "\n[TOOLS]\n" + toolsBlock;

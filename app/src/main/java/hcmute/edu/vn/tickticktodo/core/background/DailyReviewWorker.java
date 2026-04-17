@@ -108,23 +108,23 @@ public class DailyReviewWorker extends Worker {
     }
 
     private String buildPrompt(List<Task> completedTasks, List<Task> incompleteTasks) {
-        return "Nguoi dung da hoan thanh cac task: " + toTaskListText(completedTasks)
-                + ". Cac task chua hoan thanh: " + toTaskListText(incompleteTasks)
-                + ". Hay viet mot doan tom tat ngan (3-4 cau) bang giong dieu cua mot tro ly than thien: "
-                + "Khen ngoi nhung gi ho da lam, dong vien nhe nhang ve nhung viec chua xong, "
-                + "va de xuat chuyen viec chua xong sang ngay mai.";
+        return "Người dùng đã hoàn thành các task: " + toTaskListText(completedTasks)
+            + ". Các task chưa hoàn thành: " + toTaskListText(incompleteTasks)
+            + ". Hãy viết một đoạn tóm tắt ngắn (3-4 câu) bằng giọng điệu của một trợ lý thân thiện: "
+            + "Khen ngợi những gì họ đã làm, động viên nhẹ nhàng về những việc chưa xong, "
+            + "và đề xuất chuyển việc chưa xong sang ngày mai.";
     }
 
     private String toTaskListText(List<Task> tasks) {
         if (tasks == null || tasks.isEmpty()) {
-            return "khong co";
+            return "không có";
         }
 
         List<String> titles = new ArrayList<>();
         int limit = Math.min(tasks.size(), 12);
         for (int i = 0; i < limit; i++) {
             Task task = tasks.get(i);
-            String title = task.getTitle() == null ? "(khong ten)" : task.getTitle().trim();
+            String title = task.getTitle() == null ? "(không tên)" : task.getTitle().trim();
             titles.add("- " + title);
         }
         return "\n" + String.join("\n", titles);
@@ -135,11 +135,11 @@ public class DailyReviewWorker extends Worker {
         int incompleteCount = incompleteTasks == null ? 0 : incompleteTasks.size();
 
         if (completedCount == 0 && incompleteCount == 0) {
-            return "Hom nay ban da danh mot ngay kha nhe nhang. Ngay mai hay dat 1-2 muc tieu nho de bat dau day nang luong nhe.";
+            return "Hôm nay bạn đã dành một ngày khá nhẹ nhàng. Ngày mai hãy đặt 1-2 mục tiêu nhỏ để bắt đầu đầy năng lượng nhé.";
         }
 
         return String.format(Locale.getDefault(),
-                "Hom nay ban da hoan thanh %d cong viec, rat dang khen. Van con %d cong viec dang do, ban co the chuyen sang ngay mai de tiep tuc. Thu uu tien 1 viec quan trong nhat vao buoi sang de tao da tien do.",
+                "Hôm nay bạn đã hoàn thành %d công việc, rất đáng khen. Vẫn còn %d công việc đang dở, bạn có thể chuyển sang ngày mai để tiếp tục. Thử ưu tiên 1 việc quan trọng nhất vào buổi sáng để tạo đà tiến độ.",
                 completedCount,
                 incompleteCount
         );

@@ -2,6 +2,7 @@ package hcmute.edu.vn.tickticktodo.model;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 @Entity(tableName = "habits")
@@ -19,6 +20,7 @@ public class Habit {
     public Habit() {
     }
 
+    @Ignore
     public Habit(String name, String icon) {
         this.name = name;
         this.icon = icon;

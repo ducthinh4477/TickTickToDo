@@ -3,6 +3,7 @@ package hcmute.edu.vn.tickticktodo.model;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 
 @Entity(
@@ -30,6 +31,7 @@ public class HabitLog {
     public HabitLog() {
     }
 
+    @Ignore
     public HabitLog(long habitId, long dateMillis, boolean isCompleted) {
         this.habitId = habitId;
         this.dateMillis = dateMillis;

@@ -48,6 +48,7 @@ public class TimerService extends Service {
     public static final String ACTION_PAUSE  = "hcmute.ticktick.TIMER_PAUSE";
     public static final String ACTION_RESUME = "hcmute.ticktick.TIMER_RESUME";
     public static final String ACTION_STOP   = "hcmute.ticktick.TIMER_STOP";
+    public static final String EXTRA_START_MINUTES = "extra_start_minutes";
 
     // Notification ID
     private static final int NOTIFICATION_ID = 2026;
@@ -118,6 +119,11 @@ public class TimerService extends Service {
             String action = intent.getAction();
             switch (action) {
                 case ACTION_START:
+                    int requestedMinutes = intent.getIntExtra(EXTRA_START_MINUTES, -1);
+                    if (requestedMinutes > 0 && timerState == TimerState.IDLE) {
+                        setTimerMode(TimerMode.COUNTDOWN);
+                        setMode(clampMinutes(requestedMinutes));
+                    }
                     startTimer();
                     break;
                 case ACTION_PAUSE:
@@ -491,6 +497,10 @@ public class TimerService extends Service {
                 return 0;
         }
         return getResources().getIdentifier(rawName, "raw", getPackageName());
+    }
+
+    private int clampMinutes(int minutes) {
+        return Math.max(1, Math.min(minutes, 180));
     }
 
     private void releaseAmbientSoundPlayer() {

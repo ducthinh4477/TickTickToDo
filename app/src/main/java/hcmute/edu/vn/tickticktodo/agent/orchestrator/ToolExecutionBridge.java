@@ -34,7 +34,7 @@ public class ToolExecutionBridge {
                     call.getCallId(),
                     call.getToolName(),
                     "TOOL_NOT_FOUND",
-                    "Khong tim thay cong cu: " + call.getToolName()
+                    "Không tìm thấy công cụ: " + call.getToolName()
             );
         }
 
@@ -43,7 +43,7 @@ public class ToolExecutionBridge {
                     call.getCallId(),
                     call.getToolName(),
                     "CONFIRMATION_REQUIRED",
-                    "Cong cu yeu cau xac nhan nguoi dung truoc khi chay."
+                    "Công cụ yêu cầu xác nhận người dùng trước khi chạy."
             );
         }
 
@@ -61,11 +61,11 @@ public class ToolExecutionBridge {
 
     public String renderToolResultSummary(ToolResult result) {
         if (result == null) {
-            return "Minh chua co ket qua tu cong cu.";
+            return "Mình chưa có kết quả từ công cụ.";
         }
 
         if (!result.isSuccess()) {
-            return "Cong cu " + result.getToolName() + " loi: " + result.getErrorMessage();
+            return "Công cụ " + result.getToolName() + " lỗi: " + result.getErrorMessage();
         }
 
         JSONObject data = result.getData();
@@ -77,11 +77,11 @@ public class ToolExecutionBridge {
             int subtaskCount = data == null ? 0 : data.optInt("createdSubtasksCount", 0);
             if (!TextUtils.isEmpty(title)) {
                 if (subtaskCount > 0) {
-                    return "Da tao task \"" + title + "\" cung " + subtaskCount + " subtask.";
+                    return "Đã tạo task \"" + title + "\" cùng " + subtaskCount + " subtask.";
                 }
-                return "Da tao task \"" + title + "\" thanh cong.";
+                return "Đã tạo task \"" + title + "\" thành công.";
             }
-            return "Da tao task moi thanh cong.";
+            return "Đã tạo task mới thành công.";
         }
 
         if (AgentToolNames.GET_TODAY_TASKS.equals(toolName)
@@ -93,17 +93,74 @@ public class ToolExecutionBridge {
                 JSONObject first = tasks.optJSONObject(0);
                 String firstTitle = first == null ? "" : first.optString("title", "").trim();
                 if (!TextUtils.isEmpty(firstTitle)) {
-                    return "Minh tim thay " + count + " task. Goi y dau tien: \"" + firstTitle + "\".";
+                    return "Mình tìm thấy " + count + " task. Gợi ý đầu tiên: \"" + firstTitle + "\".";
                 }
             }
-            return "Minh tim thay " + count + " task phu hop.";
+            return "Mình tìm thấy " + count + " task phù hợp.";
         }
 
         if (AgentToolNames.RESCHEDULE_BULK_TASKS.equals(toolName)) {
             int count = data == null ? 0 : data.optInt("rescheduledCount", 0);
-            return "Da doi lich " + count + " task thanh cong.";
+            return "Đã dời lịch " + count + " task thành công.";
         }
 
-        return "Da chay cong cu " + toolName + " thanh cong.";
+        if (AgentToolNames.START_POMODORO_TOOL.equals(toolName)) {
+            int minutes = data == null ? 25 : data.optInt("minutes", 25);
+            boolean countdownCreated = data != null && data.optBoolean("countdownEventCreated", false);
+            if (countdownCreated) {
+                return "Đã bắt đầu Pomodoro " + minutes + " phút và lưu mốc đếm ngược kết thúc phiên.";
+            }
+            return "Đã bắt đầu Pomodoro " + minutes + " phút.";
+        }
+
+        if (AgentToolNames.EISENHOWER_SORT_TOOL.equals(toolName)) {
+            int updatedCount = data == null ? 0 : data.optInt("updatedCount", 0);
+            String quadrant = data == null ? "" : data.optString("quadrant", "");
+            if (updatedCount <= 0) {
+                return "Không có task nào được cập nhật theo ma trận Eisenhower.";
+            }
+            if (!TextUtils.isEmpty(quadrant)) {
+                return "Đã sắp xếp " + updatedCount + " task vào nhóm " + renderQuadrantLabel(quadrant) + ".";
+            }
+            return "Đã cập nhật phân loại Eisenhower cho " + updatedCount + " task.";
+        }
+
+        if (AgentToolNames.BREAKDOWN_TASK_TOOL.equals(toolName)) {
+            String taskTitle = data == null ? "" : data.optString("taskTitle", "").trim();
+            int createdSubtasksCount = data == null ? 0 : data.optInt("createdSubtasksCount", 0);
+            boolean applied = data != null && data.optBoolean("applied", false);
+            JSONArray steps = data == null ? null : data.optJSONArray("steps");
+            int suggestedSteps = steps == null ? 0 : steps.length();
+
+            if (applied) {
+                if (!TextUtils.isEmpty(taskTitle)) {
+                    return "Đã tách task \"" + taskTitle + "\" thành " + createdSubtasksCount + " bước để bạn duyệt.";
+                }
+                return "Đã tạo " + createdSubtasksCount + " bước breakdown để bạn duyệt.";
+            }
+
+            return "Mình đã gợi ý " + suggestedSteps + " bước breakdown. Bạn có thể yêu cầu áp dụng ngay nếu đồng ý.";
+        }
+
+        return "Đã chạy công cụ " + toolName + " thành công.";
+    }
+
+    private String renderQuadrantLabel(String quadrant) {
+        if (TextUtils.isEmpty(quadrant)) {
+            return "không xác định";
+        }
+
+        switch (quadrant.trim().toUpperCase()) {
+            case "URGENT_IMPORTANT":
+                return "Q1 (Khẩn cấp và Quan trọng)";
+            case "IMPORTANT_NOT_URGENT":
+                return "Q2 (Quan trọng, không khẩn cấp)";
+            case "URGENT_NOT_IMPORTANT":
+                return "Q3 (Khẩn cấp, ít quan trọng)";
+            case "NOT_URGENT_NOT_IMPORTANT":
+                return "Q4 (Không khẩn cấp, không quan trọng)";
+            default:
+                return quadrant;
+        }
     }
 }

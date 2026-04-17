@@ -20,6 +20,9 @@ public interface ActivityLogDao {
     @Query("SELECT * FROM activity_logs WHERE task_title LIKE '%' || :query || '%' OR action LIKE '%' || :query || '%' ORDER BY timestamp DESC")
     LiveData<List<ActivityLog>> searchLogs(String query);
 
+    @Query("SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT :limit")
+    List<ActivityLog> getRecentLogsSync(int limit);
+
     @Query("DELETE FROM activity_logs")
     void deleteAllLogs();
 }

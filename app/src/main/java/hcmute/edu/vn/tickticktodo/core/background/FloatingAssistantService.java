@@ -1305,7 +1305,7 @@ public class FloatingAssistantService extends Service {
                     dao.deleteSessionById(tempVoiceSessionId);
                 }
 
-                long newTempSessionId = createHistorySessionSync(dao, CHAT_SOURCE_FLOATING_TEMP_VOICE, "Voice tam thoi");
+                long newTempSessionId = createHistorySessionSync(dao, CHAT_SOURCE_FLOATING_TEMP_VOICE, "Voice tạm thời");
                 tempVoiceSessionActive = true;
                 tempVoiceSessionId = newTempSessionId;
                 previousPersistentSessionId = (previousSessionId > 0L && previousSessionId != newTempSessionId)
@@ -1318,14 +1318,14 @@ public class FloatingAssistantService extends Service {
                     if (floatingChatAdapter != null) {
                         floatingChatAdapter.clearMessages();
                     }
-                    showAssistantMessage("Da mo phien voice tam thoi. Dong popup de tu xoa phien nay.", false, false);
+                    showAssistantMessage("Đã mở phiên voice tạm thời. Đóng popup để tự xóa phiên này.", false, false);
                     startVoiceListening(false);
                 });
             } catch (Exception e) {
                 Log.w(TAG, "Unable to activate temporary voice session", e);
                 safePostMain(() -> Toast.makeText(
                         this,
-                        "Khong the bat phien voice tam thoi luc nay.",
+                        "Không thể bật phiên voice tạm thời lúc này.",
                         Toast.LENGTH_SHORT
                 ).show());
             }

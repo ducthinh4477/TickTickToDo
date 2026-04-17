@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/layout_habit_item_root"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
@@ -17,7 +18,7 @@
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:src="@drawable/ic_health"
-        android:tint="@color/accent_primary" />
+        app:tint="@color/accent_primary" />
 
     <TextView
         android:id="@+id/tv_habit_name"
@@ -36,6 +37,6 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Check in"
         android:src="@drawable/ic_completed"
-        android:tint="@color/priority_low" />
+        app:tint="@color/priority_low" />
 
 </LinearLayout>

@@ -357,24 +357,24 @@ public class AssistantSpeechHandler {
     public static String mapSpeechErrorMessage(int error) {
         switch (error) {
             case SpeechRecognizer.ERROR_AUDIO:
-                return "Loi audio tu microphone.";
+                return "Lỗi audio từ microphone.";
             case SpeechRecognizer.ERROR_CLIENT:
-                return "Voice da dung.";
+                return "Voice đã dừng.";
             case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                return "Thieu quyen Microphone.";
+                return "Thiếu quyền Microphone.";
             case SpeechRecognizer.ERROR_NETWORK:
             case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                return "Loi mang khi nhan dien giong noi.";
+                return "Lỗi mạng khi nhận diện giọng nói.";
             case SpeechRecognizer.ERROR_NO_MATCH:
-                return "Khong nhan dien duoc noi dung. Hay noi cham, ro va gan mic hon.";
+                return "Không nhận diện được nội dung. Hãy nói chậm, rõ và gần mic hơn.";
             case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                return "Recognizer dang ban. Thu lai sau vai giay.";
+                return "Recognizer đang bận. Thử lại sau vài giây.";
             case SpeechRecognizer.ERROR_SERVER:
-                return "Loi may chu nhan dien giong noi.";
+                return "Lỗi máy chủ nhận diện giọng nói.";
             case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                return "Khong phat hien giong noi.";
+                return "Không phát hiện giọng nói.";
             default:
-                return "Loi thu am: " + error;
+                return "Lỗi thu âm: " + error;
         }
     }
 

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="12dp"
@@ -59,7 +60,7 @@
             android:background="@drawable/bg_floating_icon_button"
             android:contentDescription="@string/floating_chat_settings_desc"
             android:src="@drawable/ic_settings"
-            android:tint="@color/floating_chat_close_tint" />
+            app:tint="@color/floating_chat_close_tint" />
 
         <ImageButton
             android:id="@+id/btn_close_chat"
@@ -69,7 +70,7 @@
             android:background="@drawable/bg_floating_icon_button"
             android:contentDescription="Close"
             android:src="@drawable/ic_close"
-            android:tint="@color/floating_chat_close_tint" />
+            app:tint="@color/floating_chat_close_tint" />
     </RelativeLayout>
 
     <View
@@ -229,7 +230,7 @@
                     android:contentDescription="Voice"
                     android:padding="10dp"
                     android:src="@drawable/ic_mic"
-                    android:tint="@color/floating_chat_action_tint" />
+                    app:tint="@color/floating_chat_action_tint" />
             </FrameLayout>
 
             <ImageButton
@@ -241,7 +242,7 @@
                 android:contentDescription="Send"
                 android:padding="10dp"
                 android:src="@drawable/ic_send"
-                android:tint="#FFFFFF" />
+                app:tint="#FFFFFF" />
         </LinearLayout>
 
         <TextView

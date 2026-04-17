@@ -342,7 +342,7 @@ public class AssistantAiController {
     public void handleAIResponse(String responseText, boolean allowAssistantReply) {
         if (responseText == null || responseText.trim().isEmpty()) {
             if (allowAssistantReply) {
-                host.showAssistantMessage("AI chua tra ve noi dung. Ban thu lai nhe.");
+                host.showAssistantMessage("AI chưa trả về nội dung. Bạn thử lại nhé.");
             }
             return;
         }
@@ -400,7 +400,7 @@ public class AssistantAiController {
 
     public void createTaskFromPayload(JSONObject payload, String reply, boolean allowAssistantReply) {
         if (payload == null) {
-            maybeShowAssistantReply(reply, "Minh chua doc duoc du lieu task de tao.", allowAssistantReply);
+            maybeShowAssistantReply(reply, "Mình chưa đọc được dữ liệu task để tạo.", allowAssistantReply);
             return;
         }
 
@@ -410,7 +410,7 @@ public class AssistantAiController {
         int priority = clampPriority(payload.optInt("priority", 1));
 
         if (title.isEmpty()) {
-            maybeShowAssistantReply(reply, "Ban noi ro ten cong viec de minh tao giup nhe.", allowAssistantReply);
+            maybeShowAssistantReply(reply, "Bạn nói rõ tên công việc để mình tạo giúp nhé.", allowAssistantReply);
             return;
         }
 
@@ -428,11 +428,11 @@ public class AssistantAiController {
             ReminderScheduler.scheduleReminder(service, task);
 
             maybeShowAssistantReply(reply,
-                    "Da tao cong viec \"" + title + "\" thanh cong.",
+                    "Đã tạo công việc \"" + title + "\" thành công.",
                     allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Failed to create task", e);
-            host.showAssistantMessage("Khong the tao cong viec luc nay. Ban thu lai nhe.");
+            host.showAssistantMessage("Không thể tạo công việc lúc này. Bạn thử lại nhé.");
         }
     }
 
@@ -443,7 +443,7 @@ public class AssistantAiController {
     public void completeTaskFromPayload(JSONObject payload, String reply, boolean allowAssistantReply) {
         if (payload == null) {
             maybeShowAssistantReply(reply,
-                    "Minh chua nhan duoc thong tin task can hoan thanh.",
+                    "Mình chưa nhận được thông tin task cần hoàn thành.",
                     allowAssistantReply);
             return;
         }
@@ -479,7 +479,7 @@ public class AssistantAiController {
 
             if (target == null) {
                 maybeShowAssistantReply(reply,
-                        "Minh chua tim thay task phu hop de hoan thanh.",
+                        "Mình chưa tìm thấy task phù hợp để hoàn thành.",
                         allowAssistantReply);
                 return;
             }
@@ -488,11 +488,11 @@ public class AssistantAiController {
                     .markTaskAsCompletedWithDate(target.getId(), true, System.currentTimeMillis());
 
             maybeShowAssistantReply(reply,
-                    "Da hoan thanh task: \"" + target.getTitle() + "\".",
+                    "Đã hoàn thành task: \"" + target.getTitle() + "\".",
                     allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Failed to complete task", e);
-            host.showAssistantMessage("Khong the cap nhat task luc nay. Ban thu lai nhe.");
+            host.showAssistantMessage("Không thể cập nhật task lúc này. Bạn thử lại nhé.");
         }
     }
 
@@ -517,7 +517,7 @@ public class AssistantAiController {
                 builder.append(count)
                         .append(". ")
                         .append(task.getTitle())
-                        .append(task.isCompleted() ? " [Hoan thanh]" : "")
+                        .append(task.isCompleted() ? " [Hoàn thành]" : "")
                         .append("\n");
                 if (count >= 8) {
                     break;
@@ -525,12 +525,12 @@ public class AssistantAiController {
             }
 
             String fallback = count == 0
-                    ? "Hom nay ban chua co task nao."
-                    : "Danh sach hom nay:\n" + builder.toString().trim();
+                    ? "Hôm nay bạn chưa có task nào."
+                    : "Danh sách hôm nay:\n" + builder.toString().trim();
             maybeShowAssistantReply(reply, fallback, allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Failed to list today tasks", e);
-            host.showAssistantMessage("Minh chua lay duoc danh sach task hom nay. Ban thu lai nhe.");
+            host.showAssistantMessage("Mình chưa lấy được danh sách task hôm nay. Bạn thử lại nhé.");
         }
     }
 
@@ -542,18 +542,18 @@ public class AssistantAiController {
         WifiManager wifiManager = (WifiManager) service.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifiManager == null) {
             maybeShowAssistantReply(reply,
-                    "Minh chua truy cap duoc Wifi Manager tren thiet bi nay.",
+                    "Mình chưa truy cập được Wifi Manager trên thiết bị này.",
                     allowAssistantReply);
             return;
         }
 
         try {
             boolean result = wifiManager.setWifiEnabled(enable);
-            String state = enable ? "Bat" : "Tat";
-            maybeShowAssistantReply(reply, "Da " + state + " Wifi: " + result, allowAssistantReply);
+            String state = enable ? "Bật" : "Tắt";
+            maybeShowAssistantReply(reply, "Đã " + state + " Wifi: " + result, allowAssistantReply);
         } catch (Exception e) {
             Log.e(TAG, "Wifi toggle failed", e);
-            host.showAssistantMessage("Tu Android 10+, khong the bat/tat Wifi truc tiep tu app thuong.");
+            host.showAssistantMessage("Từ Android 10+, không thể bật/tắt Wifi trực tiếp từ app thường.");
         }
     }
 
@@ -663,7 +663,7 @@ public class AssistantAiController {
 
         final JSONObject quickPayload = payload;
         final String quickTitle = title;
-        host.runWorkerSafely(() -> createTaskFromPayload(quickPayload, "Minh da tao nhanh cong viec \"" + quickTitle + "\" cho ban."));
+        host.runWorkerSafely(() -> createTaskFromPayload(quickPayload, "Mình đã tạo nhanh công việc \"" + quickTitle + "\" cho bạn."));
         return true;
     }
 

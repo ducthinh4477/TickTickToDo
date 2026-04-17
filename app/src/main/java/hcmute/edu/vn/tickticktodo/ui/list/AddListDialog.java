@@ -135,7 +135,7 @@ public class AddListDialog extends Dialog {
         rvIcons.setAdapter(iconAdapter);
         // Không cần scroll bên trong Dialog → disable nested scroll
         rvIcons.setNestedScrollingEnabled(false);
-        rvIcons.setHasFixedSize(true);
+        rvIcons.setHasFixedSize(false);
     }
 
     private void setupButtons(View root) {

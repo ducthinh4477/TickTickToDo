@@ -28,7 +28,7 @@
             android:contentDescription="@string/detail_save_desc"
             android:scaleType="centerInside"
             android:src="@drawable/ic_save"
-            android:tint="@color/priority_low" />
+            app:tint="@color/priority_low" />
 
     </androidx.appcompat.widget.Toolbar>
 

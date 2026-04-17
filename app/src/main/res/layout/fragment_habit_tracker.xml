@@ -60,7 +60,7 @@
                 android:contentDescription="Add Habit"
                 android:padding="10dp"
                 android:src="@drawable/ic_add"
-                android:tint="@color/white" />
+                app:tint="@color/white" />
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 

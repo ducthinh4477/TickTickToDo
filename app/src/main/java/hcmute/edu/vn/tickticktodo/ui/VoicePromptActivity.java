@@ -184,10 +184,10 @@ public class VoicePromptActivity extends BaseActivity {
         isHandlingResult = true;
         tvStatus.setText(getString(R.string.voice_processing_text, spokenText));
 
-        String prompt = "Nguoi dung vua noi: '" + spokenText + "'. " +
-                "Hay trich xuat Ten cong viec va Thoi gian (neu co). " +
-                "Tra ve JSON: {title: string, hasTime: boolean, timeInMs: long}. " +
-                "Chi tra ve JSON, khong them markdown.";
+        String prompt = "Người dùng vừa nói: '" + spokenText + "'. " +
+            "Hãy trích xuất Tên công việc và Thời gian (nếu có). " +
+            "Trả về JSON: {title: string, hasTime: boolean, timeInMs: long}. " +
+            "Chỉ trả về JSON, không thêm markdown.";
 
         geminiManager.generateResponse(prompt, new GeminiManager.ResponseCallback() {
             @Override
