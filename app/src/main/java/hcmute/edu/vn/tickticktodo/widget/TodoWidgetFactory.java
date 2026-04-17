@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.dao.TaskDao;
-import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.dao.TaskDao;
+import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.model.Task;
 
 public class TodoWidgetFactory implements RemoteViewsService.RemoteViewsFactory {

@@ -7,7 +7,7 @@ import android.content.Intent;
 import android.os.Build;
 
 import hcmute.edu.vn.tickticktodo.model.Task;
-import hcmute.edu.vn.tickticktodo.receiver.TaskReminderReceiver;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskReminderReceiver;
 
 /**
  * Helper class quản lý việc đặt và huỷ Alarm nhắc nhở cho Task.

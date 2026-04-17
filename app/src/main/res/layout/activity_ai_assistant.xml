@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/background_primary"
     android:fitsSystemWindows="true"
-    tools:context=".ui.AiAssistantActivity">
+    tools:context=".ui.chat.AiAssistantActivity">
 
     <LinearLayout
         android:id="@+id/topBar"

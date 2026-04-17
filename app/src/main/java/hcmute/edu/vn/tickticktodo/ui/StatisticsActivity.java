@@ -12,7 +12,7 @@ import androidx.lifecycle.ViewModelProvider;
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.helper.UserStatsManager;
-import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskViewModel;
 
 /**
  * Màn hình Thống kê (Statistics) — hiển thị tổng quan về tiến độ hoàn thành task.

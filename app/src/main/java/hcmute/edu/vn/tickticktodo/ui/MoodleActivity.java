@@ -25,9 +25,10 @@ import java.util.UUID;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.adapter.TaskAdapter;
-import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
-import hcmute.edu.vn.tickticktodo.worker.SchoolSyncWorker;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskAdapter;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskDetailBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskViewModel;
+import hcmute.edu.vn.tickticktodo.ui.moodle.SchoolSyncWorker;
 
 public class MoodleActivity extends BaseActivity {
 

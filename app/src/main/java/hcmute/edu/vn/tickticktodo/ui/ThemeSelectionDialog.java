@@ -20,7 +20,7 @@ import androidx.core.content.ContextCompat;
 
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.helper.ThemeManager;
-import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
+import hcmute.edu.vn.tickticktodo.core.background.FloatingAssistantService;
 
 /**
  * Dialog chọn chế độ giao diện Sáng / Tối / Theo hệ thống.

@@ -2,8 +2,8 @@ package hcmute.edu.vn.tickticktodo.agent;
 
 import android.app.Application;
 
-import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
-import hcmute.edu.vn.tickticktodo.repository.TaskRepository;
+import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.repository.TaskRepository;
 
 public class AgentExecutionContext {
 

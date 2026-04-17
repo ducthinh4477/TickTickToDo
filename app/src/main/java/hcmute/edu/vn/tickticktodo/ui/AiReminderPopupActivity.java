@@ -14,8 +14,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.database.TaskDatabase;
-import hcmute.edu.vn.tickticktodo.receiver.TaskReminderReceiver;
+import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskReminderReceiver;
 
 public class AiReminderPopupActivity extends Activity implements TextToSpeech.OnInitListener {
 

@@ -21,15 +21,15 @@ import androidx.work.WorkManager;
 
 import java.util.concurrent.TimeUnit;
 
-import hcmute.edu.vn.tickticktodo.worker.DatabaseCleanupWorker;
-import hcmute.edu.vn.tickticktodo.worker.DailyReviewWorker;
-import hcmute.edu.vn.tickticktodo.worker.SyncWorker;
-import hcmute.edu.vn.tickticktodo.worker.DailyDigestWorker;
-import hcmute.edu.vn.tickticktodo.worker.OverdueCheckWorker;
+import hcmute.edu.vn.tickticktodo.core.background.DatabaseCleanupWorker;
+import hcmute.edu.vn.tickticktodo.core.background.DailyReviewWorker;
+import hcmute.edu.vn.tickticktodo.core.background.SyncWorker;
+import hcmute.edu.vn.tickticktodo.core.background.DailyDigestWorker;
+import hcmute.edu.vn.tickticktodo.core.background.OverdueCheckWorker;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
 import hcmute.edu.vn.tickticktodo.helper.UsageStreakManager;
-import hcmute.edu.vn.tickticktodo.receiver.SystemStateReceiver;
-import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
+import hcmute.edu.vn.tickticktodo.core.background.SystemStateReceiver;
+import hcmute.edu.vn.tickticktodo.core.background.FloatingAssistantService;
 
 public class TickTickApplication extends Application {
 
@@ -77,11 +77,9 @@ public class TickTickApplication extends Application {
 
                         @Override
                         public void onActivityStopped(Activity activity) {
-                                if (activity.isChangingConfigurations()) {
-                                        return;
-                                }
+                                boolean changingConfigurations = activity.isChangingConfigurations();
                                 startedActivities = Math.max(0, startedActivities - 1);
-                                if (startedActivities == 0) {
+                                if (startedActivities == 0 && !changingConfigurations) {
                                         syncFloatingAssistantOverlay(false);
                                 }
                         }
@@ -162,6 +160,10 @@ public class TickTickApplication extends Application {
                 serviceIntent.setAction(appInForeground
                                 ? FloatingAssistantService.ACTION_HIDE_BUBBLE
                                 : FloatingAssistantService.ACTION_SHOW_BUBBLE);
+                Log.d(TAG, "syncFloatingAssistantOverlay enabled=" + enabled
+                                + ", appInForeground=" + appInForeground
+                                + ", startedActivities=" + startedActivities
+                                + ", action=" + serviceIntent.getAction());
 
                 try {
                         ContextCompat.startForegroundService(this, serviceIntent);
@@ -218,7 +220,7 @@ public class TickTickApplication extends Application {
 
         // 3. School Sync Worker
         // Checks every 6 hours for new school tasks if enabled
-        hcmute.edu.vn.tickticktodo.worker.SchoolSyncWorker.schedulePeriodicSync(this);
+        hcmute.edu.vn.tickticktodo.ui.moodle.SchoolSyncWorker.schedulePeriodicSync(this);
 
         // 4. Daily Digest Worker — gửi tổng hợp công việc lúc 8:00 AM mỗi ngày
         DailyDigestWorker.schedule(this);

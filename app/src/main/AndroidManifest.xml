@@ -49,20 +49,20 @@
             android:exported="false" />
             
         <activity
-            android:name=".ui.ActivityLogActivity"
+            android:name=".ui.activitylog.ActivityLogActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.TaskDetailActivity"
+            android:name=".ui.task.TaskDetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".ui.CountdownActivity"
+            android:name=".ui.countdown.CountdownActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.CalendarActivity"
+            android:name=".ui.calendar.CalendarActivity"
             android:exported="false" />
 
         <activity
@@ -70,12 +70,12 @@
             android:exported="false" />
 
         <activity
-            android:name=".ui.HabitTrackerActivity"
+            android:name=".ui.habit.HabitTrackerActivity"
             android:exported="false" />
 
         <!-- TimerService: chạy logic đếm ngược Pomodoro, giao tiếp qua Binder + LocalBroadcast -->
         <service
-            android:name=".service.TimerService"
+            android:name=".ui.countdown.TimerService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -84,22 +84,22 @@
 
         <!-- TaskReminderReceiver: nhận Intent từ AlarmManager → hiển thị Notification -->
         <receiver
-            android:name=".receiver.TaskReminderReceiver"
+            android:name=".ui.task.TaskReminderReceiver"
             android:exported="false" />
 
         <!-- NotificationActionReceiver: Handling Quick Actions from Notification -->
         <receiver
-            android:name=".receiver.NotificationActionReceiver"
+            android:name=".ui.task.NotificationActionReceiver"
             android:exported="false" />
 
         <activity android:name=".ui.SchoolLoginActivity" android:exported="false"/>
         
         <activity android:name=".ui.MoodleActivity" android:exported="false"/>  
 
-        <activity android:name=".ui.AiAssistantActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.chat.AiAssistantActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
 
         <activity
-            android:name=".ui.ChatHistoryActivity"
+            android:name=".ui.chat.ChatHistoryActivity"
             android:exported="false" />
 
         <activity
@@ -113,7 +113,7 @@
             android:theme="@style/Theme.TickTickToDo.Translucent" />
 
         <receiver
-            android:name=".receiver.BootReceiver"
+            android:name=".core.background.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -122,28 +122,28 @@
 
         <!-- Receiver đảm nhiệm việc buộc cập nhật Moodle ngay tức thì -->
         <receiver
-            android:name=".receiver.SchoolSyncReceiver"
+            android:name=".ui.moodle.SchoolSyncReceiver"
             android:exported="false" />
 
         <activity
-            android:name=".ui.EisenhowerActivity"
+            android:name=".ui.task.EisenhowerActivity"
             android:exported="false"
             android:theme="@style/Theme.TickTickToDo" />
 			
         <activity
-            android:name=".ui.EventCountdownActivity"
+            android:name=".ui.countdown.EventCountdownActivity"
             android:exported="false"
             android:theme="@style/Theme.TickTickToDo" />
 
         <service
-            android:name=".service.FloatingAssistantService"
+            android:name=".core.background.FloatingAssistantService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="microphone">
         </service>
 
         <service
-            android:name=".service.VoiceTaskTileService"
+            android:name=".ui.assistant.VoiceTaskTileService"
             android:enabled="true"
             android:exported="true"
             android:icon="@drawable/ic_add"

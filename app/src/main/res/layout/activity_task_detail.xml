@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/white"
     android:orientation="vertical"
-    tools:context=".ui.TaskDetailActivity">
+    tools:context=".ui.task.TaskDetailActivity">
 
     <!-- ══════ Toolbar: Back + Tiêu đề + Nút Save (dấu tick) ══════ -->
     <androidx.appcompat.widget.Toolbar

@@ -30,7 +30,7 @@ import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.model.Task;
-import hcmute.edu.vn.tickticktodo.repository.TaskRepository;
+import hcmute.edu.vn.tickticktodo.data.repository.TaskRepository;
 
 public class VoicePromptActivity extends BaseActivity {
 

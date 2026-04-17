@@ -2,8 +2,8 @@ package hcmute.edu.vn.tickticktodo.agent;
 
 import org.json.JSONObject;
 
-import hcmute.edu.vn.tickticktodo.agent.model.ToolCall;
-import hcmute.edu.vn.tickticktodo.agent.model.ToolResult;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 
 public interface AgentTool {
 

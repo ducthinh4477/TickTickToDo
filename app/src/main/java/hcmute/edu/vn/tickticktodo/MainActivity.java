@@ -2,7 +2,7 @@ package hcmute.edu.vn.tickticktodo;
 
 import android.app.TimePickerDialog;
 import android.content.Intent;
-import hcmute.edu.vn.tickticktodo.ui.EisenhowerActivity;
+import hcmute.edu.vn.tickticktodo.ui.task.EisenhowerActivity;
 import android.os.Bundle;
 import android.os.Build;
 import android.provider.Settings;
@@ -46,24 +46,24 @@ import java.util.List;
 import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
-import hcmute.edu.vn.tickticktodo.adapter.HeaderAdapter;
-import hcmute.edu.vn.tickticktodo.adapter.ListPanelAdapter;
-import hcmute.edu.vn.tickticktodo.adapter.TaskAdapter;
+import hcmute.edu.vn.tickticktodo.ui.list.HeaderAdapter;
+import hcmute.edu.vn.tickticktodo.ui.list.ListPanelAdapter;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskAdapter;
 import hcmute.edu.vn.tickticktodo.helper.SwipeToDeleteCallback;
 import hcmute.edu.vn.tickticktodo.model.Task;
-import hcmute.edu.vn.tickticktodo.ui.AddListDialog;
-import hcmute.edu.vn.tickticktodo.ui.AddTaskBottomSheet;
-import hcmute.edu.vn.tickticktodo.ui.CalendarActivity;
-import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
-import hcmute.edu.vn.tickticktodo.ui.HabitTrackerActivity;
+import hcmute.edu.vn.tickticktodo.ui.list.AddListDialog;
+import hcmute.edu.vn.tickticktodo.ui.task.AddTaskBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.calendar.CalendarActivity;
+import hcmute.edu.vn.tickticktodo.ui.countdown.CountdownActivity;
+import hcmute.edu.vn.tickticktodo.ui.habit.HabitTrackerActivity;
 import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
 import hcmute.edu.vn.tickticktodo.ui.StatisticsActivity;
 import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
-import hcmute.edu.vn.tickticktodo.ui.TaskDetailBottomSheet;
-import hcmute.edu.vn.tickticktodo.ui.ViewOptionsBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskDetailBottomSheet;
+import hcmute.edu.vn.tickticktodo.ui.task.ViewOptionsBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.SchoolLoginActivity;
-import hcmute.edu.vn.tickticktodo.service.FloatingAssistantService;
-import hcmute.edu.vn.tickticktodo.viewmodel.TaskViewModel;
+import hcmute.edu.vn.tickticktodo.core.background.FloatingAssistantService;
+import hcmute.edu.vn.tickticktodo.ui.task.TaskViewModel;
 
 public class MainActivity extends BaseActivity {
 
@@ -288,7 +288,7 @@ public class MainActivity extends BaseActivity {
 
                 @Override
                 public void onListActivitiesClicked() {
-                    startActivity(new android.content.Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.ActivityLogActivity.class));
+                    startActivity(new android.content.Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.activitylog.ActivityLogActivity.class));
                 }
             });
             bottomSheet.show(getSupportFragmentManager(), "ViewOptions");
@@ -355,7 +355,7 @@ public class MainActivity extends BaseActivity {
         });
         setClickListenerIfPresent(R.id.nav_item_countdown, v -> {
             closeMenu();
-            startActivity(new Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.EventCountdownActivity.class));
+            startActivity(new Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.countdown.EventCountdownActivity.class));
         });
         setClickListenerIfPresent(R.id.panel_item_completed, v -> showHistoryDialog("Nhật ký: Đã hoàn thành", taskViewModel.getAllCompletedTasksLog()));
         setClickListenerIfPresent(R.id.panel_item_trash, v -> showHistoryDialog("Nhật ký: Quá hạn", taskViewModel.getAllOverdueTasksLog()));
@@ -401,7 +401,7 @@ public class MainActivity extends BaseActivity {
         androidx.recyclerview.widget.RecyclerView rv = dialog.findViewById(R.id.rv_history_log);
         rv.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
         
-        hcmute.edu.vn.tickticktodo.adapter.TaskAdapter adapter = new hcmute.edu.vn.tickticktodo.adapter.TaskAdapter(
+        hcmute.edu.vn.tickticktodo.ui.task.TaskAdapter adapter = new hcmute.edu.vn.tickticktodo.ui.task.TaskAdapter(
             (task, isChecked) -> {}, 
             task -> {}
         );
@@ -539,7 +539,7 @@ public class MainActivity extends BaseActivity {
         if (navItemAiAssistant != null) {
             navItemAiAssistant.setOnClickListener(v -> {
                 selectNavItem(R.id.nav_item_ai_assistant);
-                startActivity(new Intent(this, hcmute.edu.vn.tickticktodo.ui.AiAssistantActivity.class));
+                startActivity(new Intent(this, hcmute.edu.vn.tickticktodo.ui.chat.AiAssistantActivity.class));
             });
         }
 

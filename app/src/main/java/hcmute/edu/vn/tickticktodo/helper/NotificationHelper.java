@@ -19,9 +19,9 @@ import androidx.core.app.NotificationManagerCompat;
 
 import hcmute.edu.vn.tickticktodo.MainActivity;
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.receiver.NotificationActionReceiver;
-import hcmute.edu.vn.tickticktodo.service.TimerService;
-import hcmute.edu.vn.tickticktodo.ui.CountdownActivity;
+import hcmute.edu.vn.tickticktodo.ui.task.NotificationActionReceiver;
+import hcmute.edu.vn.tickticktodo.ui.countdown.TimerService;
+import hcmute.edu.vn.tickticktodo.ui.countdown.CountdownActivity;
 
 /**
  * Helper class to manage Notification Channels and build Notifications

@@ -12,8 +12,8 @@ import org.json.JSONObject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import hcmute.edu.vn.tickticktodo.agent.model.ToolCall;
-import hcmute.edu.vn.tickticktodo.agent.model.ToolResult;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 
 public class AgentOrchestrator {

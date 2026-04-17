@@ -12,8 +12,8 @@ import java.util.Locale;
 import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentTool;
 import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
-import hcmute.edu.vn.tickticktodo.agent.model.ToolCall;
-import hcmute.edu.vn.tickticktodo.agent.model.ToolResult;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.helper.ReminderScheduler;
 import hcmute.edu.vn.tickticktodo.model.Task;
 
