@@ -53,28 +53,43 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.ui.main.MainActivity;
+import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveConfig;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
 import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
+import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.agent.tools.ApplyPlanOptionTool;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantAiController;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantStateMonitor;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantStateMonitor.AssistantState;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantSpeechHandler;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.BubbleWindowManager;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.BubbleUiManager;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.model.SuggestionEntity;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.helper.ReminderScheduler;
 import hcmute.edu.vn.tickticktodo.model.ChatHistoryMessage;
@@ -124,6 +139,9 @@ public class FloatingAssistantService extends Service {
     private static final float VOICE_BARGE_IN_RMS_THRESHOLD = 7.0f;
     private static final float VOICE_BARGE_IN_RMS_MIN = 4.0f;
     private static final float VOICE_BARGE_IN_RMS_MAX = 15.0f;
+    private static final float SUGGESTION_MIN_PRIORITY_FOR_BUBBLE = ProactiveConfig.OVERLAY_MIN_PRIORITY_SCORE;
+    private static final int SUGGESTION_BUBBLE_LIMIT = ProactiveConfig.OVERLAY_MAX_SUGGESTIONS;
+    private static final long SUGGESTION_SURFACE_COOLDOWN_MS = ProactiveConfig.OVERLAY_SURFACE_COOLDOWN_MILLIS;
     private static final long BUBBLE_LONG_PRESS_TRIGGER_MS = 1000L;
     private static final int BUBBLE_COLLAPSED_SIZE_DP = 90;
     private static final int BUBBLE_EXPANDED_SIZE_DP = 248;
@@ -144,8 +162,13 @@ public class FloatingAssistantService extends Service {
     private static final float MAX_CHAT_ALPHA = 1.0f;
     private static final String CHAT_SOURCE_FLOATING = "floating_assistant";
     private static final String CHAT_SOURCE_FLOATING_TEMP_VOICE = "floating_assistant_temp_voice";
+    private static final String ACTION_APPLY_PLAN_OPTION = "APPLY_PLAN_OPTION";
+    private static final String ACTION_DATA_SEPARATOR = "::";
+    private static final long PLAN_APPLY_CONFIRM_WINDOW_MS = 10000L;
     private static final float[] BUBBLE_OPEN_LEFT_ANGLES = new float[]{120f, 150f, 180f, 210f, 240f};
     private static final float[] BUBBLE_OPEN_RIGHT_ANGLES = new float[]{60f, 30f, 0f, 330f, 300f};
+        private static final Pattern SUGGESTION_FEEDBACK_PATTERN =
+            Pattern.compile("^/(accept|dismiss|apply)\\s+([A-Za-z0-9-]+|last)$", Pattern.CASE_INSENSITIVE);
 
     private enum OverlayInteractionMode {
         CHAT_ONLY,
@@ -222,6 +245,10 @@ public class FloatingAssistantService extends Service {
     private View floatingSendButton;
     private TextView floatingModeText;
     private final ArrayList<Long> pendingCarryOverTaskIds = new ArrayList<>();
+    private volatile String lastSurfacedSuggestionId;
+    private volatile String pendingPlanApplyKey;
+    private volatile long pendingPlanApplyExpiresAt;
+    private long lastSuggestionSurfaceAt;
     private AgentOrchestrator agentOrchestrator;
     private final Runnable voiceRetryRunnable = () -> startVoiceListening(true);
     private final Runnable autoListenAfterSpeechRunnable = () -> {
@@ -396,6 +423,11 @@ public class FloatingAssistantService extends Service {
                         @Override
                         public void appendDebugTrace(String stage, String payload) {
                             FloatingAssistantService.this.appendDebugTrace(stage, payload);
+                        }
+
+                        @Override
+                        public void onToolResult(ToolResult toolResult) {
+                            FloatingAssistantService.this.handleSchedulerToolResult(toolResult);
                         }
 
                         @Override
@@ -1446,6 +1478,7 @@ public class FloatingAssistantService extends Service {
         floatingChatRecyclerView = floatingChatView.findViewById(R.id.rv_floating_chat_messages);
         if (floatingChatRecyclerView != null) {
             floatingChatAdapter = new ChatAdapter();
+            floatingChatAdapter.setActionClickListener(this::handleChatMessageAction);
             LinearLayoutManager layoutManager = new LinearLayoutManager(this);
             layoutManager.setStackFromEnd(true);
             floatingChatRecyclerView.setLayoutManager(layoutManager);
@@ -1516,6 +1549,9 @@ public class FloatingAssistantService extends Service {
                     String msg = etInput.getText().toString().trim();
                     if (!msg.isEmpty()) {
                         etInput.setText("");
+                        if (tryHandleSuggestionFeedbackCommand(msg)) {
+                            return;
+                        }
                         sendToGemini(msg);
                     }
                 } catch (Exception e) {
@@ -2587,8 +2623,297 @@ public class FloatingAssistantService extends Service {
         }
     }
 
+    private void maybeShowHighPrioritySuggestions() {
+        long now = System.currentTimeMillis();
+        if (now - lastSuggestionSurfaceAt < SUGGESTION_SURFACE_COOLDOWN_MS) {
+            return;
+        }
+        lastSuggestionSurfaceAt = now;
+
+        runWorkerSafely(() -> {
+            try {
+                ProactiveEngine proactiveEngine = ProactiveEngine.getExisting();
+                if (proactiveEngine == null) {
+                    proactiveEngine = ProactiveEngine.getInstance(getApplicationContext());
+                }
+
+                List<SuggestionEntity> suggestions = proactiveEngine.getHighPriorityPendingSuggestionsSync(
+                        SUGGESTION_MIN_PRIORITY_FOR_BUBBLE,
+                        SUGGESTION_BUBBLE_LIMIT
+                );
+                if (suggestions == null || suggestions.isEmpty()) {
+                    return;
+                }
+
+                for (SuggestionEntity suggestion : suggestions) {
+                    if (suggestion == null || TextUtils.isEmpty(suggestion.id)) {
+                        continue;
+                    }
+
+                    String message = formatHighPrioritySuggestionMessage(suggestion);
+                    if (!TextUtils.isEmpty(message)) {
+                        lastSurfacedSuggestionId = suggestion.id;
+                        showAssistantMessage(message, true, false);
+                        proactiveEngine.markSuggestionShown(suggestion.id);
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to surface high-priority suggestions", e);
+            }
+        });
+    }
+
+    private String formatHighPrioritySuggestionMessage(SuggestionEntity suggestion) {
+        if (suggestion == null || TextUtils.isEmpty(suggestion.title)) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("[GOI Y UU TIEN] ").append(suggestion.title);
+        if (!TextUtils.isEmpty(suggestion.reason)) {
+            builder.append("\n").append(suggestion.reason);
+        }
+        if (!TextUtils.isEmpty(suggestion.id)) {
+            builder.append("\nID: ").append(suggestion.id);
+        }
+        builder.append("\nLenh nhanh: /accept last | /dismiss last | /apply last");
+        return builder.toString();
+    }
+
+    private boolean tryHandleSuggestionFeedbackCommand(String message) {
+        if (TextUtils.isEmpty(message)) {
+            return false;
+        }
+
+        Matcher matcher = SUGGESTION_FEEDBACK_PATTERN.matcher(message.trim());
+        if (!matcher.matches()) {
+            return false;
+        }
+
+        String feedbackType = matcher.group(1) == null
+                ? null
+                : matcher.group(1).trim().toUpperCase(Locale.ROOT);
+        String target = matcher.group(2);
+
+        String suggestionId;
+        if ("last".equalsIgnoreCase(target)) {
+            suggestionId = lastSurfacedSuggestionId;
+        } else {
+            suggestionId = target;
+        }
+
+        showUserMessage(message);
+
+        if (TextUtils.isEmpty(suggestionId)) {
+            showAssistantMessage("Chua co suggestion gan nhat de xu ly.", true, false);
+            return true;
+        }
+
+        ProactiveEngine proactiveEngine = ProactiveEngine.getExisting();
+        if (proactiveEngine == null) {
+            proactiveEngine = ProactiveEngine.getInstance(getApplicationContext());
+        }
+        proactiveEngine.recordSuggestionFeedback(suggestionId, feedbackType, "floating");
+        showAssistantMessage("Da ghi nhan feedback " + feedbackType + " cho suggestion " + suggestionId + ".", true, false);
+        return true;
+    }
+
+    private void handleSchedulerToolResult(ToolResult toolResult) {
+        if (toolResult == null) {
+            return;
+        }
+
+        if (!toolResult.isSuccess()) {
+            if (AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())
+                    && "CONFIRMATION_REQUIRED".equals(toolResult.getErrorCode())) {
+                showAssistantMessage("Bạn cần xác nhận trước khi áp dụng kế hoạch.", true, false);
+            }
+            return;
+        }
+
+        JSONObject data = toolResult.getData();
+        String renderType = data == null ? "" : data.optString("renderType", "");
+
+        if ("PLAN_PROPOSAL".equalsIgnoreCase(renderType)) {
+            renderPlanProposalMessages(data);
+            return;
+        }
+
+        if ("PLAN_APPLY_RESULT".equalsIgnoreCase(renderType)
+                || AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())) {
+            String message = data == null ? "" : data.optString("message", "");
+            if (TextUtils.isEmpty(message)) {
+                String optionId = data == null ? "" : data.optString("optionId", "");
+                int appliedTaskCount = data == null ? 0 : data.optInt("appliedTaskCount", 0);
+                message = "Đã áp dụng phương án " + optionId + " cho " + appliedTaskCount + " task.";
+            }
+            showAssistantMessage(message, true, false);
+        }
+    }
+
+    private void renderPlanProposalMessages(JSONObject data) {
+        if (data == null) {
+            return;
+        }
+
+        String proposalId = data.optString("proposalId", "");
+        String proposalType = data.optString("proposalType", "DAILY");
+        String anchorDate = data.optString("anchorDate", "");
+        JSONArray options = data.optJSONArray("options");
+
+        if (options == null || options.length() == 0) {
+            showAssistantMessage("Mình đã tạo đề xuất kế hoạch nhưng chưa có option khả dụng.", true, false);
+            return;
+        }
+
+        showAssistantMessage(
+                "[KE HOACH " + proposalType + "] " + anchorDate + "\n"
+                        + "Mình đã tạo " + options.length() + " phương án, bạn có thể áp dụng ngay từng option.",
+                true,
+                false
+        );
+
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject option = options.optJSONObject(i);
+            if (option == null) {
+                continue;
+            }
+
+            String optionId = option.optString("optionId", "");
+            String label = option.optString("label", "Option");
+            String description = option.optString("description", "");
+            int scheduled = option.optInt("scheduledMinutes", 0);
+            int unscheduled = option.optInt("unscheduledMinutes", 0);
+
+            StringBuilder card = new StringBuilder();
+            card.append("[OPTION] ").append(label);
+            if (!TextUtils.isEmpty(optionId)) {
+                card.append(" (ID: ").append(optionId).append(")");
+            }
+            if (!TextUtils.isEmpty(description)) {
+                card.append("\n").append(description);
+            }
+            card.append("\nXep lich: ").append(scheduled).append(" phut");
+            if (unscheduled > 0) {
+                card.append(" | Con ton: ").append(unscheduled).append(" phut");
+            }
+
+            if (!TextUtils.isEmpty(proposalId) && !TextUtils.isEmpty(optionId)) {
+                showAssistantActionMessage(
+                        card.toString(),
+                        ACTION_APPLY_PLAN_OPTION,
+                        "Áp dụng kế hoạch này",
+                        encodeActionData(proposalId, optionId)
+                );
+            } else {
+                showAssistantMessage(card.toString(), true, false);
+            }
+        }
+    }
+
+    private void handleChatMessageAction(ChatMessage message) {
+        if (message == null) {
+            return;
+        }
+
+        if (ACTION_APPLY_PLAN_OPTION.equals(message.getActionType())) {
+            tryHandlePlanApplyAction(message.getActionData());
+        }
+    }
+
+    private void tryHandlePlanApplyAction(String actionData) {
+        String[] decoded = decodeActionData(actionData);
+        if (decoded == null || decoded.length < 2) {
+            showAssistantMessage("Không đọc được option kế hoạch cần áp dụng.", true, false);
+            return;
+        }
+
+        String proposalId = decoded[0];
+        String optionId = decoded[1];
+        if (TextUtils.isEmpty(proposalId) || TextUtils.isEmpty(optionId)) {
+            showAssistantMessage("Thiếu proposalId/optionId để áp dụng kế hoạch.", true, false);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        String actionKey = encodeActionData(proposalId, optionId);
+        boolean confirmed = actionKey.equals(pendingPlanApplyKey) && now <= pendingPlanApplyExpiresAt;
+
+        if (!confirmed) {
+            pendingPlanApplyKey = actionKey;
+            pendingPlanApplyExpiresAt = now + PLAN_APPLY_CONFIRM_WINDOW_MS;
+            showAssistantMessage(
+                    "Bạn có chắc muốn áp dụng option " + optionId
+                            + "? Nhấn lại nút \"Áp dụng kế hoạch này\" trong 10 giây để xác nhận.",
+                    true,
+                    false
+            );
+            return;
+        }
+
+        pendingPlanApplyKey = null;
+        pendingPlanApplyExpiresAt = 0L;
+        showUserMessage("Áp dụng option " + optionId, true);
+        executeApplyPlanOptionTool(proposalId, optionId);
+    }
+
+    private void executeApplyPlanOptionTool(String proposalId, String optionId) {
+        runWorkerSafely(() -> {
+            try {
+                JSONObject args = new JSONObject();
+                args.put("proposalId", proposalId);
+                args.put("optionId", optionId);
+                args.put("confirmed", true);
+
+                ToolCall call = new ToolCall(
+                        UUID.randomUUID().toString(),
+                        AgentToolNames.APPLY_PLAN_OPTION_TOOL,
+                        args,
+                        ""
+                );
+
+                ApplyPlanOptionTool tool = new ApplyPlanOptionTool();
+                ToolResult result = tool.execute(call, AgentExecutionContext.create(getApplication()));
+                safePostMain(() -> handleSchedulerToolResult(result));
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to apply plan option", e);
+                safePostMain(() -> showAssistantMessage("Không thể áp dụng kế hoạch lúc này.", true, false));
+            }
+        });
+    }
+
+    private void showAssistantActionMessage(String message,
+                                            String actionType,
+                                            String actionLabel,
+                                            String actionData) {
+        rememberTurn("assistant", message);
+        persistChatMessageAsync("assistant", message);
+        safePostMain(() -> appendChatMessage(new ChatMessage(message, false, actionType, actionLabel, actionData)));
+    }
+
+    private String encodeActionData(String proposalId, String optionId) {
+        return (proposalId == null ? "" : proposalId)
+                + ACTION_DATA_SEPARATOR
+                + (optionId == null ? "" : optionId);
+    }
+
+    private String[] decodeActionData(String actionData) {
+        if (TextUtils.isEmpty(actionData)) {
+            return null;
+        }
+        String[] parts = actionData.split(Pattern.quote(ACTION_DATA_SEPARATOR), 2);
+        if (parts.length < 2) {
+            return null;
+        }
+        return parts;
+    }
+
     private void appendChatMessage(String message, boolean isUser) {
-        if (TextUtils.isEmpty(message) || !isServiceAlive) {
+        appendChatMessage(new ChatMessage(message, isUser));
+    }
+
+    private void appendChatMessage(ChatMessage message) {
+        if (message == null || TextUtils.isEmpty(message.getText()) || !isServiceAlive) {
             return;
         }
 
@@ -2597,7 +2922,7 @@ public class FloatingAssistantService extends Service {
         }
 
         try {
-            floatingChatAdapter.addMessage(new ChatMessage(message, isUser));
+            floatingChatAdapter.addMessage(message);
             if (isChatAttached()) {
                 floatingChatRecyclerView.smoothScrollToPosition(
                         Math.max(0, floatingChatAdapter.getItemCount() - 1)
@@ -2850,6 +3175,7 @@ public class FloatingAssistantService extends Service {
             } else if (ACTION_SHOW_BUBBLE.equals(action)) {
                 refreshOverlayTheme(false);
                 safePostMain(this::ensureBubbleVisible);
+                maybeShowHighPrioritySuggestions();
             } else if (ACTION_SHOW_DAILY_REVIEW.equals(action)) {
                 refreshOverlayTheme(false);
                 String reviewText = intent != null

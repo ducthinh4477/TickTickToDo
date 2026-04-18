@@ -16,15 +16,18 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
@@ -32,23 +35,32 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.agent.AgentAction;
+import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
+import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
 import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
+import hcmute.edu.vn.tickticktodo.agent.tools.ApplyPlanOptionTool;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.model.SuggestionEntity;
 import hcmute.edu.vn.tickticktodo.databinding.ActivityAiAssistantBinding;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.helper.SecurePreferencesHelper;
@@ -57,6 +69,7 @@ import hcmute.edu.vn.tickticktodo.model.ChatMessage;
 import hcmute.edu.vn.tickticktodo.model.ChatSession;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.core.background.FloatingAssistantService;
+import hcmute.edu.vn.tickticktodo.ui.debug.ProactiveDebugActivity;
 
 public class AiAssistantActivity extends BaseActivity {
 
@@ -66,9 +79,13 @@ public class AiAssistantActivity extends BaseActivity {
     private static final String PREFS_NAME = "TickTickPrefs";
     private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
     private static final String CHAT_SOURCE_MAIN = "ai_assistant";
+    private static final String ACTION_APPLY_PLAN_OPTION = "APPLY_PLAN_OPTION";
+    private static final String ACTION_DATA_SEPARATOR = "::";
     private static final int MAX_MEMORY_LINES = 10;
     private static final Pattern API_KEY_PATTERN = Pattern.compile("^AIza[A-Za-z0-9_-]{16,}$");
     private static final Pattern GEMINI_MODEL_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._/-]{3,128}$");
+        private static final Pattern SUGGESTION_FEEDBACK_PATTERN =
+            Pattern.compile("^/(accept|dismiss|apply)\\s+([A-Za-z0-9-]+|last)$", Pattern.CASE_INSENSITIVE);
     private static final ExecutorService DB_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private ActivityAiAssistantBinding binding;
@@ -79,10 +96,13 @@ public class AiAssistantActivity extends BaseActivity {
     private Handler mainHandler;
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final AgentResponseParser responseParser = new AgentResponseParser();
+    private final HashSet<String> surfacedSuggestionIds = new HashSet<>();
+    private volatile String lastSurfacedSuggestionId;
 
     private SharedPreferences sharedPrefs;
     private ActivityResultLauncher<Intent> overlayPermissionLauncher;
     private ActivityResultLauncher<Intent> historyLauncher;
+    private LiveData<List<SuggestionEntity>> suggestionLiveData;
 
     private volatile long currentSessionId = -1L;
     private volatile boolean destroyed;
@@ -125,6 +145,7 @@ public class AiAssistantActivity extends BaseActivity {
         setupRecyclerView();
         setupQuickPrompts();
         setupGemini();
+        observeProactiveSuggestions();
         ensureFloatingServiceState();
 
         if (binding.btnNavigateBack != null) {
@@ -137,6 +158,10 @@ public class AiAssistantActivity extends BaseActivity {
 
         if (binding.btnSettings != null) {
             binding.btnSettings.setOnClickListener(v -> showSettingsDialog());
+            binding.btnSettings.setOnLongClickListener(v -> {
+                openProactiveDebugScreen();
+                return true;
+            });
         }
 
         binding.btnSend.setOnClickListener(v -> {
@@ -158,6 +183,7 @@ public class AiAssistantActivity extends BaseActivity {
 
     private void setupRecyclerView() {
         chatAdapter = new ChatAdapter();
+        chatAdapter.setActionClickListener(this::handleChatMessageAction);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         binding.chatRecyclerView.setLayoutManager(layoutManager);
@@ -186,6 +212,64 @@ public class AiAssistantActivity extends BaseActivity {
 
         if (!geminiManager.hasConfiguredApiKey()) {
             showAssistantMessage(getString(R.string.assistant_api_key_missing_message));
+        }
+    }
+
+    private void observeProactiveSuggestions() {
+        ProactiveEngine proactiveEngine = ProactiveEngine.getInstance(getApplicationContext());
+        suggestionLiveData = proactiveEngine.observePendingSuggestions();
+        if (suggestionLiveData == null) {
+            return;
+        }
+
+        suggestionLiveData.observe(this, suggestions -> {
+            if (suggestions == null || suggestions.isEmpty()) {
+                return;
+            }
+
+            for (SuggestionEntity suggestion : suggestions) {
+                if (suggestion == null || TextUtils.isEmpty(suggestion.id)) {
+                    continue;
+                }
+                if (surfacedSuggestionIds.contains(suggestion.id)) {
+                    continue;
+                }
+
+                surfacedSuggestionIds.add(suggestion.id);
+                renderSuggestionCard(suggestion);
+                proactiveEngine.markSuggestionShown(suggestion.id);
+            }
+        });
+    }
+
+    private void renderSuggestionCard(SuggestionEntity suggestion) {
+        if (suggestion == null) {
+            return;
+        }
+
+        lastSurfacedSuggestionId = suggestion.id;
+
+        StringBuilder card = new StringBuilder();
+        card.append("[GOI Y] ").append(TextUtils.isEmpty(suggestion.title) ? "Co goi y moi" : suggestion.title);
+        if (!TextUtils.isEmpty(suggestion.reason)) {
+            card.append("\nLy do: ").append(suggestion.reason);
+        }
+        card.append("\nDo tin cay: ").append(Math.round(suggestion.confidence * 100f)).append("%");
+        if (!TextUtils.isEmpty(suggestion.id)) {
+            card.append("\nID: ").append(suggestion.id);
+        }
+        if (suggestion.requiresConfirmation) {
+            card.append("\nCan xac nhan truoc khi ap dung.");
+        }
+        card.append("\nLenh nhanh: /accept last | /dismiss last | /apply last");
+
+        showAssistantMessage(card.toString());
+    }
+
+    private void openProactiveDebugScreen() {
+        try {
+            startActivity(new Intent(this, ProactiveDebugActivity.class));
+        } catch (Exception ignored) {
         }
     }
 
@@ -431,12 +515,17 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void sendMessage(String userText) {
+        binding.messageInput.setText("");
+
+        if (tryHandleSuggestionFeedbackCommand(userText)) {
+            return;
+        }
+
         if (geminiManager == null || !geminiManager.hasConfiguredApiKey()) {
             showAssistantMessage(getString(R.string.assistant_api_key_missing_message));
             return;
         }
 
-        binding.messageInput.setText("");
         showUserMessage(userText);
         binding.chatRecyclerView.smoothScrollToPosition(Math.max(0, chatAdapter.getItemCount() - 1));
 
@@ -466,6 +555,9 @@ public class AiAssistantActivity extends BaseActivity {
                 if (shouldIgnoreAsyncResult() || fallbackTriggered[0] || toolResult == null) {
                     return;
                 }
+                if (handleSchedulerToolResult(toolResult)) {
+                    return;
+                }
                 if (!toolResult.isSuccess() && "TOOL_NOT_FOUND".equals(toolResult.getErrorCode())) {
                     fallbackTriggered[0] = true;
                     runLegacyAgentFlow(userText);
@@ -481,6 +573,231 @@ public class AiAssistantActivity extends BaseActivity {
                 runLegacyAgentFlow(userText);
             }
         });
+    }
+
+    private boolean tryHandleSuggestionFeedbackCommand(String userText) {
+        if (TextUtils.isEmpty(userText)) {
+            return false;
+        }
+
+        Matcher matcher = SUGGESTION_FEEDBACK_PATTERN.matcher(userText.trim());
+        if (!matcher.matches()) {
+            return false;
+        }
+
+        String feedbackType = matcher.group(1) == null
+                ? null
+                : matcher.group(1).trim().toUpperCase(Locale.ROOT);
+        String target = matcher.group(2);
+
+        String suggestionId;
+        if ("last".equalsIgnoreCase(target)) {
+            suggestionId = lastSurfacedSuggestionId;
+        } else {
+            suggestionId = target;
+        }
+
+        showUserMessage(userText);
+
+        if (TextUtils.isEmpty(suggestionId)) {
+            showAssistantMessage("Chua co goi y gan nhat de xu ly.");
+            return true;
+        }
+
+        ProactiveEngine.getInstance(getApplicationContext())
+                .recordSuggestionFeedback(suggestionId, feedbackType, "chat");
+        showAssistantMessage("Da ghi nhan feedback " + feedbackType + " cho suggestion " + suggestionId + ".");
+        return true;
+    }
+
+    private boolean handleSchedulerToolResult(ToolResult toolResult) {
+        if (toolResult == null) {
+            return false;
+        }
+
+        if (!toolResult.isSuccess()) {
+            if (AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())) {
+                String error = toolResult.getErrorMessage();
+                if (TextUtils.isEmpty(error)) {
+                    error = "Không thể áp dụng kế hoạch lúc này.";
+                }
+                showAssistantMessage(error);
+                return true;
+            }
+            return false;
+        }
+
+        JSONObject data = toolResult.getData();
+        String renderType = data == null ? "" : data.optString("renderType", "");
+
+        if ("PLAN_PROPOSAL".equalsIgnoreCase(renderType)) {
+            renderPlanProposalMessages(data);
+            return true;
+        }
+
+        if ("PLAN_APPLY_RESULT".equalsIgnoreCase(renderType)
+                || AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())) {
+            String message = data == null ? "" : data.optString("message", "");
+            if (TextUtils.isEmpty(message)) {
+                String optionId = data == null ? "" : data.optString("optionId", "");
+                int appliedTaskCount = data == null ? 0 : data.optInt("appliedTaskCount", 0);
+                message = "Đã áp dụng phương án " + optionId + " cho " + appliedTaskCount + " task.";
+            }
+            showAssistantMessage(message);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void renderPlanProposalMessages(JSONObject data) {
+        if (data == null) {
+            return;
+        }
+
+        String proposalId = data.optString("proposalId", "");
+        String proposalType = data.optString("proposalType", "DAILY");
+        String anchorDate = data.optString("anchorDate", "");
+        JSONArray options = data.optJSONArray("options");
+
+        if (options == null || options.length() == 0) {
+            showAssistantMessage("Mình đã tạo đề xuất kế hoạch nhưng chưa có option khả dụng.");
+            return;
+        }
+
+        showAssistantMessage("[KE HOACH " + proposalType + "] " + anchorDate
+                + "\nMình đã tạo " + options.length() + " phương án cho bạn chọn.");
+
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject option = options.optJSONObject(i);
+            if (option == null) {
+                continue;
+            }
+
+            String optionId = option.optString("optionId", "");
+            String label = option.optString("label", "Option");
+            String description = option.optString("description", "");
+            int scheduled = option.optInt("scheduledMinutes", 0);
+            int unscheduled = option.optInt("unscheduledMinutes", 0);
+
+            StringBuilder card = new StringBuilder();
+            card.append("[OPTION] ").append(label);
+            if (!TextUtils.isEmpty(optionId)) {
+                card.append(" (ID: ").append(optionId).append(")");
+            }
+            if (!TextUtils.isEmpty(description)) {
+                card.append("\n").append(description);
+            }
+            card.append("\nXep lich: ").append(scheduled).append(" phut");
+            if (unscheduled > 0) {
+                card.append(" | Con ton: ").append(unscheduled).append(" phut");
+            }
+
+            if (!TextUtils.isEmpty(proposalId) && !TextUtils.isEmpty(optionId)) {
+                showAssistantActionMessage(
+                        card.toString(),
+                        ACTION_APPLY_PLAN_OPTION,
+                        "Áp dụng kế hoạch này",
+                        encodeActionData(proposalId, optionId)
+                );
+            } else {
+                showAssistantMessage(card.toString());
+            }
+        }
+    }
+
+    private void handleChatMessageAction(ChatMessage message) {
+        if (message == null) {
+            return;
+        }
+
+        if (!ACTION_APPLY_PLAN_OPTION.equals(message.getActionType())) {
+            return;
+        }
+
+        String[] parts = decodeActionData(message.getActionData());
+        if (parts == null || parts.length < 2) {
+            showAssistantMessage("Không đọc được option kế hoạch cần áp dụng.");
+            return;
+        }
+
+        String proposalId = parts[0];
+        String optionId = parts[1];
+        if (TextUtils.isEmpty(proposalId) || TextUtils.isEmpty(optionId)) {
+            showAssistantMessage("Thiếu proposalId/optionId để áp dụng kế hoạch.");
+            return;
+        }
+
+        confirmAndApplyPlanOption(proposalId, optionId);
+    }
+
+    private void confirmAndApplyPlanOption(String proposalId, String optionId) {
+        new AlertDialog.Builder(this)
+                .setTitle("Xác nhận áp dụng kế hoạch")
+                .setMessage("Bạn có chắc muốn áp dụng option " + optionId + " cho lịch task hiện tại?")
+                .setNegativeButton("Hủy", null)
+                .setPositiveButton("Áp dụng", (dialog, which) -> {
+                    showUserMessage("Áp dụng option " + optionId);
+                    executeApplyPlanOptionTool(proposalId, optionId);
+                })
+                .show();
+    }
+
+    private void executeApplyPlanOptionTool(String proposalId, String optionId) {
+        runDbTask(() -> {
+            try {
+                JSONObject args = new JSONObject();
+                args.put("proposalId", proposalId);
+                args.put("optionId", optionId);
+                args.put("confirmed", true);
+
+                ToolCall call = new ToolCall(
+                        UUID.randomUUID().toString(),
+                        AgentToolNames.APPLY_PLAN_OPTION_TOOL,
+                        args,
+                        ""
+                );
+
+                ApplyPlanOptionTool tool = new ApplyPlanOptionTool();
+                ToolResult result = tool.execute(call, AgentExecutionContext.create(getApplication()));
+                mainHandler.post(() -> handleSchedulerToolResult(result));
+            } catch (Exception e) {
+                showAssistantMessage("Không thể áp dụng kế hoạch lúc này.");
+            }
+        });
+    }
+
+    private void showAssistantActionMessage(String text,
+                                            String actionType,
+                                            String actionLabel,
+                                            String actionData) {
+        mainHandler.post(() -> {
+            if (TextUtils.isEmpty(text)) {
+                return;
+            }
+            chatAdapter.addMessage(new ChatMessage(text, false, actionType, actionLabel, actionData));
+            rememberTurn("assistant", text);
+            persistMessageAsync("assistant", text, CHAT_SOURCE_MAIN);
+            binding.chatRecyclerView.smoothScrollToPosition(Math.max(0, chatAdapter.getItemCount() - 1));
+            updateQuickPromptVisibility();
+        });
+    }
+
+    private String encodeActionData(String proposalId, String optionId) {
+        return (proposalId == null ? "" : proposalId)
+                + ACTION_DATA_SEPARATOR
+                + (optionId == null ? "" : optionId);
+    }
+
+    private String[] decodeActionData(String actionData) {
+        if (TextUtils.isEmpty(actionData)) {
+            return null;
+        }
+        String[] parts = actionData.split(Pattern.quote(ACTION_DATA_SEPARATOR), 2);
+        if (parts.length < 2) {
+            return null;
+        }
+        return parts;
     }
 
     private void runLegacyAgentFlow(String userText) {
@@ -1026,6 +1343,9 @@ public class AiAssistantActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         destroyed = true;
+        if (suggestionLiveData != null) {
+            suggestionLiveData.removeObservers(this);
+        }
         super.onDestroy();
     }
 }

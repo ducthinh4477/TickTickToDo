@@ -21,11 +21,18 @@ import androidx.work.WorkManager;
 
 import java.util.concurrent.TimeUnit;
 
+import hcmute.edu.vn.tickticktodo.agent.context.ContextAgent;
+import hcmute.edu.vn.tickticktodo.agent.core.AgentEventBus;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
+import hcmute.edu.vn.tickticktodo.core.background.ContextRefreshWorker;
 import hcmute.edu.vn.tickticktodo.core.background.DatabaseCleanupWorker;
 import hcmute.edu.vn.tickticktodo.core.background.DailyReviewWorker;
+import hcmute.edu.vn.tickticktodo.core.background.DailyProfileReflectionWorker;
+import hcmute.edu.vn.tickticktodo.core.background.ProactiveTickWorker;
 import hcmute.edu.vn.tickticktodo.core.background.SyncWorker;
 import hcmute.edu.vn.tickticktodo.core.background.DailyDigestWorker;
 import hcmute.edu.vn.tickticktodo.core.background.OverdueCheckWorker;
+import hcmute.edu.vn.tickticktodo.core.background.WeeklyProfileReflectionWorker;
 import hcmute.edu.vn.tickticktodo.helper.AppRuntimeState;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
@@ -58,6 +65,7 @@ public class TickTickApplication extends Application {
         AppRuntimeState.initialize(this);
         SecurePreferencesHelper.getInstance(this);
         GeminiManager.initialize(this);
+        initializePhase1ProactiveComponents();
 
                 registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
                         @Override
@@ -249,5 +257,49 @@ public class TickTickApplication extends Application {
 
                 // 6. Daily Review Worker — tổng kết cuối ngày lúc 21:00
                 DailyReviewWorker.schedule(this);
+
+        // 7. Phase 1 workers for context refresh + proactive rule tick
+        schedulePhase1Workers(workManager);
+
+                // 8. Phase 2 workers for profile reflection and persona updates
+                DailyProfileReflectionWorker.schedule(this);
+                WeeklyProfileReflectionWorker.schedule(this);
+    }
+
+    private void initializePhase1ProactiveComponents() {
+        AgentEventBus.getInstance();
+        ContextAgent contextAgent = ContextAgent.getInstance(this);
+        contextAgent.refreshSnapshot("APP_STARTUP");
+        ProactiveEngine proactiveEngine = ProactiveEngine.getInstance(this);
+        proactiveEngine.evaluateNow("APP_STARTUP");
+    }
+
+    private void schedulePhase1Workers(WorkManager workManager) {
+        PeriodicWorkRequest contextRefreshRequest =
+                new PeriodicWorkRequest.Builder(ContextRefreshWorker.class, 1, TimeUnit.HOURS)
+                        .addTag("context_refresh")
+                        .build();
+
+        workManager.enqueueUniquePeriodicWork(
+                "ContextRefreshWorker",
+                ExistingPeriodicWorkPolicy.KEEP,
+                contextRefreshRequest
+        );
+
+        Constraints proactiveConstraints = new Constraints.Builder()
+                .setRequiresBatteryNotLow(true)
+                .build();
+
+        PeriodicWorkRequest proactiveTickRequest =
+                new PeriodicWorkRequest.Builder(ProactiveTickWorker.class, 6, TimeUnit.HOURS)
+                        .setConstraints(proactiveConstraints)
+                        .addTag("proactive_tick")
+                        .build();
+
+        workManager.enqueueUniquePeriodicWork(
+                "ProactiveTickWorker",
+                ExistingPeriodicWorkPolicy.KEEP,
+                proactiveTickRequest
+        );
     }
 }

@@ -8,12 +8,15 @@ import java.util.Locale;
 import java.util.Map;
 
 import hcmute.edu.vn.tickticktodo.agent.tools.FindTasksTool;
+import hcmute.edu.vn.tickticktodo.agent.tools.ApplyPlanOptionTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.CreateTaskWithSubtasksTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.CompleteTaskTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.BreakdownTaskTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.EisenhowerSortTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.GetOverdueTasksTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.GetTodayTasksTool;
+import hcmute.edu.vn.tickticktodo.agent.tools.ProposeDailyPlanTool;
+import hcmute.edu.vn.tickticktodo.agent.tools.ProposeWeeklyPlanTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.RescheduleBulkTasksTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.StartPomodoroTool;
 
@@ -32,6 +35,9 @@ public class AgentToolRegistry {
         registry.register(new StartPomodoroTool());
         registry.register(new EisenhowerSortTool());
         registry.register(new BreakdownTaskTool());
+        registry.register(new ProposeDailyPlanTool());
+        registry.register(new ProposeWeeklyPlanTool());
+        registry.register(new ApplyPlanOptionTool());
         // Keep backwards-compatible action names so model outputs like CREATE_TASK still execute tools.
         registry.registerAlias(AgentAction.CREATE_TASK, AgentToolNames.CREATE_TASK_WITH_SUBTASKS);
         registry.registerAlias(AgentAction.COMPLETE_TASK, AgentToolNames.COMPLETE_TASK_TOOL);

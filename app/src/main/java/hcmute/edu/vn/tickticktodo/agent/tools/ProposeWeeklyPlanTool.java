@@ -1,0 +1,77 @@
+package hcmute.edu.vn.tickticktodo.agent.tools;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
+import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
+import hcmute.edu.vn.tickticktodo.agent.AgentTool;
+import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.agent.scheduler.SchedulerAgent;
+import hcmute.edu.vn.tickticktodo.agent.scheduler.SchedulerJsonMapper;
+import hcmute.edu.vn.tickticktodo.agent.scheduler.model.ScheduleProposal;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
+
+public class ProposeWeeklyPlanTool implements AgentTool {
+
+    @Override
+    public String getName() {
+        return AgentToolNames.PROPOSE_WEEKLY_PLAN_TOOL;
+    }
+
+    @Override
+    public JSONObject getSchema() {
+        JSONObject schema = new JSONObject();
+        safePut(schema, "name", getName());
+        safePut(schema, "description", "Generate weekly schedule proposal with 2-3 options (Aggressive, Balanced, Low-stress).");
+
+        JSONObject parameters = new JSONObject();
+        safePut(parameters, "type", "object");
+
+        JSONObject properties = new JSONObject();
+
+        JSONObject weekStartIsoSchema = new JSONObject();
+        safePut(weekStartIsoSchema, "type", "string");
+        safePut(weekStartIsoSchema, "description", "Optional week anchor date in yyyy-MM-dd. Defaults to today.");
+        safePut(properties, "weekStartIso", weekStartIsoSchema);
+
+        safePut(parameters, "properties", properties);
+        safePut(schema, "parameters", parameters);
+        return schema;
+    }
+
+    @Override
+    public ToolResult execute(ToolCall call, AgentExecutionContext context) {
+        JSONObject args = call.getArguments();
+        LocalDate anchorDate = parseDate(args == null ? "" : args.optString("weekStartIso", ""));
+
+        SchedulerAgent schedulerAgent = SchedulerAgent.getInstance(context.getApplication());
+        ScheduleProposal proposal = schedulerAgent.proposeWeeklyPlan(anchorDate);
+
+        JSONObject data = SchedulerJsonMapper.toProposalJson(proposal, true);
+        safePut(data, "renderType", "PLAN_PROPOSAL");
+
+        return ToolResult.success(call.getCallId(), getName(), data);
+    }
+
+    private LocalDate parseDate(String dateIso) {
+        if (dateIso == null || dateIso.trim().isEmpty()) {
+            return LocalDate.now();
+        }
+        try {
+            return LocalDate.parse(dateIso.trim());
+        } catch (DateTimeParseException ignored) {
+            return LocalDate.now();
+        }
+    }
+
+    private void safePut(JSONObject target, String key, Object value) {
+        try {
+            target.put(key, value);
+        } catch (JSONException ignored) {
+        }
+    }
+}

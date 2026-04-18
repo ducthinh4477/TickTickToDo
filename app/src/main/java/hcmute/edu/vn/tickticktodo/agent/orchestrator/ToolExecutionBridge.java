@@ -70,6 +70,27 @@ public class ToolExecutionBridge {
 
         JSONObject data = result.getData();
         String toolName = result.getToolName();
+        String renderType = data == null ? "" : data.optString("renderType", "");
+
+        if ("PLAN_PROPOSAL".equalsIgnoreCase(renderType)
+                || AgentToolNames.PROPOSE_DAILY_PLAN_TOOL.equals(toolName)
+                || AgentToolNames.PROPOSE_WEEKLY_PLAN_TOOL.equals(toolName)) {
+            return renderPlanProposalSummary(data);
+        }
+
+        if ("PLAN_APPLY_RESULT".equalsIgnoreCase(renderType)
+                || AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolName)) {
+            String optionId = data == null ? "" : data.optString("optionId", "");
+            int appliedTaskCount = data == null ? 0 : data.optInt("appliedTaskCount", 0);
+            String message = data == null ? "" : data.optString("message", "");
+            if (!TextUtils.isEmpty(message)) {
+                return message;
+            }
+            if (!TextUtils.isEmpty(optionId)) {
+                return "Đã áp dụng phương án " + optionId + " cho " + appliedTaskCount + " task.";
+            }
+            return "Đã áp dụng kế hoạch đề xuất.";
+        }
 
         if (AgentToolNames.CREATE_TASK_WITH_SUBTASKS.equals(toolName)) {
             JSONObject parentTask = data == null ? null : data.optJSONObject("parentTask");
@@ -176,5 +197,41 @@ public class ToolExecutionBridge {
             default:
                 return quadrant;
         }
+    }
+
+    private String renderPlanProposalSummary(JSONObject data) {
+        if (data == null) {
+            return "Mình đã tạo bản kế hoạch sơ bộ.";
+        }
+
+        String proposalType = data.optString("proposalType", "DAILY");
+        String anchorDate = data.optString("anchorDate", "");
+        JSONArray options = data.optJSONArray("options");
+        int optionCount = options == null ? 0 : options.length();
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("Đã tạo kế hoạch ")
+                .append(proposalType)
+                .append(TextUtils.isEmpty(anchorDate) ? "" : (" cho ngày/tuần " + anchorDate))
+                .append(" với ")
+                .append(optionCount)
+                .append(" phương án.");
+
+        if (options != null && options.length() > 0) {
+            JSONObject first = options.optJSONObject(0);
+            if (first != null) {
+                String label = first.optString("label", "");
+                int scheduled = first.optInt("scheduledMinutes", 0);
+                if (!TextUtils.isEmpty(label)) {
+                    builder.append(" Gợi ý đầu tiên: ")
+                            .append(label)
+                            .append(" (")
+                            .append(scheduled)
+                            .append(" phút được xếp).");
+                }
+            }
+        }
+
+        return builder.toString();
     }
 }

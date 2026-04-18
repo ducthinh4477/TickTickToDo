@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import hcmute.edu.vn.tickticktodo.agent.context.ContextAgent;
+import hcmute.edu.vn.tickticktodo.agent.context.ContextSnapshot;
+import hcmute.edu.vn.tickticktodo.agent.profile.ProfileAgent;
 import hcmute.edu.vn.tickticktodo.helper.AppRuntimeState;
 import hcmute.edu.vn.tickticktodo.helper.UserStatsManager;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
@@ -46,10 +49,14 @@ public class AgentContextAssembler {
 
     private final Application application;
     private final TaskDatabase database;
+    private final ContextAgent contextAgent;
+    private final ProfileAgent profileAgent;
 
     public AgentContextAssembler(Application application) {
         this.application = application;
         this.database = TaskDatabase.getInstance(application);
+        this.contextAgent = ContextAgent.getInstance(application);
+        this.profileAgent = ProfileAgent.getInstance(application);
     }
 
     public String buildTieredContextBlock(String userMessage) {
@@ -81,8 +88,26 @@ public class AgentContextAssembler {
         safePut(tier0, "activeFocusSession", isFocusRunning);
         safePut(tier0, "topHighPriorityToday", toTaskArray(limitByPriority(todayIncomplete, MAX_TOP_PRIORITY_TODAY)));
         safePut(tier0, "statsSnapshot", buildStatsSnapshot());
+        safePut(tier0, "contextSnapshot", buildCompactContextSnapshot());
+        safePut(tier0, "personaSummary", buildPersonaSummary());
 
         return tier0;
+    }
+
+    private JSONObject buildCompactContextSnapshot() {
+        ContextSnapshot snapshot = contextAgent.getLatestSnapshot();
+        if (snapshot == null) {
+            return new JSONObject();
+        }
+        return snapshot.toCompactJson();
+    }
+
+    private String buildPersonaSummary() {
+        try {
+            return profileAgent.buildPersonaSummary();
+        } catch (Exception ignored) {
+            return "Profile not ready";
+        }
     }
 
     private JSONObject buildTier1Snapshot(String userMessage) {

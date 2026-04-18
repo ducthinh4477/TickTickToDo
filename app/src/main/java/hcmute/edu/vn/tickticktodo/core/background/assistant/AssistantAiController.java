@@ -41,6 +41,8 @@ public class AssistantAiController {
 
         void appendDebugTrace(String stage, String payload);
 
+        void onToolResult(hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult toolResult);
+
         void updateState(AssistantState state);
 
         void showUserMessage(String message);
@@ -130,6 +132,7 @@ public class AssistantAiController {
                 }
 
                 host.appendDebugTrace("TOOL_RESULT_CALLBACK", toolResult.toJson().toString());
+                host.onToolResult(toolResult);
 
                 if (!toolResult.isSuccess() && "TOOL_NOT_FOUND".equals(toolResult.getErrorCode())) {
                     suppressNextAssistantReply[0] = true;

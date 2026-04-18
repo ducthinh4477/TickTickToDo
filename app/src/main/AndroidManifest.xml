@@ -103,6 +103,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.debug.ProactiveDebugActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo" />
+
+        <activity
             android:name=".ui.VoicePromptActivity"
             android:exported="false"
             android:theme="@style/Theme.TickTickToDo.Translucent" />

@@ -21,6 +21,9 @@ import biweekly.Biweekly;
 import biweekly.ICalendar;
 import biweekly.component.VEvent;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -36,6 +39,8 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
 
+import hcmute.edu.vn.tickticktodo.agent.core.AgentEvent;
+import hcmute.edu.vn.tickticktodo.agent.core.AgentEventBus;
 import hcmute.edu.vn.tickticktodo.data.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
@@ -183,6 +188,14 @@ public class SchoolSyncWorker extends Worker {
                         "Lịch học đã được cập nhật. Không có bài tập mới.",
                         9999);
             }
+
+                JSONObject payload = new JSONObject();
+                safePut(payload, "newTasksCount", newTasksCount);
+                safePut(payload, "totalEvents", events.size());
+                safePut(payload, "manualSync", isManualSync);
+                AgentEventBus.getInstance().publish(
+                    AgentEvent.now(AgentEvent.TYPE_EXTERNAL_DEADLINES_SYNCED, "SchoolSyncWorker", payload)
+                );
 
             return Result.success();
 
@@ -405,5 +418,12 @@ public class SchoolSyncWorker extends Worker {
                 manualRequest
         );
         return manualRequest.getId();
+    }
+
+    private void safePut(JSONObject target, String key, Object value) {
+        try {
+            target.put(key, value);
+        } catch (JSONException ignored) {
+        }
     }
 }

@@ -10,9 +10,12 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import hcmute.edu.vn.tickticktodo.data.dao.HabitDao;
+import hcmute.edu.vn.tickticktodo.data.dao.ScheduleProposalDao;
+import hcmute.edu.vn.tickticktodo.data.dao.SuggestionDao;
 import hcmute.edu.vn.tickticktodo.data.dao.SubtaskDao;
 import hcmute.edu.vn.tickticktodo.data.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.data.dao.TodoListDao;
+import hcmute.edu.vn.tickticktodo.data.dao.UserProfileDao;
 import hcmute.edu.vn.tickticktodo.data.dao.ActivityLogDao;
 import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.model.ActivityLog;
@@ -23,6 +26,11 @@ import hcmute.edu.vn.tickticktodo.model.HabitLog;
 import hcmute.edu.vn.tickticktodo.model.Subtask;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
+import hcmute.edu.vn.tickticktodo.data.model.SuggestionFeedbackEntity;
+import hcmute.edu.vn.tickticktodo.data.model.SuggestionEntity;
+import hcmute.edu.vn.tickticktodo.data.model.UserProfileEntity;
+import hcmute.edu.vn.tickticktodo.data.model.ScheduleBlockEntity;
+import hcmute.edu.vn.tickticktodo.data.model.ScheduleProposalEntity;
 
 /**
  * Room Database chính của ứng dụng.
@@ -45,8 +53,13 @@ import hcmute.edu.vn.tickticktodo.model.TodoList;
     HabitLog.class,
     ChatSession.class,
     ChatHistoryMessage.class,
-    Subtask.class
-}, version = 12, exportSchema = false)
+    Subtask.class,
+    SuggestionEntity.class,
+    UserProfileEntity.class,
+    SuggestionFeedbackEntity.class,
+    ScheduleProposalEntity.class,
+    ScheduleBlockEntity.class
+}, version = 15, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -59,6 +72,9 @@ public abstract class TaskDatabase extends RoomDatabase {
     public abstract HabitDao habitDao();
     public abstract ChatHistoryDao chatHistoryDao();
     public abstract SubtaskDao subtaskDao();
+    public abstract SuggestionDao suggestionDao();
+    public abstract UserProfileDao userProfileDao();
+    public abstract ScheduleProposalDao scheduleProposalDao();
 
 
     // ─── Migration v2 → v3 ───────────────────────────────────────────────────────
@@ -197,6 +213,121 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_12_13 = new Migration(12, 13) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `suggestions` (" +
+                            "`id` TEXT NOT NULL, " +
+                            "`type` TEXT, " +
+                            "`title` TEXT, " +
+                            "`reason` TEXT, " +
+                            "`confidence` REAL NOT NULL, " +
+                            "`priority_score` REAL NOT NULL, " +
+                            "`created_at_millis` INTEGER NOT NULL, " +
+                            "`expires_at_millis` INTEGER NOT NULL, " +
+                            "`requires_confirmation` INTEGER NOT NULL, " +
+                            "`status` TEXT, " +
+                            "PRIMARY KEY(`id`))"
+            );
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_suggestions_type_status` ON `suggestions` (`type`, `status`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_suggestions_status` ON `suggestions` (`status`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_suggestions_expires_at_millis` ON `suggestions` (`expires_at_millis`)");
+        }
+    };
+
+    static final Migration MIGRATION_13_14 = new Migration(13, 14) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `user_profile` (" +
+                            "`id` INTEGER NOT NULL, " +
+                            "`focus_start_hour` INTEGER NOT NULL, " +
+                            "`focus_end_hour` INTEGER NOT NULL, " +
+                            "`preferred_session_minutes` INTEGER NOT NULL, " +
+                            "`chronotype_score` REAL NOT NULL, " +
+                            "`avg_daily_completion_rate` REAL NOT NULL, " +
+                            "`suggestion_acceptance_rate` REAL NOT NULL, " +
+                            "`suggestion_dismiss_rate` REAL NOT NULL, " +
+                            "`suggestion_apply_rate` REAL NOT NULL, " +
+                            "`total_feedback_count` INTEGER NOT NULL, " +
+                            "`last_daily_reflection_millis` INTEGER NOT NULL, " +
+                            "`last_weekly_reflection_millis` INTEGER NOT NULL, " +
+                            "`updated_at_millis` INTEGER NOT NULL, " +
+                            "PRIMARY KEY(`id`))"
+            );
+
+            database.execSQL(
+                    "INSERT OR REPLACE INTO `user_profile` (" +
+                            "`id`, `focus_start_hour`, `focus_end_hour`, `preferred_session_minutes`, `chronotype_score`, " +
+                            "`avg_daily_completion_rate`, `suggestion_acceptance_rate`, `suggestion_dismiss_rate`, `suggestion_apply_rate`, " +
+                            "`total_feedback_count`, `last_daily_reflection_millis`, `last_weekly_reflection_millis`, `updated_at_millis`) " +
+                            "VALUES (1, 9, 12, 45, 0.5, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)"
+            );
+
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `suggestion_feedback` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`suggestion_id` TEXT, " +
+                            "`suggestion_type` TEXT, " +
+                            "`feedback_type` TEXT, " +
+                            "`channel` TEXT, " +
+                            "`priority_score` REAL NOT NULL, " +
+                            "`confidence` REAL NOT NULL, " +
+                            "`created_at_millis` INTEGER NOT NULL)"
+            );
+
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_suggestion_feedback_suggestion_id` ON `suggestion_feedback` (`suggestion_id`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_suggestion_feedback_feedback_type` ON `suggestion_feedback` (`feedback_type`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_suggestion_feedback_created_at_millis` ON `suggestion_feedback` (`created_at_millis`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_suggestion_feedback_suggestion_type_feedback_type_created_at_millis` ON `suggestion_feedback` (`suggestion_type`, `feedback_type`, `created_at_millis`)");
+        }
+    };
+
+    static final Migration MIGRATION_14_15 = new Migration(14, 15) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `schedule_proposals` (" +
+                            "`id` TEXT NOT NULL, " +
+                            "`proposal_type` TEXT, " +
+                            "`anchor_date` TEXT, " +
+                            "`generated_at_millis` INTEGER NOT NULL, " +
+                            "`window_start_millis` INTEGER NOT NULL, " +
+                            "`window_end_millis` INTEGER NOT NULL, " +
+                            "`conflict_report_json` TEXT, " +
+                            "`options_json` TEXT, " +
+                            "`status` TEXT, " +
+                            "`applied_option_id` TEXT, " +
+                            "`applied_at_millis` INTEGER NOT NULL DEFAULT 0, " +
+                            "PRIMARY KEY(`id`))"
+            );
+
+            database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_schedule_proposals_proposal_type_generated_at_millis` " +
+                            "ON `schedule_proposals` (`proposal_type`, `generated_at_millis`)"
+            );
+
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `schedule_blocks` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`proposal_id` TEXT, " +
+                            "`option_id` TEXT, " +
+                            "`task_id` INTEGER, " +
+                            "`task_title` TEXT, " +
+                            "`start_millis` INTEGER NOT NULL, " +
+                            "`end_millis` INTEGER NOT NULL, " +
+                            "`block_type` TEXT, " +
+                            "`note` TEXT, " +
+                            "FOREIGN KEY(`proposal_id`) REFERENCES `schedule_proposals`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            );
+
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_schedule_blocks_proposal_id` ON `schedule_blocks` (`proposal_id`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_schedule_blocks_option_id` ON `schedule_blocks` (`option_id`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_schedule_blocks_start_millis` ON `schedule_blocks` (`start_millis`)");
+        }
+    };
+
     static final Migration MIGRATION_7_8 = new Migration(7, 8) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -225,7 +356,10 @@ public abstract class TaskDatabase extends RoomDatabase {
                             MIGRATION_8_9,
                             MIGRATION_9_10,
                             MIGRATION_10_11,
-                            MIGRATION_11_12
+                            MIGRATION_11_12,
+                            MIGRATION_12_13,
+                            MIGRATION_13_14,
+                            MIGRATION_14_15
                         ) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();

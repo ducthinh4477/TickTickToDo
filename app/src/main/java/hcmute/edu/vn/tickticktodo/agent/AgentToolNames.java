@@ -11,6 +11,9 @@ public final class AgentToolNames {
     public static final String START_POMODORO_TOOL = "START_POMODORO_TOOL";
     public static final String EISENHOWER_SORT_TOOL = "EISENHOWER_SORT_TOOL";
     public static final String BREAKDOWN_TASK_TOOL = "BREAKDOWN_TASK_TOOL";
+    public static final String PROPOSE_DAILY_PLAN_TOOL = "PROPOSE_DAILY_PLAN_TOOL";
+    public static final String PROPOSE_WEEKLY_PLAN_TOOL = "PROPOSE_WEEKLY_PLAN_TOOL";
+    public static final String APPLY_PLAN_OPTION_TOOL = "APPLY_PLAN_OPTION_TOOL";
 
     private AgentToolNames() {
     }
