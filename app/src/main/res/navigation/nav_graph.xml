@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/addCalendarEventBottomSheet">
+
+    <dialog
+        android:id="@+id/taskDetailBottomSheet"
+        android:name="hcmute.edu.vn.tickticktodo.ui.task.TaskDetailBottomSheet"
+        android:label="bottom_sheet_task_detail"
+        tools:layout="@layout/bottom_sheet_task_detail" />
+    <activity
+        android:id="@+id/aiAssistantActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.chat.AiAssistantActivity"
+        android:label="activity_ai_assistant"
+        tools:layout="@layout/activity_ai_assistant" />
+    <activity
+        android:id="@+id/calendarActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.calendar.CalendarActivity"
+        android:label="activity_calendar"
+        tools:layout="@layout/activity_calendar" />
+    <activity
+        android:id="@+id/taskDetailActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.task.TaskDetailActivity"
+        android:label="activity_task_detail"
+        tools:layout="@layout/activity_task_detail" />
+    <activity
+        android:id="@+id/statisticsActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.StatisticsActivity"
+        android:label="activity_statistics"
+        tools:layout="@layout/activity_statistics" />
+    <activity
+        android:id="@+id/schoolLoginActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.SchoolLoginActivity"
+        android:label="activity_school_login"
+        tools:layout="@layout/activity_school_login" />
+    <activity
+        android:id="@+id/mainActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.main.MainActivity"
+        android:label="activity_main"
+        tools:layout="@layout/activity_main" />
+    <activity
+        android:id="@+id/countdownActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.countdown.CountdownActivity"
+        android:label="activity_countdown"
+        tools:layout="@layout/activity_countdown" />
+    <activity
+        android:id="@+id/eisenhowerActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.task.EisenhowerActivity"
+        android:label="activity_eisenhower"
+        tools:layout="@layout/activity_eisenhower" />
+    <dialog
+        android:id="@+id/addCalendarEventBottomSheet"
+        android:name="hcmute.edu.vn.tickticktodo.ui.calendar.AddCalendarEventBottomSheet"
+        android:label="AddCalendarEventBottomSheet" />
+    <dialog
+        android:id="@+id/addTaskBottomSheet"
+        android:name="hcmute.edu.vn.tickticktodo.ui.task.AddTaskBottomSheet"
+        android:label="AddTaskBottomSheet" />
+    <dialog
+        android:id="@+id/dayDetailBottomSheet"
+        android:name="hcmute.edu.vn.tickticktodo.ui.calendar.DayDetailBottomSheet"
+        android:label="DayDetailBottomSheet" />
+    <fragment
+        android:id="@+id/habitTrackerFragment"
+        android:name="hcmute.edu.vn.tickticktodo.ui.habit.HabitTrackerFragment"
+        android:label="HabitTrackerFragment" />
+    <dialog
+        android:id="@+id/viewOptionsBottomSheet"
+        android:name="hcmute.edu.vn.tickticktodo.ui.task.ViewOptionsBottomSheet"
+        android:label="ViewOptionsBottomSheet" />
+    <activity
+        android:id="@+id/activityLogActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.activitylog.ActivityLogActivity"
+        android:label="ActivityLogActivity" />
+    <activity
+        android:id="@+id/aiReminderPopupActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.AiReminderPopupActivity"
+        android:label="AiReminderPopupActivity" />
+    <activity
+        android:id="@+id/chatHistoryActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.chat.ChatHistoryActivity"
+        android:label="ChatHistoryActivity" />
+    <activity
+        android:id="@+id/eventCountdownActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.countdown.EventCountdownActivity"
+        android:label="EventCountdownActivity" />
+    <activity
+        android:id="@+id/floatingQuickAddActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.FloatingQuickAddActivity"
+        android:label="FloatingQuickAddActivity" />
+    <activity
+        android:id="@+id/habitTrackerActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.habit.HabitTrackerActivity"
+        android:label="HabitTrackerActivity" />
+    <activity
+        android:id="@+id/moodleActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.MoodleActivity"
+        android:label="MoodleActivity" />
+    <activity
+        android:id="@+id/splashActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.SplashActivity"
+        android:label="SplashActivity" />
+    <activity
+        android:id="@+id/voicePromptActivity"
+        android:name="hcmute.edu.vn.tickticktodo.ui.VoicePromptActivity"
+        android:label="VoicePromptActivity" />
+</navigation>

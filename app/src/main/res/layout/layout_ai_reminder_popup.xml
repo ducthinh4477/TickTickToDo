@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#B3000000"> <!-- Làm mờ nền (70% opacity đen) -->
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="24dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="@android:color/white">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:gravity="center_horizontal">
+
+            <ImageView
+                android:id="@+id/iv_ai_avatar"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@android:drawable/ic_dialog_info"
+                android:layout_marginBottom="16dp"
+                android:contentDescription="AI Avatar" />
+
+            <TextView
+                android:id="@+id/tv_reminder_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Chào Thinh, bạn có một công việc đến hạn: [Tên Task]. Bạn có muốn hoàn thành ngay không?"
+                android:textSize="18sp"
+                android:textColor="#333333"
+                android:gravity="center"
+                android:layout_marginBottom="24dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <Button
+                    android:id="@+id/btn_complete_task"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Hoàn thành"
+                    app:backgroundTint="#4CAF50"
+                    android:textColor="@android:color/white"
+                    android:layout_marginEnd="8dp"/>
+
+                <Button
+                    android:id="@+id/btn_dismiss_task"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Để sau"
+                    app:backgroundTint="#9E9E9E"
+                    android:textColor="@android:color/white"
+                    android:layout_marginStart="8dp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>

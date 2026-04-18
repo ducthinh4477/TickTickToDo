@@ -3,6 +3,8 @@
     <string name="splash_tagline">Organize your day, one tick at a time.</string>
     <string name="priority_flag_desc">Priority flag</string>
     <string name="quick_add_hint">Add a new task…</string>
+    <string name="quick_add_due_time_title">Chọn giờ hết hạn</string>
+    <string name="quick_add_due_time_required">Bạn cần chọn giờ hết hạn để tạo công việc.</string>
     <string name="add_task_desc">Add task</string>
     <string name="send_task_desc">Send task</string>
     <string name="empty_state_message">No tasks for today.\nTap + to add one!</string>
@@ -31,11 +33,31 @@
     <!-- TaskDetailActivity -->
     <string name="detail_back_desc">Close</string>
     <string name="detail_save_desc">Save</string>
+    <string name="detail_expand_desc">Expand or collapse</string>
     <string name="detail_saved">Changes saved</string>
     <string name="detail_label_date">Due date</string>
     <string name="detail_label_priority">Priority</string>
+    <string name="detail_label_attachments">Attachments</string>
+    <string name="detail_attachment_image_desc">Attached image preview</string>
+    <string name="detail_attachment_audio_label">Audio: %1$s</string>
+    <string name="detail_attachment_file_label">File: %1$s</string>
+    <string name="detail_attachment_video_label">Video: %1$s</string>
+    <string name="detail_attachment_open_failed">Cannot open attachment</string>
+    <string name="detail_attachment_permission_missing">Attachment access denied</string>
     <string name="label_no_date">Pick a date</string>
     <string name="error_title_empty">Title cannot be empty</string>
+    <string name="ai_breakdown_button">AI Phân tích các bước</string>
+    <string name="ai_breakdown_loading">AI đang phân tích...</string>
+    <string name="ai_breakdown_title_empty">Hãy nhập tên công việc trước khi phân tích.</string>
+    <string name="ai_breakdown_parse_error">AI trả về dữ liệu chưa đúng định dạng. Vui lòng thử lại.</string>
+    <string name="ai_breakdown_success">Đã cập nhật các bước AI. Bước đã duyệt sẽ được giữ lại.</string>
+    <string name="detail_label_subtasks">Các bước con</string>
+    <string name="detail_subtasks_empty">Chưa có bước con. Hãy dùng AI để phân tích thành nhiều bước.</string>
+    <string name="subtask_raw_suffix">(raw)</string>
+    <string name="subtask_approve">Duyệt</string>
+    <string name="subtask_approved">Đã duyệt</string>
+    <string name="subtask_toggle_complete_desc">Đánh dấu hoàn thành bước con</string>
+    <string name="subtask_change_priority_desc">Đổi mức cờ của bước con</string>
     <string name="priority_none_label">None</string>
     <string name="priority_low_label">Low</string>
     <string name="priority_medium_label">Medium</string>
@@ -88,6 +110,15 @@
     <string name="countdown_session">Session:</string>
     <string name="countdown_toast_done">🎉 Great job! You completed a Pomodoro session!</string>
     <string name="countdown_toast_break_done">☕ Break over! Ready to focus again?</string>
+    <string name="countdown_sound_desc">Âm thanh môi trường</string>
+    <string name="countdown_sound_title">Chọn âm thanh tập trung</string>
+    <string name="countdown_sound_none">Không âm thanh</string>
+    <string name="countdown_sound_rain">Tiếng mưa</string>
+    <string name="countdown_sound_cafe">Quán cà phê</string>
+    <string name="countdown_sound_lofi">Nhạc Lofi</string>
+    <string name="countdown_sound_applied">Đã cập nhật âm thanh tập trung.</string>
+    <string name="countdown_sound_missing_files">Chưa tìm thấy tệp âm thanh trong thư mục res/raw.</string>
+    <string name="countdown_sound_apply">Áp dụng</string>
     <string name="nav_timer_desc">Focus Timer</string>
 
     <!-- CalendarActivity -->
@@ -103,6 +134,7 @@
     <string name="cal_next_month_desc">Next month</string>
     <string name="cal_today">Today</string>
     <string name="cal_add_event_desc">Add new event</string>
+    <string name="calendar_day_detail_back_desc">Quay lại lịch tháng</string>
 
     <!-- Day-of-week headers (Mon-first, Vietnamese abbreviation) -->
     <string name="cal_day_mon">T2</string>
@@ -206,6 +238,22 @@
     <string name="statistics_percent_format">%d%%</string>
     <string name="statistics_no_tasks_today">No tasks today</string>
     <string name="statistics_completion_detail">%1$d / %2$d %3$s</string>
+    <string name="statistics_gamification">Gamification</string>
+    <string name="statistics_level">Cấp độ</string>
+    <string name="statistics_current_xp">Kinh nghiệm</string>
+    <string name="statistics_streak">Streak</string>
+    <string name="statistics_xp_progress">%1$d / 100 XP</string>
+    <string name="statistics_streak_days">%1$d ngày liên tiếp</string>
+    <string name="level_up_toast">Chúc mừng! Bạn đã lên cấp %1$d</string>
+
+    <!-- Home Widget -->
+    <string name="widget_todo_title">Today Tasks</string>
+    <string name="widget_todo_description">Quickly check off your tasks from the home screen</string>
+    <string name="widget_empty">No tasks for today</string>
+    <string name="widget_due_no_time">No due time</string>
+    <string name="widget_untitled_task">Untitled task</string>
+    <string name="widget_refresh_desc">Refresh widget</string>
+    <string name="widget_check_desc">Mark as completed</string>
 
     <!-- Task Reminder Notification -->
     <string name="reminder_notification_title">Task Reminder</string>
@@ -214,4 +262,121 @@
     <!-- School Sync -->
     <string name="school_calendar_sync">School Calendar Sync</string>
     <string name="sync_school_calendar_desc">Sync your school schedule with TickTickToDo</string>
+
+    <!-- Quick Settings Voice Add -->
+    <string name="qs_voice_tile_label">Thêm việc bằng giọng nói</string>
+    <string name="voice_permission_required">Cần quyền micro để thêm việc bằng giọng nói.</string>
+    <string name="voice_not_available">Thiết bị chưa hỗ trợ nhận diện giọng nói.</string>
+    <string name="voice_listening">Đang lắng nghe...</string>
+    <string name="voice_hearing">Mình đang nghe bạn nói...</string>
+    <string name="voice_retrying">Chưa nghe rõ, thử lại...</string>
+    <string name="voice_processing">Đang phân tích bằng AI...</string>
+    <string name="voice_processing_text">Đang xử lý: %1$s</string>
+    <string name="voice_created_description">Được tạo nhanh từ Quick Settings bằng giọng nói</string>
+    <string name="voice_task_added_success">Đã thêm công việc!</string>
+    <string name="voice_parse_failed">Không đọc được phản hồi AI, vui lòng thử lại.</string>
+
+    <!-- Scan To Tasks -->
+    <string name="scan_prepare_failed">Không thể mở camera để chụp ảnh.</string>
+    <string name="scan_image_decode_failed">Không thể đọc ảnh vừa chụp.</string>
+    <string name="scan_processing_failed">Có lỗi khi xử lý ảnh, vui lòng thử lại.</string>
+    <string name="scan_no_tasks_found">AI chưa trích xuất được công việc nào từ ảnh.</string>
+    <string name="scan_tasks_added_count">Đã thêm %1$d công việc từ hình ảnh!</string>
+    <string name="scan_camera_action">Chụp ảnh</string>
+    <string name="scan_camera_loading">Đang mở camera...</string>
+    <string name="scan_image_attached">Đã đính kèm ảnh vào công việc.</string>
+
+    <!-- Habit Tracker -->
+    <string name="habit_title">Thói quen</string>
+    <string name="habit_add_title">Thêm thói quen</string>
+    <string name="habit_add_hint">Nhập tên thói quen</string>
+    <string name="habit_add_confirm">Thêm</string>
+    <string name="habit_add_empty_error">Tên thói quen không được để trống.</string>
+    <string name="habit_no_data_title">Chưa có thói quen nào. Bấm + để thêm.</string>
+    <string name="habit_selected_prefix">Thói quen: %1$s</string>
+    <string name="habit_checkin_success">Đã check in hôm nay.</string>
+    <string name="habit_legend_done">Đã thực hiện</string>
+    <string name="habit_legend_missed">Bỏ lỡ</string>
+    <string name="nav_habits">Habits</string>
+
+    <!-- Assistant + Chat History -->
+    <string name="assistant_title">Trợ lý TickTick</string>
+    <string name="assistant_back_desc">Quay lại</string>
+    <string name="assistant_menu_history_desc">Mở lịch sử trò chuyện</string>
+    <string name="assistant_settings_desc">Cài đặt trợ lý</string>
+    <string name="assistant_settings_dialog_title">Cài đặt Trợ lý AI</string>
+    <string name="assistant_api_key_missing_message">Vui lòng nhập API Key và chọn mô hình trong Cài đặt Trợ lý AI.</string>
+    <string name="assistant_floating_switch_label">Hiển thị Trợ lý nổi trên màn hình</string>
+    <string name="assistant_floating_switch_hint">Trợ lý nổi giúp bạn điều khiển ứng dụng nhanh hơn từ bất kỳ đâu trên thiết bị.</string>
+    <string name="assistant_ai_model_label">Mô hình AI</string>
+    <string name="assistant_current_model_label">Đang dùng mô hình</string>
+    <string name="assistant_current_model_empty">Chưa cấu hình mô hình</string>
+    <string name="assistant_model_name_hint">Tên mô hình </string>
+    <string name="assistant_add_model_button">+ Mô hình</string>
+    <string name="assistant_model_detail_button">Chi tiết</string>
+    <string name="assistant_add_model_popup_title">Thêm mô hình AI</string>
+    <string name="assistant_model_detail_popup_title">Chi tiết mô hình AI</string>
+    <string name="assistant_save_model_button">Lưu</string>
+    <string name="assistant_update_model_button">Cập nhật</string>
+    <string name="assistant_api_key_label">API Key</string>
+    <string name="assistant_save_settings_button">Lưu cài đặt</string>
+    <string name="assistant_settings_saved">Đã lưu cài đặt AI.</string>
+    <string name="assistant_settings_saved_no_key">Đã lưu cài đặt, nhưng chưa có API Key hợp lệ.</string>
+    <string name="assistant_settings_save_failed">Không thể lưu cài đặt AI lúc này.</string>
+    <string name="assistant_invalid_model">Model không hợp lệ. Vui lòng chọn lại.</string>
+    <string name="assistant_model_required">Bạn cần thêm và chọn ít nhất một mô hình AI.</string>
+    <string name="assistant_model_name_empty">Vui lòng nhập tên mô hình trước khi thêm.</string>
+    <string name="assistant_model_added">Đã thêm mô hình mới.</string>
+    <string name="assistant_model_exists">Mô hình này đã tồn tại trong danh sách.</string>
+    <string name="assistant_invalid_model_name">Tên mô hình không hợp lệ.</string>
+    <string name="assistant_api_key_required">Vui lòng dán API Key trước khi lưu.</string>
+    <string name="assistant_invalid_api_key">API Key không đúng định dạng. Vui lòng kiểm tra lại.</string>
+    <string name="assistant_quick_title">Xin chào!</string>
+    <string name="assistant_quick_subtitle">Tôi có thể giúp bạn lập kế hoạch, ưu tiên việc và tổng kết ngày làm việc.</string>
+    <string name="assistant_quick_today_plan">Lập kế hoạch hôm nay</string>
+    <string name="assistant_quick_prioritize">Sắp xếp mức ưu tiên</string>
+    <string name="assistant_quick_habit">Gợi ý thói quen nhỏ</string>
+    <string name="assistant_quick_review">Tổng kết cuối ngày</string>
+
+    <string name="chat_history_title">Lịch sử trò chuyện</string>
+    <string name="chat_history_subtitle">Chọn một cuộc hội thoại để tiếp tục làm việc.</string>
+    <string name="chat_history_new_session">Phiên mới</string>
+    <string name="chat_history_empty_title">Chưa có lịch sử trò chuyện</string>
+    <string name="chat_history_empty_subtitle">Hãy bắt đầu một cuộc hội thoại mới với trợ lý TickTick.</string>
+    <string name="chat_history_untitled_session">Cuộc trò chuyện mới</string>
+    <string name="chat_history_empty_preview">Chưa có tin nhắn</string>
+    <string name="chat_history_clear_title">Xóa lịch sử trò chuyện</string>
+    <string name="chat_history_clear_message">Bạn có chắc muốn xóa toàn bộ lịch sử trò chuyện không?</string>
+    <string name="chat_history_clear_confirm">Xóa</string>
+
+    <string name="floating_chat_settings_desc">Mở cài đặt popup trợ lý</string>
+    <string name="floating_chat_overlay_title">Tùy chỉnh popup trợ lý</string>
+    <string name="floating_chat_overlay_close_desc">Đóng lớp tùy chỉnh popup</string>
+    <string name="floating_chat_overlay_transparency">Độ trong suốt popup</string>
+    <string name="floating_chat_overlay_voice_title">Chế độ voice</string>
+    <string name="floating_chat_overlay_auto_turn_taking">Tự động hỏi đáp lượt tiếp theo</string>
+    <string name="floating_chat_overlay_speak_replies">Đọc thành tiếng câu trả lời của trợ lý</string>
+    <string name="floating_chat_overlay_barge_in_threshold">Độ nhạy ngắt lời khi trợ lý đang nói</string>
+    <string name="floating_chat_overlay_fullscreen">Toàn màn hình</string>
+    <string name="floating_chat_mode_chat">Chat mode (không voice)</string>
+    <string name="floating_chat_mode_voice">Voice mode (không chat)</string>
+    <string name="floating_chat_input_hint_chat">Nhập lệnh...</string>
+    <string name="floating_chat_input_hint_voice">Voice mode đang bật (không chat)</string>
+    <string name="floating_chat_chat_mode_no_voice">Chat mode không sử dụng voice.</string>
+    <string name="floating_chat_voice_mode_no_typing">Voice mode không hỗ trợ nhập chat.</string>
+    <string name="floating_chat_voice_mode_ready">Chạm mic để bắt đầu voice.</string>
+    <string name="floating_chat_dismiss_label">X</string>
+    <string name="floating_chat_hidden_toast">Đã ẩn trợ lý nổi. Mở lại trong cài đặt nếu cần.</string>
+    <string name="floating_action_center_desc">Trợ lý nổi</string>
+    <string name="floating_action_chat_desc">Mở chat popup</string>
+    <string name="floating_action_voice_desc">Bắt đầu voice tạm thời</string>
+    <string name="floating_action_camera_desc">Camera (sắp cập nhật)</string>
+    <string name="floating_action_task_desc">Tạo task mới</string>
+    <string name="floating_action_home_desc">Mở trang chủ ứng dụng</string>
+    <string name="floating_action_camera_todo">Tính năng camera sẽ được cập nhật sau.</string>
+
+    <!-- Habit tracker refreshed layout -->
+    <string name="habit_section_list_title">Thói quen của bạn</string>
+    <string name="habit_section_heatmap_title">Bảng theo dõi 30 ngày</string>
+    <string name="habit_section_subtitle">Theo dõi nhịp độ và giữ chuỗi thói quen mỗi ngày.</string>
 </resources>

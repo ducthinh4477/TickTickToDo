@@ -34,7 +34,7 @@ import java.util.UUID;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.worker.SchoolSyncWorker;
+import hcmute.edu.vn.tickticktodo.ui.moodle.SchoolSyncWorker;
 
 public class SchoolLoginActivity extends BaseActivity {
 

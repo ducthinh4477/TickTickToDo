@@ -6,6 +6,11 @@
         android:icon="@drawable/ic_matrix"
         android:title="Ma trận Eisenhower" />
 
+    <item
+        android:id="@+id/nav_ai_assistant"
+        android:icon="@drawable/ic_user"
+        android:title="Trợ lý AI" />
+
     <!-- Nhóm Lists: sẽ được thêm dynamic từ code trong lists panel -->
     <group
         android:id="@+id/group_lists"

@@ -31,8 +31,7 @@
             android:button="@null"
             android:background="@drawable/checkbox_square_selector"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintTop_toTopOf="parent" />
 
         <!-- Title -->
         <TextView
@@ -94,6 +93,71 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/tv_task_title"
             app:tint="@color/priority_none" />
+
+        <LinearLayout
+            android:id="@+id/layout_task_attachments"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintEnd_toStartOf="@id/iv_priority_flag"
+            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
+            app:layout_constraintTop_toBottomOf="@id/tv_task_time">
+
+            <ImageView
+                android:id="@+id/iv_task_attachment_image"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:adjustViewBounds="true"
+                android:background="@drawable/bg_dialog_rounded"
+                android:contentDescription="@string/detail_attachment_image_desc"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_task_attachment_file"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_dialog_rounded"
+                android:padding="10dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="File: assignment.pdf" />
+
+            <TextView
+                android:id="@+id/tv_task_attachment_voice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_dialog_rounded"
+                android:padding="10dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="Audio: note.m4a" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_task_subtasks"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/iv_priority_flag"
+            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
+            app:layout_constraintTop_toBottomOf="@id/layout_task_attachments">
+
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

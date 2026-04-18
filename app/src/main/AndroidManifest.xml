@@ -13,7 +13,12 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Truy cập chính sách Không làm phiền (DND) để thông báo từ app luôn hiển thị -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
@@ -40,33 +45,37 @@
         </activity>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="false" />
             
         <activity
-            android:name=".ui.ActivityLogActivity"
+            android:name=".ui.activitylog.ActivityLogActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.TaskDetailActivity"
+            android:name=".ui.task.TaskDetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".ui.CountdownActivity"
+            android:name=".ui.countdown.CountdownActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.CalendarActivity"
+            android:name=".ui.calendar.CalendarActivity"
             android:exported="false" />
 
         <activity
             android:name=".ui.StatisticsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.habit.HabitTrackerActivity"
+            android:exported="false" />
+
         <!-- TimerService: chạy logic đếm ngược Pomodoro, giao tiếp qua Binder + LocalBroadcast -->
         <service
-            android:name=".service.TimerService"
+            android:name=".ui.countdown.TimerService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -75,21 +84,36 @@
 
         <!-- TaskReminderReceiver: nhận Intent từ AlarmManager → hiển thị Notification -->
         <receiver
-            android:name=".receiver.TaskReminderReceiver"
+            android:name=".ui.task.TaskReminderReceiver"
             android:exported="false" />
 
         <!-- NotificationActionReceiver: Handling Quick Actions from Notification -->
         <receiver
-            android:name=".receiver.NotificationActionReceiver"
+            android:name=".ui.task.NotificationActionReceiver"
             android:exported="false" />
 
         <activity android:name=".ui.SchoolLoginActivity" android:exported="false"/>
         
-        <activity android:name=".ui.MoodleActivity" android:exported="false"/>
+        <activity android:name=".ui.MoodleActivity" android:exported="false"/>  
 
-        <!-- BootReceiver: restore tất cả alarm sau khi thiết bị khởi động lại -->
+        <activity android:name=".ui.chat.AiAssistantActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+
+        <activity
+            android:name=".ui.chat.ChatHistoryActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.VoicePromptActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo.Translucent" />
+
+        <activity
+            android:name=".ui.FloatingQuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo.Translucent" />
+
         <receiver
-            android:name=".receiver.BootReceiver"
+            android:name=".core.background.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -98,13 +122,67 @@
 
         <!-- Receiver đảm nhiệm việc buộc cập nhật Moodle ngay tức thì -->
         <receiver
-            android:name=".receiver.SchoolSyncReceiver"
+            android:name=".ui.moodle.SchoolSyncReceiver"
             android:exported="false" />
 
         <activity
-            android:name=".ui.EisenhowerActivity"
+            android:name=".ui.task.EisenhowerActivity"
             android:exported="false"
             android:theme="@style/Theme.TickTickToDo" />
+			
+        <activity
+            android:name=".ui.countdown.EventCountdownActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo" />
+
+        <service
+            android:name=".core.background.FloatingAssistantService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse|microphone">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_assistant_overlay" />
+        </service>
+
+        <service
+            android:name=".ui.assistant.VoiceTaskTileService"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@drawable/ic_add"
+            android:label="@string/qs_voice_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <service
+            android:name=".widget.TodoWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <receiver
+            android:name=".widget.TodoWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/todo_widget_info" />
+        </receiver>
 
     </application>
 

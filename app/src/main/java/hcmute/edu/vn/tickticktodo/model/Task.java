@@ -3,6 +3,7 @@ package hcmute.edu.vn.tickticktodo.model;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
@@ -83,6 +84,7 @@ public class Task {
     public Task() {
     }
 
+    @Ignore
     public Task(String title, String description, Long dueDate, boolean isCompleted, int priority) {
         this.title = title;
         this.description = description;
@@ -193,6 +195,26 @@ public class Task {
     public void setDuration(int duration) {
         this.duration = duration;
     }
+
+    
+    // --- Attachments ---
+    @ColumnInfo(name = "image_attachment")
+    private String imageAttachment;
+    
+    @ColumnInfo(name = "voice_attachment")
+    private String voiceAttachment;
+    
+    @ColumnInfo(name = "file_attachment")
+    private String fileAttachment;
+    
+    public String getImageAttachment() { return imageAttachment; }
+    public void setImageAttachment(String imageAttachment) { this.imageAttachment = imageAttachment; }
+    
+    public String getVoiceAttachment() { return voiceAttachment; }
+    public void setVoiceAttachment(String voiceAttachment) { this.voiceAttachment = voiceAttachment; }
+    
+    public String getFileAttachment() { return fileAttachment; }
+    public void setFileAttachment(String fileAttachment) { this.fileAttachment = fileAttachment; }
 
     public int getRecurrence() {
         return recurrence;

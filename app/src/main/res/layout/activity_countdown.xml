@@ -10,7 +10,7 @@
     android:orientation="vertical"
     android:paddingStart="24dp"
     android:paddingEnd="24dp"
-    tools:context=".ui.CountdownActivity">
+    tools:context=".ui.countdown.CountdownActivity">
 
     <!-- Back button + Title -->
     <RelativeLayout
@@ -27,7 +27,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/countdown_back_desc"
             android:src="@drawable/ic_close"
-            android:tint="#FFFFFFFF" />
+            app:tint="#FFFFFFFF" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -37,6 +37,17 @@
             android:textColor="#FFFFFFFF"
             android:textSize="18sp"
             android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btn_ambient_sound"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/countdown_sound_desc"
+            android:src="@drawable/ic_timer"
+            app:tint="#FFFFFFFF" />
 
     </RelativeLayout>
 

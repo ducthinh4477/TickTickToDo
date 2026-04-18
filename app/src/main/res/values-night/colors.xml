@@ -54,5 +54,58 @@
     <color name="white">#FFFFFFFF</color>
     <color name="nav_rail_bg">#FF1D1D1D</color>
     <color name="panel_selected">#1A8875FF</color>
+    <color name="habit_heatmap_active">#66BB6A</color>
+    <color name="habit_heatmap_inactive">#FF3A3A3A</color>
+
+    <!-- Floating assistant (dark mode) -->
+    <color name="floating_chat_title">#EAF1FF</color>
+    <color name="floating_chat_subtitle">#A8B6CC</color>
+    <color name="floating_chat_chip_text">#9BC3FF</color>
+    <color name="floating_chat_close_tint">#9CADC4</color>
+    <color name="floating_chat_debug_title">#94D8FF</color>
+    <color name="floating_chat_debug_text">#8BFFD1</color>
+    <color name="floating_chat_debug_clear_text">#8BFFD1</color>
+    <color name="floating_chat_daily_text">#DCE8FA</color>
+    <color name="floating_chat_input_text">#E8EEFA</color>
+    <color name="floating_chat_input_hint">#8C9AB2</color>
+    <color name="floating_chat_action_tint">#86A7FF</color>
+    <color name="floating_chat_status_text">#99BAFF</color>
+
+    <color name="floating_chat_container_start">#F0202B3C</color>
+    <color name="floating_chat_container_end">#EC182332</color>
+    <color name="floating_chat_container_stroke">#6692A8C2</color>
+    <color name="floating_chat_divider_center">#6693A6C2</color>
+
+    <color name="floating_chat_header_chip_start">#21334B</color>
+    <color name="floating_chat_header_chip_end">#1A2A41</color>
+    <color name="floating_chat_header_chip_stroke">#6688A8C8</color>
+
+    <color name="floating_chat_messages_surface">#192435</color>
+    <color name="floating_chat_messages_stroke">#6686A0BF</color>
+
+    <color name="floating_chat_input_shell">#162234</color>
+    <color name="floating_chat_input_shell_stroke">#6689A5C6</color>
+    <color name="floating_chat_input_pill">#101C2E</color>
+    <color name="floating_chat_input_pill_stroke">#6695B0CF</color>
+
+    <color name="floating_chat_daily_start">#1B2A3F</color>
+    <color name="floating_chat_daily_end">#162234</color>
+    <color name="floating_chat_daily_stroke">#6689A7CB</color>
+
+    <color name="floating_chat_debug_terminal_start">#08111F</color>
+    <color name="floating_chat_debug_terminal_end">#101B2D</color>
+    <color name="floating_chat_debug_terminal_stroke">#4F5D86AA</color>
+    <color name="floating_chat_debug_chip">#16263D</color>
+    <color name="floating_chat_debug_chip_pressed">#243A5A</color>
+    <color name="floating_chat_debug_chip_stroke">#6E90B3D4</color>
+    <color name="floating_chat_debug_chip_pressed_stroke">#88A7C8E8</color>
+    <color name="floating_chat_debug_inner">#0D1524</color>
+    <color name="floating_chat_debug_inner_stroke">#5B688EB2</color>
+    <color name="floating_chat_mic_idle_bg">#17263A</color>
+    <color name="floating_chat_mic_idle_stroke">#5E7EA0</color>
+    <color name="floating_chat_mic_idle_pressed_bg">#20354F</color>
+    <color name="floating_chat_mic_idle_pressed_stroke">#6D8EB3</color>
+    <color name="floating_chat_voice_status_bg">#1A2C45</color>
+    <color name="floating_chat_voice_status_stroke">#6285AA</color>
 </resources>
 
