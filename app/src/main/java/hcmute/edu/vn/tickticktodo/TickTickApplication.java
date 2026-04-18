@@ -27,7 +27,9 @@ import hcmute.edu.vn.tickticktodo.core.background.SyncWorker;
 import hcmute.edu.vn.tickticktodo.core.background.DailyDigestWorker;
 import hcmute.edu.vn.tickticktodo.core.background.OverdueCheckWorker;
 import hcmute.edu.vn.tickticktodo.helper.AppRuntimeState;
+import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
+import hcmute.edu.vn.tickticktodo.helper.SecurePreferencesHelper;
 import hcmute.edu.vn.tickticktodo.helper.UsageStreakManager;
 import hcmute.edu.vn.tickticktodo.core.background.SystemStateReceiver;
 import hcmute.edu.vn.tickticktodo.core.background.FloatingAssistantService;
@@ -54,6 +56,8 @@ public class TickTickApplication extends Application {
 
         registerSystemStateReceiver();
         AppRuntimeState.initialize(this);
+        SecurePreferencesHelper.getInstance(this);
+        GeminiManager.initialize(this);
 
                 registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
                         @Override

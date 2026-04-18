@@ -1,4 +1,4 @@
-import re
+﻿import re
 
 with open('app/src/main/java/hcmute/edu/vn/tickticktodo/service/FloatingAssistantService.java', 'r', encoding='utf-8') as f:
     content = f.read()
@@ -42,7 +42,7 @@ class_vars = """
     private SpeechRecognizer speechRecognizer;
     private Intent speechRecognizerIntent;
     private Handler mainHandler;
-    private static final String GEMINI_API_KEY = "YOUR_API_KEY_HERE";
+    private static final String USER_API_KEY = "YOUR_API_KEY_HERE";
     private static final String TAG = "FloatingAssistant";
 """
 
@@ -55,8 +55,8 @@ init_generative_model = """
         mainHandler = new Handler(Looper.getMainLooper());
 
         GenerativeModel gm = new GenerativeModel(
-                "gemini-pro", // Có thể thay thế bằng gemini-1.5-pro/flash tuỳ library
-                GEMINI_API_KEY
+                "gemini-pro", // CĂ³ thá»ƒ thay tháº¿ báº±ng gemini-1.5-pro/flash tuá»³ library
+                USER_API_KEY
         );
         modelFutures = GenerativeModelFutures.from(gm);
         
@@ -91,7 +91,7 @@ speech_init = """
             @Override
             public void onError(int error) {
                 Log.e(TAG, "Speech error: " + error);
-                mainHandler.post(() -> Toast.makeText(FloatingAssistantService.this, "Lỗi thu âm: " + error, Toast.LENGTH_SHORT).show());
+                mainHandler.post(() -> Toast.makeText(FloatingAssistantService.this, "Lá»—i thu Ă¢m: " + error, Toast.LENGTH_SHORT).show());
             }
 
             @Override
@@ -120,10 +120,10 @@ speech_init = """
 
 send_to_gemini = """
     private void sendToGemini(String message) {
-        String systemPrompt = "Bạn là trợ lý ảo. " +
-            "Nếu muốn mở/bật Wifi, CHỈ TRẢ VỀ: {\\"action\\": \\"wifi_on\\"} " +
-            "Nếu muốn tắt Wifi, CHỈ TRẢ VỀ: {\\"action\\": \\"wifi_off\\"} " +
-            "Nếu hỏi chung, trả về text.";
+        String systemPrompt = "Báº¡n lĂ  trá»£ lĂ½ áº£o. " +
+            "Náº¿u muá»‘n má»Ÿ/báº­t Wifi, CHá»ˆ TRáº¢ Vá»€: {\\"action\\": \\"wifi_on\\"} " +
+            "Náº¿u muá»‘n táº¯t Wifi, CHá»ˆ TRáº¢ Vá»€: {\\"action\\": \\"wifi_off\\"} " +
+            "Náº¿u há»i chung, tráº£ vá» text.";
             
         Content content = new Content.Builder().addText(systemPrompt + "\\nUser request: " + message).build();
         ListenableFuture<GenerateContentResponse> response = modelFutures.generateContent(content);
@@ -169,11 +169,11 @@ send_to_gemini = """
             try {
                 // setWifiEnabled is deprecated in API 29+ but works on older or system apps.
                 boolean success = wifiManager.setWifiEnabled(enable);
-                String state = enable ? "Bật" : "Tắt";
-                mainHandler.post(() -> Toast.makeText(FloatingAssistantService.this, "Đã " + state + " Wifi: " + success, Toast.LENGTH_SHORT).show());
+                String state = enable ? "Báº­t" : "Táº¯t";
+                mainHandler.post(() -> Toast.makeText(FloatingAssistantService.this, "ÄĂ£ " + state + " Wifi: " + success, Toast.LENGTH_SHORT).show());
             } catch (Exception e) {
                 Log.e(TAG, "Cannot change WiFi state", e);
-                mainHandler.post(() -> Toast.makeText(FloatingAssistantService.this, "Không thể thao tác Wifi trên Android mới.", Toast.LENGTH_SHORT).show());
+                mainHandler.post(() -> Toast.makeText(FloatingAssistantService.this, "KhĂ´ng thá»ƒ thao tĂ¡c Wifi trĂªn Android má»›i.", Toast.LENGTH_SHORT).show());
             }
         }
     }
@@ -211,10 +211,10 @@ chat_init_replace = """        View btnSend = floatingChatView.findViewById(R.id
         btnMic.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Đang lắng nghe...", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Äang láº¯ng nghe...", Toast.LENGTH_SHORT).show();
                     speechRecognizer.startListening(speechRecognizerIntent);
                 } else {
-                    Toast.makeText(this, "Chưa có quyền Micro. Hãy cấp quyền!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "ChÆ°a cĂ³ quyá»n Micro. HĂ£y cáº¥p quyá»n!", Toast.LENGTH_SHORT).show();
                 }
                 return true;
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
@@ -228,3 +228,4 @@ content = re.sub(r'        View btnSend = floatingChatView.*?;.*?\}\);', chat_in
 
 with open('app/src/main/java/hcmute/edu/vn/tickticktodo/service/FloatingAssistantService.java', 'w', encoding='utf-8') as f:
     f.write(content)
+

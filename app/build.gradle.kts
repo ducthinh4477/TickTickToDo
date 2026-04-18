@@ -3,18 +3,6 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-import java.util.Properties
-
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.inputStream().use { localProperties.load(it) }
-}
-val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY", "")
-val escapedGeminiApiKey = geminiApiKey
-    .replace("\\", "\\\\")
-    .replace("\"", "\\\"")
-
 android {
     namespace = "hcmute.edu.vn.tickticktodo"
     compileSdk = 35
@@ -27,7 +15,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GEMINI_API_KEY", "\"$escapedGeminiApiKey\"")
     }
 
     buildTypes {
@@ -45,7 +32,7 @@ android {
     }
 
     buildFeatures {
-        buildConfig = true
+        buildConfig = false
         viewBinding = true
     }
 
@@ -63,6 +50,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
 
@@ -92,6 +80,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
 
     testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.12.0")
+    testImplementation("org.json:json:20240303")
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 

@@ -11,6 +11,9 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -34,6 +37,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
@@ -45,6 +49,7 @@ import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.databinding.ActivityAiAssistantBinding;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
+import hcmute.edu.vn.tickticktodo.helper.SecurePreferencesHelper;
 import hcmute.edu.vn.tickticktodo.model.ChatHistoryMessage;
 import hcmute.edu.vn.tickticktodo.model.ChatMessage;
 import hcmute.edu.vn.tickticktodo.model.ChatSession;
@@ -60,10 +65,13 @@ public class AiAssistantActivity extends BaseActivity {
     private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
     private static final String CHAT_SOURCE_MAIN = "ai_assistant";
     private static final int MAX_MEMORY_LINES = 10;
+    private static final Pattern API_KEY_PATTERN = Pattern.compile("^AIza[A-Za-z0-9_-]{16,}$");
+    private static final Pattern GEMINI_MODEL_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._/-]{3,128}$");
 
     private ActivityAiAssistantBinding binding;
     private ChatAdapter chatAdapter;
     private GeminiManager geminiManager;
+    private SecurePreferencesHelper securePreferencesHelper;
     private ExecutorService dbExecutor;
     private Handler mainHandler;
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
@@ -82,6 +90,7 @@ public class AiAssistantActivity extends BaseActivity {
         setContentView(binding.getRoot());
 
         sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        securePreferencesHelper = SecurePreferencesHelper.getInstance(getApplicationContext());
 
         overlayPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -168,9 +177,10 @@ public class AiAssistantActivity extends BaseActivity {
 
     private void setupGemini() {
         geminiManager = GeminiManager.getInstance();
+        geminiManager.reloadConfiguration();
 
         if (!geminiManager.hasConfiguredApiKey()) {
-            showAssistantMessage("Vui lòng kiểm tra cấu hình API Key trong local.properties");
+            showAssistantMessage(getString(R.string.assistant_api_key_missing_message));
         }
     }
 
@@ -276,11 +286,17 @@ public class AiAssistantActivity extends BaseActivity {
         dialog.setContentView(view);
 
         SwitchMaterial switchFloating = view.findViewById(R.id.switchFloatingAi);
-        if (switchFloating == null) {
+        TextView tvCurrentAiModelValue = view.findViewById(R.id.tvCurrentAiModelValue);
+        Button btnAddAiModel = view.findViewById(R.id.btnAddAiModel);
+        if (switchFloating == null
+                || btnAddAiModel == null
+                || tvCurrentAiModelValue == null) {
             dialog.dismiss();
             Toast.makeText(this, "Không thể mở cài đặt Trợ lý nổi.", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
 
         boolean isEnabled = sharedPrefs.getBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false);
         if (isEnabled && !hasOverlayPermission()) {
@@ -305,12 +321,76 @@ public class AiAssistantActivity extends BaseActivity {
             }
         });
 
+        btnAddAiModel.setOnClickListener(v -> {
+            showAddModelDialog(tvCurrentAiModelValue);
+        });
+
         dialog.show();
+    }
+
+    private void showAddModelDialog(TextView tvCurrentAiModelValue) {
+        BottomSheetDialog popupDialog = new BottomSheetDialog(this);
+        View popupView = getLayoutInflater().inflate(R.layout.layout_add_ai_model_dialog, null);
+        popupDialog.setContentView(popupView);
+
+        EditText editPopupModelName = popupView.findViewById(R.id.editPopupModelName);
+        EditText editPopupApiKey = popupView.findViewById(R.id.editPopupApiKey);
+        Button btnSaveAiModelPopup = popupView.findViewById(R.id.btnSaveAiModelPopup);
+
+        if (editPopupModelName == null || editPopupApiKey == null || btnSaveAiModelPopup == null) {
+            popupDialog.dismiss();
+            Toast.makeText(this, R.string.assistant_settings_save_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        btnSaveAiModelPopup.setOnClickListener(v -> {
+            String modelName = editPopupModelName.getText() == null
+                    ? ""
+                    : editPopupModelName.getText().toString().trim();
+            String apiKey = editPopupApiKey.getText() == null
+                    ? ""
+                    : editPopupApiKey.getText().toString().trim();
+
+            if (TextUtils.isEmpty(modelName)) {
+                Toast.makeText(this, R.string.assistant_model_name_empty, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isModelNameValid(modelName)) {
+                Toast.makeText(this, R.string.assistant_invalid_model_name, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (TextUtils.isEmpty(apiKey)) {
+                Toast.makeText(this, R.string.assistant_api_key_required, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isApiKeyFormatValid(apiKey)) {
+                Toast.makeText(this, R.string.assistant_invalid_api_key, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            try {
+                securePreferencesHelper.addAiModel(modelName);
+                securePreferencesHelper.saveAiModel(modelName);
+                securePreferencesHelper.saveApiKey(apiKey);
+
+                GeminiManager manager = GeminiManager.getInstance();
+                manager.reloadConfiguration();
+                geminiManager = manager;
+
+                tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
+                Toast.makeText(this, R.string.assistant_settings_saved, Toast.LENGTH_SHORT).show();
+                popupDialog.dismiss();
+            } catch (Exception exception) {
+                Toast.makeText(this, R.string.assistant_settings_save_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        popupDialog.show();
     }
 
     private void sendMessage(String userText) {
         if (geminiManager == null || !geminiManager.hasConfiguredApiKey()) {
-            showAssistantMessage("Vui lòng kiểm tra cấu hình API Key trong local.properties");
+            showAssistantMessage(getString(R.string.assistant_api_key_missing_message));
             return;
         }
 
@@ -767,6 +847,23 @@ public class AiAssistantActivity extends BaseActivity {
 
     private boolean hasOverlayPermission() {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
+    }
+
+    private String getCurrentModelDisplayName() {
+        String currentModel = securePreferencesHelper.getAiModel();
+        if (TextUtils.isEmpty(currentModel)) {
+            return getString(R.string.assistant_current_model_empty);
+        }
+        return currentModel;
+    }
+
+    private boolean isModelNameValid(String modelName) {
+        return !TextUtils.isEmpty(modelName)
+                && GEMINI_MODEL_NAME_PATTERN.matcher(modelName.trim()).matches();
+    }
+
+    private boolean isApiKeyFormatValid(String apiKey) {
+        return API_KEY_PATTERN.matcher(apiKey).matches();
     }
 
     private void handleOverlayPermissionResult() {

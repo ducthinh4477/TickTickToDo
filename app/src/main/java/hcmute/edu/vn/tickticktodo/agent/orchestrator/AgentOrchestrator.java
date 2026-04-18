@@ -17,6 +17,7 @@ import hcmute.edu.vn.tickticktodo.agent.AgentContextAssembler;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
 import hcmute.edu.vn.tickticktodo.agent.AgentToolRegistry;
+import hcmute.edu.vn.tickticktodo.core.ai.LlmProvider;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
@@ -36,7 +37,7 @@ public class AgentOrchestrator {
         }
     }
 
-    private final GeminiManager geminiManager;
+    private final LlmProvider llmProvider;
     private final AgentContextAssembler contextAssembler;
     private final AgentResponseParser responseParser;
     private final PromptTemplateManager promptTemplateManager;
@@ -55,11 +56,11 @@ public class AgentOrchestrator {
     }
 
     public AgentOrchestrator(Application application,
-                             GeminiManager geminiManager,
+                             LlmProvider llmProvider,
                              AgentContextAssembler contextAssembler,
                              AgentToolRegistry toolRegistry,
                              AgentResponseParser responseParser) {
-        this.geminiManager = geminiManager;
+        this.llmProvider = llmProvider;
         this.contextAssembler = contextAssembler;
         this.responseParser = responseParser;
         this.promptTemplateManager = new PromptTemplateManager();
@@ -89,7 +90,7 @@ public class AgentOrchestrator {
                 postDebugTrace(callback, "TOOL_SCHEMAS", toolSchemas);
                 postDebugTrace(callback, "PROMPT", prompt);
 
-                geminiManager.generateResponse(prompt, new GeminiManager.ResponseCallback() {
+                llmProvider.generateResponse(prompt, new LlmProvider.ResponseCallback() {
                     @Override
                     public void onSuccess(String responseText) {
                         postDebugTrace(callback, "MODEL_RAW", responseText);

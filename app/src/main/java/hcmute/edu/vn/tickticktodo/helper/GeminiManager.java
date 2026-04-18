@@ -1,8 +1,10 @@
 package hcmute.edu.vn.tickticktodo.helper;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.ai.client.generativeai.GenerativeModel;
@@ -21,49 +23,53 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import hcmute.edu.vn.tickticktodo.BuildConfig;
+import hcmute.edu.vn.tickticktodo.core.ai.LlmProvider;
 
-public class GeminiManager {
+public class GeminiManager implements LlmProvider {
 
-    public interface StreamResponseCallback {
-        void onNext(String chunk);
-        void onComplete();
-        void onError(String errorMessage);
+    public interface StreamResponseCallback extends LlmProvider.StreamResponseCallback {
     }
 
 
     private static final String TAG = "GeminiManager";
 
-    public interface ResponseCallback {
-        void onSuccess(String responseText);
-        void onError(String errorMessage);
+    public interface ResponseCallback extends LlmProvider.ResponseCallback {
     }
 
-    // Use a currently available model on v1beta generateContent.
-    private static final String MODEL_NAME = "gemini-2.5-flash";
+    private static final String DEFAULT_MODEL_NAME = SecurePreferencesHelper.DEFAULT_MODEL;
     private static final String CONFIG_ERROR_MESSAGE =
-            "Vui lòng kiểm tra cấu hình API Key trong local.properties";
-        private static final String NETWORK_ERROR_MESSAGE =
-            "Không thể kết nối mạng tới Gemini. Hãy kiểm tra Internet và thử lại.";
-        private static final String GENERIC_ERROR_MESSAGE =
-            "Không thể kết nối Gemini lúc này. Vui lòng thử lại.";
+            "Vui lòng nhập API Key và chọn mô hình trong Cài đặt Trợ lý AI.";
+    private static final String NETWORK_ERROR_MESSAGE =
+            "Không thể kết nối mạng tới Model. Hãy kiểm tra Internet và thử lại.";
+    private static final String GENERIC_ERROR_MESSAGE =
+            "Không thể kết nối Model lúc này. Vui lòng thử lại.";
+    private static final String QUOTA_ERROR_MESSAGE =
+            "API Key đã vượt hạn mức hoặc chưa có quota cho model hiện tại. Vui lòng kiểm tra quota/billing trên Google AI Studio.";
+        private static final String MODEL_NOT_FOUND_ERROR_MESSAGE =
+            "Model bạn nhập không tồn tại hoặc chưa hỗ trợ generateContent. Vui lòng kiểm tra lại tên model trong Cài đặt Trợ lý AI.";
 
-    private static GeminiManager instance;
+    private static volatile GeminiManager instance;
+    private static volatile Context appContext;
 
     private final ExecutorService workerExecutor;
     private final Handler mainHandler;
-    private final GenerativeModelFutures modelFutures;
+    private final Object modelLock = new Object();
+    private volatile GenerativeModelFutures modelFutures;
+    private volatile String activeModelName = DEFAULT_MODEL_NAME;
 
     private GeminiManager() {
         workerExecutor = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
+        reloadConfigurationInternal();
+    }
 
-        String apiKey = BuildConfig.GEMINI_API_KEY == null ? "" : BuildConfig.GEMINI_API_KEY.trim();
-        if (apiKey.isEmpty() || "YOUR_KEY_HERE".equals(apiKey)) {
-            modelFutures = null;
-        } else {
-            GenerativeModel model = new GenerativeModel(MODEL_NAME, apiKey);
-            modelFutures = GenerativeModelFutures.from(model);
+    public static synchronized void initialize(Context context) {
+        if (context == null) {
+            return;
+        }
+        appContext = context.getApplicationContext();
+        if (instance != null) {
+            instance.reloadConfiguration();
         }
     }
 
@@ -78,10 +84,20 @@ public class GeminiManager {
         return modelFutures != null;
     }
 
-    
-    public void generateResponseStream(String prompt, StreamResponseCallback callback) {
+    public static String getConfigErrorMessage() {
+        return CONFIG_ERROR_MESSAGE;
+    }
+
+    @Override
+    public void generateResponseStream(String prompt, LlmProvider.StreamResponseCallback callback) {
+        generateResponseStreamInternal(prompt, callback);
+    }
+
+    private void generateResponseStreamInternal(String prompt,
+                                                LlmProvider.StreamResponseCallback callback) {
         if (callback == null) return;
-        if (modelFutures == null) {
+        GenerativeModelFutures currentModel = modelFutures;
+        if (currentModel == null) {
             mainHandler.post(() -> callback.onError(CONFIG_ERROR_MESSAGE));
             return;
         }
@@ -92,7 +108,7 @@ public class GeminiManager {
 
         try {
             Content content = new Content.Builder().addText(prompt).build();
-            Publisher<GenerateContentResponse> publisher = modelFutures.generateContentStream(content);
+            Publisher<GenerateContentResponse> publisher = currentModel.generateContentStream(content);
             
             publisher.subscribe(new Subscriber<GenerateContentResponse>() {
                 Subscription subscription;
@@ -113,7 +129,7 @@ public class GeminiManager {
 
                 @Override
                 public void onError(Throwable t) {
-                    Log.e(TAG, "Gemini stream error", t);
+                    Log.e(TAG, "Model stream error", t);
                     mainHandler.post(() -> callback.onError(mapErrorMessage(t)));
                 }
 
@@ -123,16 +139,27 @@ public class GeminiManager {
                 }
             });
         } catch (Exception e) {
-            Log.e(TAG, "Gemini stream setup failed", e);
+            Log.e(TAG, "Model stream setup failed", e);
             mainHandler.post(() -> callback.onError(mapErrorMessage(e)));
         }
     }
 
-    public void generateResponse(String prompt, ResponseCallback callback) {
+    public void generateResponseStream(String prompt, StreamResponseCallback callback) {
+        generateResponseStream(prompt, (LlmProvider.StreamResponseCallback) callback);
+    }
+
+    @Override
+    public void generateResponse(String prompt, LlmProvider.ResponseCallback callback) {
+        generateResponseInternal(prompt, callback);
+    }
+
+    private void generateResponseInternal(String prompt,
+                                          LlmProvider.ResponseCallback callback) {
         if (callback == null) {
             return;
         }
-        if (modelFutures == null) {
+        GenerativeModelFutures currentModel = modelFutures;
+        if (currentModel == null) {
             postError(callback, CONFIG_ERROR_MESSAGE);
             return;
         }
@@ -143,7 +170,7 @@ public class GeminiManager {
 
         try {
             Content content = new Content.Builder().addText(prompt).build();
-            ListenableFuture<GenerateContentResponse> future = modelFutures.generateContent(content);
+            ListenableFuture<GenerateContentResponse> future = currentModel.generateContent(content);
 
             Futures.addCallback(future, new FutureCallback<GenerateContentResponse>() {
                 @Override
@@ -168,11 +195,16 @@ public class GeminiManager {
         }
     }
 
+    public void generateResponse(String prompt, ResponseCallback callback) {
+        generateResponse(prompt, (LlmProvider.ResponseCallback) callback);
+    }
+
     public void generateVisionResponse(Bitmap bitmap, String prompt, ResponseCallback callback) {
         if (callback == null) {
             return;
         }
-        if (modelFutures == null) {
+        GenerativeModelFutures currentModel = modelFutures;
+        if (currentModel == null) {
             postError(callback, CONFIG_ERROR_MESSAGE);
             return;
         }
@@ -187,7 +219,7 @@ public class GeminiManager {
                     .addImage(bitmap)
                     .build();
 
-            ListenableFuture<GenerateContentResponse> future = modelFutures.generateContent(content);
+                    ListenableFuture<GenerateContentResponse> future = currentModel.generateContent(content);
             Futures.addCallback(future, new FutureCallback<GenerateContentResponse>() {
                 @Override
                 public void onSuccess(GenerateContentResponse result) {
@@ -211,8 +243,15 @@ public class GeminiManager {
         }
     }
 
+    @Override
     public String generateResponseBlocking(String prompt, long timeoutMillis) throws Exception {
-        if (modelFutures == null) {
+        return generateResponseBlockingInternal(prompt, timeoutMillis);
+    }
+
+    private String generateResponseBlockingInternal(String prompt,
+                                                    long timeoutMillis) throws Exception {
+        GenerativeModelFutures currentModel = modelFutures;
+        if (currentModel == null) {
             throw new IllegalStateException(CONFIG_ERROR_MESSAGE);
         }
         if (prompt == null || prompt.trim().isEmpty()) {
@@ -220,7 +259,7 @@ public class GeminiManager {
         }
 
         Content content = new Content.Builder().addText(prompt).build();
-        ListenableFuture<GenerateContentResponse> future = modelFutures.generateContent(content);
+        ListenableFuture<GenerateContentResponse> future = currentModel.generateContent(content);
         GenerateContentResponse result = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
         String text = result != null ? result.getText() : null;
         if (text == null || text.trim().isEmpty()) {
@@ -229,9 +268,26 @@ public class GeminiManager {
         return text.trim();
     }
 
+    @Override
+    public void reloadConfiguration() {
+        reloadConfigurationInternal();
+    }
+
+    public String getActiveModelName() {
+        return activeModelName;
+    }
+
     private String mapErrorMessage(Throwable t) {
         if (t == null || t.getMessage() == null) {
             return GENERIC_ERROR_MESSAGE;
+        }
+
+        if (isQuotaExceeded(t)) {
+            return QUOTA_ERROR_MESSAGE;
+        }
+
+        if (isModelNotFound(t)) {
+            return MODEL_NOT_FOUND_ERROR_MESSAGE;
         }
 
         String message = t.getMessage().toLowerCase();
@@ -240,16 +296,141 @@ public class GeminiManager {
             return CONFIG_ERROR_MESSAGE;
         }
 
-        if (containsAny(message, "not found", "model", "404")) {
-            return "Model Gemini hiện không khả dụng. Vui lòng cập nhật ứng dụng hoặc thử lại sau.";
-        }
-
         if (containsAny(message,
                 "timeout", "timed out", "unable to resolve host", "failed to connect", "network", "connection")) {
             return NETWORK_ERROR_MESSAGE;
         }
 
         return GENERIC_ERROR_MESSAGE;
+    }
+
+    private void reloadConfigurationInternal() {
+        String apiKey = resolveApiKey();
+        String modelName = resolveModelName();
+
+        synchronized (modelLock) {
+            activeModelName = modelName;
+            if (TextUtils.isEmpty(apiKey) || TextUtils.isEmpty(modelName)) {
+                modelFutures = null;
+                return;
+            }
+
+            try {
+                GenerativeModel model = new GenerativeModel(modelName, apiKey);
+                modelFutures = GenerativeModelFutures.from(model);
+            } catch (Exception exception) {
+                Log.e(TAG, "Failed to initialize Gemini model", exception);
+                modelFutures = null;
+            }
+        }
+    }
+
+    private String resolveApiKey() {
+        Context context = appContext;
+        if (context == null) {
+            return "";
+        }
+
+        try {
+            String configuredKey = SecurePreferencesHelper.getInstance(context).getApiKey();
+            if (TextUtils.isEmpty(configuredKey)) {
+                return "";
+            }
+            return configuredKey.trim();
+        } catch (Exception exception) {
+            Log.w(TAG, "Failed to read API key from secure preferences", exception);
+            return "";
+        }
+    }
+
+    private String resolveModelName() {
+        Context context = appContext;
+        if (context != null) {
+            try {
+                String configuredModel = SecurePreferencesHelper.getInstance(context).getAiModel();
+                if (!TextUtils.isEmpty(configuredModel)) {
+                    String normalizedModel = normalizeModelName(configuredModel);
+                    if (!TextUtils.equals(normalizedModel, configuredModel.trim())) {
+                        persistModelSelection(normalizedModel);
+                    }
+                    return normalizedModel;
+                }
+            } catch (Exception exception) {
+                Log.w(TAG, "Failed to read model from secure preferences", exception);
+            }
+        }
+        return DEFAULT_MODEL_NAME;
+    }
+
+    private void persistModelSelection(String modelName) {
+        Context context = appContext;
+        if (context == null) {
+            return;
+        }
+
+        try {
+            SecurePreferencesHelper.getInstance(context).saveAiModel(modelName);
+        } catch (Exception exception) {
+            Log.w(TAG, "Failed to persist selected model " + modelName, exception);
+        }
+    }
+
+    private boolean isQuotaExceeded(Throwable throwable) {
+        Throwable cursor = throwable;
+        while (cursor != null) {
+            String className = cursor.getClass().getSimpleName();
+            String message = cursor.getMessage();
+            String lowered = message == null ? "" : message.toLowerCase();
+
+            if ("QuotaExceededException".equals(className)
+                    || containsAny(lowered,
+                    "quota exceeded",
+                    "resource_exhausted",
+                    "rate limit",
+                    "429",
+                    "limit: 0",
+                    "free_tier")) {
+                return true;
+            }
+
+            cursor = cursor.getCause();
+        }
+        return false;
+    }
+
+    private boolean isModelNotFound(Throwable throwable) {
+        Throwable cursor = throwable;
+        while (cursor != null) {
+            String message = cursor.getMessage();
+            String lowered = message == null ? "" : message.toLowerCase();
+
+            if (containsAny(lowered,
+                    "models/",
+                    "is not found",
+                    "not supported for generatecontent",
+                    "\"status\": \"not_found\"",
+                    " 404",
+                    "\"code\": 404",
+                    "status: not_found")) {
+                return true;
+            }
+
+            cursor = cursor.getCause();
+        }
+        return false;
+    }
+
+    private String normalizeModelName(String modelName) {
+        if (TextUtils.isEmpty(modelName)) {
+            return DEFAULT_MODEL_NAME;
+        }
+
+        String normalized = modelName.trim();
+        if (normalized.startsWith("models/")) {
+            normalized = normalized.substring("models/".length()).trim();
+        }
+
+        return normalized;
     }
 
     private boolean containsAny(String source, String... tokens) {
@@ -263,6 +444,14 @@ public class GeminiManager {
 
     private void postSuccess(ResponseCallback callback, String text) {
         mainHandler.post(() -> callback.onSuccess(text));
+    }
+
+    private void postSuccess(LlmProvider.ResponseCallback callback, String text) {
+        mainHandler.post(() -> callback.onSuccess(text));
+    }
+
+    private void postError(LlmProvider.ResponseCallback callback, String errorMessage) {
+        mainHandler.post(() -> callback.onError(errorMessage));
     }
 
     private void postError(ResponseCallback callback, String errorMessage) {

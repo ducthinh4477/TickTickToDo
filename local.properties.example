@@ -4,5 +4,4 @@
 # Android SDK location (machine-specific)
 # sdk.dir=C:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 
-# Gemini API key used by BuildConfig injection
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+# API key is now provided by end users inside the app settings dialog.

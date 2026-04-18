@@ -30,5 +30,34 @@
         android:text="@string/assistant_floating_switch_hint"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/assistant_current_model_label"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tvCurrentAiModelValue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp"
+        android:background="@android:color/transparent"
+        android:text="@string/assistant_current_model_empty"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/btnAddAiModel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/assistant_add_model_button" />
         
 </LinearLayout>

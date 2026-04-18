@@ -89,7 +89,7 @@ public class AssistantAiController {
     public void sendToGemini(String message) {
         if (geminiManager == null || agentOrchestrator == null) {
             host.appendDebugTrace("GUARD", "Gemini or orchestrator is null.");
-            host.showAssistantMessage("Vui long kiem tra cau hinh API Key trong local.properties");
+            host.showAssistantMessage(GeminiManager.getConfigErrorMessage());
             return;
         }
 
