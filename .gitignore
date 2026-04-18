@@ -15,6 +15,9 @@ secrets.properties
 .idea/
 .gradle/
 *.iml
+.vscode/
+gradle/
+docs/
 
 # Android / Gradle build outputs
 build/

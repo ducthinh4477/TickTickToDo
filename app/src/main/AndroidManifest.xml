@@ -139,7 +139,10 @@
             android:name=".core.background.FloatingAssistantService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="microphone">
+            android:foregroundServiceType="specialUse|microphone">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_assistant_overlay" />
         </service>
 
         <service

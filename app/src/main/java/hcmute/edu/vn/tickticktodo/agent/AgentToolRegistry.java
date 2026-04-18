@@ -9,6 +9,7 @@ import java.util.Map;
 
 import hcmute.edu.vn.tickticktodo.agent.tools.FindTasksTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.CreateTaskWithSubtasksTool;
+import hcmute.edu.vn.tickticktodo.agent.tools.CompleteTaskTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.BreakdownTaskTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.EisenhowerSortTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.GetOverdueTasksTool;
@@ -26,12 +27,14 @@ public class AgentToolRegistry {
         registry.register(new GetOverdueTasksTool());
         registry.register(new FindTasksTool());
         registry.register(new CreateTaskWithSubtasksTool());
+        registry.register(new CompleteTaskTool());
         registry.register(new RescheduleBulkTasksTool());
         registry.register(new StartPomodoroTool());
         registry.register(new EisenhowerSortTool());
         registry.register(new BreakdownTaskTool());
         // Keep backwards-compatible action names so model outputs like CREATE_TASK still execute tools.
         registry.registerAlias(AgentAction.CREATE_TASK, AgentToolNames.CREATE_TASK_WITH_SUBTASKS);
+        registry.registerAlias(AgentAction.COMPLETE_TASK, AgentToolNames.COMPLETE_TASK_TOOL);
         registry.registerAlias(AgentAction.LIST_TODAY, AgentToolNames.GET_TODAY_TASKS);
         return registry;
     }

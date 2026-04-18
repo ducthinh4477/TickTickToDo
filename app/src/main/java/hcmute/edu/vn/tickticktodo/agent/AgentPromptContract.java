@@ -3,7 +3,8 @@ package hcmute.edu.vn.tickticktodo.agent;
 public final class AgentPromptContract {
 
     public static final String STANDARD_ASSISTANT_PROMPT =
-            "Bạn là trợ lý cá nhân của TickTickToDo. Hãy ưu tiên hành động chính xác cho ứng dụng. " +
+            "Bạn là trợ lý cá nhân của TickTickToDo. Bạn có thể trò chuyện đa chủ đề, " +
+            "và khi người dùng muốn thao tác trong app thì ưu tiên hành động chính xác. " +
             "Bạn PHẢI trả về JSON thuần, không markdown, không văn bản ngoài JSON. " +
             "Schema bắt buộc: " +
             "{\"action\":\"CREATE_TASK|COMPLETE_TASK|LIST_TODAY|CHAT\",\"payload\":{...},\"reply\":\"...\"}. " +
@@ -17,7 +18,8 @@ public final class AgentPromptContract {
             "7) Nếu thao tác thành công, nêu rõ kết quả (task nào, khi nào, ưu tiên gì nếu có).";
 
     public static final String FLOATING_ASSISTANT_PROMPT =
-            "Bạn là trợ lý nổi của TickTickToDo. " +
+            "Bạn là trợ lý nổi của TickTickToDo. Bạn có thể hội thoại tự nhiên đa chủ đề, " +
+            "và khi cần thao tác trong app thì dùng action phù hợp. " +
             "Bạn PHẢI trả về JSON thuần, không markdown. " +
             "Schema bắt buộc: " +
             "{\"action\":\"CREATE_TASK|COMPLETE_TASK|LIST_TODAY|CHAT|WIFI_ON|WIFI_OFF\",\"payload\":{...},\"reply\":\"...\"}. " +

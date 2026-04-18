@@ -257,16 +257,7 @@ public class FloatingAssistantService extends Service {
 
         try {
             createNotificationChannel();
-            Intent toggleIntent = new Intent(this, FloatingAssistantService.class);
-            toggleIntent.setAction(ACTION_TOGGLE_BUBBLE);
-            android.app.PendingIntent togglePendingIntent = android.app.PendingIntent.getService(
-                    this, 0, toggleIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
-            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Trợ lý AI TickTickToDo")
-                    .setContentText("Trợ lý nổi đang hoạt động")
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .addAction(android.R.drawable.ic_dialog_info, "Bật / Tắt trợ lý", togglePendingIntent)
-                    .build();
+            Notification notification = buildServiceNotification();
             startForegroundSafely(notification);
 
             windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -481,9 +472,82 @@ public class FloatingAssistantService extends Service {
 
     private void startForegroundSafely(Notification notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+            try {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } catch (SecurityException securityException) {
+                Log.w(TAG, "Special-use FGS start failed, falling back to default type", securityException);
+                startForeground(NOTIFICATION_ID, notification);
+            }
         } else {
             startForeground(NOTIFICATION_ID, notification);
+        }
+    }
+
+    private Notification buildServiceNotification() {
+        Intent toggleIntent = new Intent(this, FloatingAssistantService.class);
+        toggleIntent.setAction(ACTION_TOGGLE_BUBBLE);
+        android.app.PendingIntent togglePendingIntent = android.app.PendingIntent.getService(
+                this,
+                0,
+                toggleIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+        );
+
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Trợ lý AI TickTickToDo")
+                .setContentText("Trợ lý nổi đang hoạt động")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .addAction(android.R.drawable.ic_dialog_info, "Bật / Tắt trợ lý", togglePendingIntent)
+                .build();
+    }
+
+    private boolean promoteForegroundForVoiceCaptureIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return true;
+        }
+
+        try {
+            startForeground(NOTIFICATION_ID,
+                    buildServiceNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+            appendDebugTrace("VOICE_FGS", "Promoted to microphone foreground type.");
+            return true;
+        } catch (SecurityException securityException) {
+            Log.w(TAG, "Microphone FGS promotion denied", securityException);
+            appendDebugTrace(
+                    "VOICE_FGS_DENIED",
+                    securityException.getMessage() == null
+                            ? "Microphone foreground type denied"
+                            : securityException.getMessage());
+            updateVoiceUiState(false,
+                    "Android đang chặn micro ở nền. Hãy mở app rồi thử lại voice.");
+            safePostMain(() -> Toast.makeText(
+                    FloatingAssistantService.this,
+                    "Không thể bật mic khi app đang ở nền. Mở app rồi thử lại.",
+                    Toast.LENGTH_LONG).show());
+            return false;
+        } catch (Exception exception) {
+            Log.w(TAG, "Unable to promote foreground type for voice", exception);
+            appendDebugTrace(
+                    "VOICE_FGS_PROMOTE_ERROR",
+                    exception.getMessage() == null
+                            ? "unknown"
+                            : exception.getMessage());
+            return true;
+        }
+    }
+
+    private void restoreForegroundAfterVoiceIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return;
+        }
+
+        try {
+            startForeground(NOTIFICATION_ID,
+                    buildServiceNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } catch (Exception exception) {
+            Log.w(TAG, "Unable to restore special-use foreground type", exception);
         }
     }
 
@@ -766,6 +830,7 @@ public class FloatingAssistantService extends Service {
     private void handleVoiceEndOfSpeech() {
         isVoiceListening = false;
         releaseVoiceAudioFocus();
+        restoreForegroundAfterVoiceIfNeeded();
         updateState(AssistantState.THINKING);
         updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
         appendDebugTrace("VOICE_END", "End of speech captured.");
@@ -774,6 +839,7 @@ public class FloatingAssistantService extends Service {
     private void handleVoiceRecognitionError(int error) {
         isVoiceListening = false;
         releaseVoiceAudioFocus();
+        restoreForegroundAfterVoiceIfNeeded();
         boolean userStopped = voiceStopRequestedByUser && error == SpeechRecognizer.ERROR_CLIENT;
         voiceStopRequestedByUser = false;
 
@@ -824,6 +890,7 @@ public class FloatingAssistantService extends Service {
     private void handleVoiceResults(ArrayList<String> data) {
         isVoiceListening = false;
         releaseVoiceAudioFocus();
+        restoreForegroundAfterVoiceIfNeeded();
         voiceStopRequestedByUser = false;
         if (data == null || data.isEmpty()) {
             if (applyRecognizedVoiceText(latestPartialTranscript, true)) {
@@ -1705,6 +1772,14 @@ public class FloatingAssistantService extends Service {
 
     private void startVoiceListening(boolean fromRetry) {
         if (overlayInteractionMode != OverlayInteractionMode.VOICE_ONLY) {
+            return;
+        }
+
+        if (!promoteForegroundForVoiceCaptureIfNeeded()) {
+            cancelVoiceRetry();
+            voiceSessionRequested = false;
+            isVoiceListening = false;
+            updateState(AssistantState.IDLE);
             return;
         }
 

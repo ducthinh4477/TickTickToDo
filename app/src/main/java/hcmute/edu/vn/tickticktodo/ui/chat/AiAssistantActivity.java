@@ -45,6 +45,8 @@ import hcmute.edu.vn.tickticktodo.agent.AgentAction;
 import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
+import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.databinding.ActivityAiAssistantBinding;
@@ -67,12 +69,13 @@ public class AiAssistantActivity extends BaseActivity {
     private static final int MAX_MEMORY_LINES = 10;
     private static final Pattern API_KEY_PATTERN = Pattern.compile("^AIza[A-Za-z0-9_-]{16,}$");
     private static final Pattern GEMINI_MODEL_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._/-]{3,128}$");
+    private static final ExecutorService DB_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private ActivityAiAssistantBinding binding;
     private ChatAdapter chatAdapter;
     private GeminiManager geminiManager;
     private SecurePreferencesHelper securePreferencesHelper;
-    private ExecutorService dbExecutor;
+    private AgentOrchestrator agentOrchestrator;
     private Handler mainHandler;
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final AgentResponseParser responseParser = new AgentResponseParser();
@@ -82,6 +85,7 @@ public class AiAssistantActivity extends BaseActivity {
     private ActivityResultLauncher<Intent> historyLauncher;
 
     private volatile long currentSessionId = -1L;
+    private volatile boolean destroyed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,8 +119,8 @@ public class AiAssistantActivity extends BaseActivity {
                     }
                 });
 
-        dbExecutor = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
+        destroyed = false;
 
         setupRecyclerView();
         setupQuickPrompts();
@@ -178,6 +182,7 @@ public class AiAssistantActivity extends BaseActivity {
     private void setupGemini() {
         geminiManager = GeminiManager.getInstance();
         geminiManager.reloadConfiguration();
+        agentOrchestrator = new AgentOrchestrator(getApplication());
 
         if (!geminiManager.hasConfiguredApiKey()) {
             showAssistantMessage(getString(R.string.assistant_api_key_missing_message));
@@ -193,7 +198,7 @@ public class AiAssistantActivity extends BaseActivity {
             intent.removeExtra(EXTRA_SESSION_ID);
         }
 
-        dbExecutor.execute(() -> {
+        runDbTask(() -> {
             ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
             long resolvedSessionId;
 
@@ -221,7 +226,7 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void switchToSession(long sessionId) {
-        dbExecutor.execute(() -> {
+        runDbTask(() -> {
             ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
             if (dao.getSessionByIdSync(sessionId) == null) {
                 return;
@@ -234,7 +239,7 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void createFreshSession() {
-        dbExecutor.execute(() -> {
+        runDbTask(() -> {
             ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
             long newSessionId = createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
             currentSessionId = newSessionId;
@@ -287,8 +292,10 @@ public class AiAssistantActivity extends BaseActivity {
 
         SwitchMaterial switchFloating = view.findViewById(R.id.switchFloatingAi);
         TextView tvCurrentAiModelValue = view.findViewById(R.id.tvCurrentAiModelValue);
+        Button btnModelDetails = view.findViewById(R.id.btnModelDetails);
         Button btnAddAiModel = view.findViewById(R.id.btnAddAiModel);
         if (switchFloating == null
+            || btnModelDetails == null
                 || btnAddAiModel == null
                 || tvCurrentAiModelValue == null) {
             dialog.dismiss();
@@ -321,6 +328,10 @@ public class AiAssistantActivity extends BaseActivity {
             }
         });
 
+        btnModelDetails.setOnClickListener(v -> {
+            showModelDetailDialog(tvCurrentAiModelValue);
+        });
+
         btnAddAiModel.setOnClickListener(v -> {
             showAddModelDialog(tvCurrentAiModelValue);
         });
@@ -329,18 +340,49 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void showAddModelDialog(TextView tvCurrentAiModelValue) {
+        showModelEditorDialog(tvCurrentAiModelValue, false);
+    }
+
+    private void showModelDetailDialog(TextView tvCurrentAiModelValue) {
+        showModelEditorDialog(tvCurrentAiModelValue, true);
+    }
+
+    private void showModelEditorDialog(TextView tvCurrentAiModelValue, boolean detailMode) {
         BottomSheetDialog popupDialog = new BottomSheetDialog(this);
         View popupView = getLayoutInflater().inflate(R.layout.layout_add_ai_model_dialog, null);
         popupDialog.setContentView(popupView);
 
+        TextView tvModelDialogTitle = popupView.findViewById(R.id.tvModelDialogTitle);
         EditText editPopupModelName = popupView.findViewById(R.id.editPopupModelName);
         EditText editPopupApiKey = popupView.findViewById(R.id.editPopupApiKey);
         Button btnSaveAiModelPopup = popupView.findViewById(R.id.btnSaveAiModelPopup);
 
-        if (editPopupModelName == null || editPopupApiKey == null || btnSaveAiModelPopup == null) {
+        if (tvModelDialogTitle == null
+                || editPopupModelName == null
+                || editPopupApiKey == null
+                || btnSaveAiModelPopup == null) {
             popupDialog.dismiss();
             Toast.makeText(this, R.string.assistant_settings_save_failed, Toast.LENGTH_SHORT).show();
             return;
+        }
+
+        if (detailMode) {
+            tvModelDialogTitle.setText(R.string.assistant_model_detail_popup_title);
+            btnSaveAiModelPopup.setText(R.string.assistant_update_model_button);
+
+            String currentModelName = securePreferencesHelper.getAiModel();
+            String currentApiKey = securePreferencesHelper.getApiKey();
+            if (!TextUtils.isEmpty(currentModelName)) {
+                editPopupModelName.setText(currentModelName);
+                editPopupModelName.setSelection(currentModelName.length());
+            }
+            if (!TextUtils.isEmpty(currentApiKey)) {
+                editPopupApiKey.setText(currentApiKey);
+                editPopupApiKey.setSelection(currentApiKey.length());
+            }
+        } else {
+            tvModelDialogTitle.setText(R.string.assistant_add_model_popup_title);
+            btnSaveAiModelPopup.setText(R.string.assistant_save_model_button);
         }
 
         btnSaveAiModelPopup.setOnClickListener(v -> {
@@ -402,16 +444,62 @@ public class AiAssistantActivity extends BaseActivity {
             return;
         }
 
-        dbExecutor.execute(() -> {
+        if (agentOrchestrator == null) {
+            runLegacyAgentFlow(userText);
+            return;
+        }
+
+        final boolean[] fallbackTriggered = {false};
+        agentOrchestrator.handleUserMessage(userText, new AgentOrchestrator.Callback() {
+            @Override
+            public void onAssistantReply(String replyText) {
+                if (shouldIgnoreAsyncResult() || fallbackTriggered[0]) {
+                    return;
+                }
+                if (!TextUtils.isEmpty(replyText)) {
+                    showAssistantMessage(replyText);
+                }
+            }
+
+            @Override
+            public void onToolResult(ToolResult toolResult) {
+                if (shouldIgnoreAsyncResult() || fallbackTriggered[0] || toolResult == null) {
+                    return;
+                }
+                if (!toolResult.isSuccess() && "TOOL_NOT_FOUND".equals(toolResult.getErrorCode())) {
+                    fallbackTriggered[0] = true;
+                    runLegacyAgentFlow(userText);
+                }
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                if (shouldIgnoreAsyncResult() || fallbackTriggered[0]) {
+                    return;
+                }
+                fallbackTriggered[0] = true;
+                runLegacyAgentFlow(userText);
+            }
+        });
+    }
+
+    private void runLegacyAgentFlow(String userText) {
+        runDbTask(() -> {
             String promptWithContext = buildAgentPrompt(userText);
             geminiManager.generateResponse(promptWithContext, new GeminiManager.ResponseCallback() {
                 @Override
                 public void onSuccess(String responseText) {
+                    if (shouldIgnoreAsyncResult()) {
+                        return;
+                    }
                     handleAiResponse(responseText);
                 }
 
                 @Override
                 public void onError(String errorMessage) {
+                    if (shouldIgnoreAsyncResult()) {
+                        return;
+                    }
                     showAssistantMessage(errorMessage);
                 }
             });
@@ -475,7 +563,7 @@ public class AiAssistantActivity extends BaseActivity {
             targetTask.setDueDate(dueDate);
         }
 
-        dbExecutor.execute(() -> {
+        runDbTask(() -> {
             try {
                 TaskDatabase.getInstance(AiAssistantActivity.this).taskDao().insert(targetTask);
                 String success = TextUtils.isEmpty(reply)
@@ -499,7 +587,7 @@ public class AiAssistantActivity extends BaseActivity {
         final long taskId = payload.optLong("id", -1L);
         final String title = payload.optString("title", "").trim();
 
-        dbExecutor.execute(() -> {
+        runDbTask(() -> {
             try {
                 List<Task> allTasks = TaskDatabase.getInstance(AiAssistantActivity.this).taskDao().getAllTasksSync();
                 Task target = null;
@@ -543,7 +631,7 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void listTodayTasks(String reply) {
-        dbExecutor.execute(() -> {
+        runDbTask(() -> {
             try {
                 long start = startOfDayMillis();
                 long end = endOfDayMillis();
@@ -682,7 +770,7 @@ public class AiAssistantActivity extends BaseActivity {
             return;
         }
 
-        dbExecutor.execute(() -> {
+        runDbTask(() -> {
             try {
                 ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
                 long sessionId = ensureSessionSync(dao, source);
@@ -912,6 +1000,23 @@ public class AiAssistantActivity extends BaseActivity {
         stopService(new Intent(this, FloatingAssistantService.class));
     }
 
+    private void runDbTask(Runnable task) {
+        if (task == null) {
+            return;
+        }
+        try {
+            DB_EXECUTOR.execute(task);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private boolean shouldIgnoreAsyncResult() {
+        if (destroyed || isFinishing()) {
+            return true;
+        }
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -920,9 +1025,7 @@ public class AiAssistantActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
+        destroyed = true;
         super.onDestroy();
-        if (dbExecutor != null && !dbExecutor.isShutdown()) {
-            dbExecutor.shutdown();
-        }
     }
 }

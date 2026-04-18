@@ -1,7 +1,0 @@
-# Copy this file to local.properties and update the values for your machine.
-# Do NOT commit local.properties.
-
-# Android SDK location (machine-specific)
-# sdk.dir=C:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
-
-# API key is now provided by end users inside the app settings dialog.

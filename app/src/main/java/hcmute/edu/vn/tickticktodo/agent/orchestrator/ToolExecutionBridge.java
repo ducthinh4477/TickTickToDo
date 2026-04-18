@@ -84,6 +84,20 @@ public class ToolExecutionBridge {
             return "Đã tạo task mới thành công.";
         }
 
+        if (AgentToolNames.COMPLETE_TASK_TOOL.equals(toolName)) {
+            JSONObject taskJson = data == null ? null : data.optJSONObject("task");
+            String title = taskJson == null ? "" : taskJson.optString("title", "").trim();
+            boolean alreadyCompleted = data != null && data.optBoolean("alreadyCompleted", false);
+            if (TextUtils.isEmpty(title)) {
+                return alreadyCompleted
+                        ? "Task này đã ở trạng thái hoàn thành từ trước."
+                        : "Đã đánh dấu task là hoàn thành.";
+            }
+            return alreadyCompleted
+                    ? "Task \"" + title + "\" đã được hoàn thành từ trước."
+                    : "Đã đánh dấu hoàn thành task \"" + title + "\".";
+        }
+
         if (AgentToolNames.GET_TODAY_TASKS.equals(toolName)
                 || AgentToolNames.GET_OVERDUE_TASKS.equals(toolName)
                 || AgentToolNames.FIND_TASKS.equals(toolName)) {

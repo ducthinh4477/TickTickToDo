@@ -8,6 +8,7 @@
     android:background="?attr/colorSurface">
 
     <TextView
+        android:id="@+id/tvModelDialogTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/assistant_add_model_popup_title"
