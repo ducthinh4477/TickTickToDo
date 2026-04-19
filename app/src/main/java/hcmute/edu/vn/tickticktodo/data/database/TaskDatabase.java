@@ -10,6 +10,7 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import hcmute.edu.vn.tickticktodo.data.dao.HabitDao;
+import hcmute.edu.vn.tickticktodo.data.dao.AgentDecisionLogDao;
 import hcmute.edu.vn.tickticktodo.data.dao.ScheduleProposalDao;
 import hcmute.edu.vn.tickticktodo.data.dao.SuggestionDao;
 import hcmute.edu.vn.tickticktodo.data.dao.SubtaskDao;
@@ -26,6 +27,7 @@ import hcmute.edu.vn.tickticktodo.model.HabitLog;
 import hcmute.edu.vn.tickticktodo.model.Subtask;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.model.TodoList;
+import hcmute.edu.vn.tickticktodo.data.model.AgentDecisionLogEntity;
 import hcmute.edu.vn.tickticktodo.data.model.SuggestionFeedbackEntity;
 import hcmute.edu.vn.tickticktodo.data.model.SuggestionEntity;
 import hcmute.edu.vn.tickticktodo.data.model.UserProfileEntity;
@@ -58,8 +60,9 @@ import hcmute.edu.vn.tickticktodo.data.model.ScheduleProposalEntity;
     UserProfileEntity.class,
     SuggestionFeedbackEntity.class,
     ScheduleProposalEntity.class,
-    ScheduleBlockEntity.class
-}, version = 15, exportSchema = false)
+    ScheduleBlockEntity.class,
+    AgentDecisionLogEntity.class
+}, version = 16, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -73,6 +76,7 @@ public abstract class TaskDatabase extends RoomDatabase {
     public abstract ChatHistoryDao chatHistoryDao();
     public abstract SubtaskDao subtaskDao();
     public abstract SuggestionDao suggestionDao();
+    public abstract AgentDecisionLogDao agentDecisionLogDao();
     public abstract UserProfileDao userProfileDao();
     public abstract ScheduleProposalDao scheduleProposalDao();
 
@@ -328,6 +332,26 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_15_16 = new Migration(15, 16) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `agent_decision_logs` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`source` TEXT, " +
+                            "`event_type` TEXT, " +
+                            "`stage` TEXT, " +
+                            "`decision` TEXT, " +
+                            "`detail` TEXT, " +
+                            "`suggestion_id` TEXT, " +
+                            "`created_at_millis` INTEGER NOT NULL)"
+            );
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_agent_decision_logs_created_at_millis` ON `agent_decision_logs` (`created_at_millis`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_agent_decision_logs_source_stage_created_at_millis` ON `agent_decision_logs` (`source`, `stage`, `created_at_millis`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_agent_decision_logs_suggestion_id` ON `agent_decision_logs` (`suggestion_id`)");
+        }
+    };
+
     static final Migration MIGRATION_7_8 = new Migration(7, 8) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -359,7 +383,8 @@ public abstract class TaskDatabase extends RoomDatabase {
                             MIGRATION_11_12,
                             MIGRATION_12_13,
                             MIGRATION_13_14,
-                            MIGRATION_14_15
+                            MIGRATION_14_15,
+                            MIGRATION_15_16
                         ) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();

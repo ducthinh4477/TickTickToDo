@@ -21,6 +21,7 @@ import hcmute.edu.vn.tickticktodo.agent.context.ContextAgent;
 import hcmute.edu.vn.tickticktodo.agent.context.ContextSnapshot;
 import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.model.AgentDecisionLogEntity;
 import hcmute.edu.vn.tickticktodo.data.model.SuggestionEntity;
 
 public class ProactiveDebugActivity extends AppCompatActivity {
@@ -65,11 +66,16 @@ public class ProactiveDebugActivity extends AppCompatActivity {
             List<SuggestionEntity> suggestions = TaskDatabase.getInstance(getApplicationContext())
                     .suggestionDao()
                     .getAllSuggestionsSync();
+                List<AgentDecisionLogEntity> decisionLogs = TaskDatabase.getInstance(getApplicationContext())
+                    .agentDecisionLogDao()
+                    .getRecentLogsSync(40);
 
             String snapshotDump = snapshot == null
                     ? "(empty)"
                     : snapshot.toCompactJson().toString();
-            String suggestionDump = buildSuggestionDump(suggestions);
+                String suggestionDump = buildSuggestionDump(suggestions)
+                    + "\n\n=== Decision Logs (latest 40) ===\n"
+                    + buildDecisionLogDump(decisionLogs);
 
             mainHandler.post(() -> {
                 contextSnapshotText.setText(snapshotDump);
@@ -110,5 +116,39 @@ public class ProactiveDebugActivity extends AppCompatActivity {
 
     private String safe(String value) {
         return TextUtils.isEmpty(value) ? "" : value;
+    }
+
+    private String buildDecisionLogDump(List<AgentDecisionLogEntity> decisionLogs) {
+        if (decisionLogs == null || decisionLogs.isEmpty()) {
+            return "(No decision logs)";
+        }
+
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        StringBuilder builder = new StringBuilder();
+
+        for (AgentDecisionLogEntity log : decisionLogs) {
+            if (log == null) {
+                continue;
+            }
+
+            builder.append(format.format(new Date(log.createdAtMillis)))
+                    .append(" | ")
+                    .append(safe(log.stage))
+                    .append(" | ")
+                    .append(safe(log.decision));
+
+            if (!TextUtils.isEmpty(log.eventType)) {
+                builder.append(" | event=").append(log.eventType);
+            }
+            if (!TextUtils.isEmpty(log.suggestionId)) {
+                builder.append(" | suggestion=").append(log.suggestionId);
+            }
+            if (!TextUtils.isEmpty(log.detail)) {
+                builder.append("\n  detail: ").append(log.detail);
+            }
+            builder.append("\n");
+        }
+
+        return builder.toString().trim();
     }
 }

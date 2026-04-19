@@ -9,6 +9,7 @@ import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.model.SuggestionFeedbackEntity;
 import hcmute.edu.vn.tickticktodo.data.model.UserProfileEntity;
 import hcmute.edu.vn.tickticktodo.data.repository.ProfileRepository;
 import hcmute.edu.vn.tickticktodo.model.Task;
@@ -178,6 +179,28 @@ public class ProfileAgent {
     public float getDismissRateForSuggestionType(String suggestionType) {
         long since = System.currentTimeMillis() - (30L * DAY_MILLIS);
         return profileRepository.getDismissRateForSuggestionTypeSinceSync(suggestionType, since);
+    }
+
+    public int getRecentDismissStreak(int maxSamples, long sinceMillis) {
+        int safeLimit = clamp(maxSamples, 1, 60);
+        List<SuggestionFeedbackEntity> recent = profileRepository.getRecentFeedbackSinceSync(sinceMillis, safeLimit);
+        if (recent == null || recent.isEmpty()) {
+            return 0;
+        }
+
+        int streak = 0;
+        for (SuggestionFeedbackEntity feedback : recent) {
+            if (feedback == null || feedback.feedbackType == null) {
+                break;
+            }
+
+            String type = feedback.feedbackType.trim().toUpperCase(Locale.ROOT);
+            if (!ProactiveEngine.FEEDBACK_DISMISS.equals(type)) {
+                break;
+            }
+            streak++;
+        }
+        return streak;
     }
 
     private void applyFeedbackRates(UserProfileEntity profile, ProfileRepository.FeedbackStats stats) {

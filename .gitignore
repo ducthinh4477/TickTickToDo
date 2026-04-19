@@ -31,3 +31,5 @@ captures/
 .DS_Store
 Thumbs.db
 thumbs.db
+
+gradle-daemon-jvm.properties

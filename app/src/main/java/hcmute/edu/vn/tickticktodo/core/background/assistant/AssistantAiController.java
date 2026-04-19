@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.text.Normalizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -108,6 +109,16 @@ public class AssistantAiController {
             return;
         }
 
+        if (geminiManager.isQuotaCooldownActive()) {
+            String cooldownMessage = geminiManager.getQuotaCooldownMessage();
+            if (TextUtils.isEmpty(cooldownMessage)) {
+                cooldownMessage = "Trợ lý AI đang tạm quá tải. Bạn thử lại sau ít giây nữa nhé.";
+            }
+            host.appendDebugTrace("COOLDOWN_GUARD", cooldownMessage);
+            host.showAssistantMessage(cooldownMessage);
+            return;
+        }
+
         final boolean[] suppressNextAssistantReply = {false};
         host.runWorkerSafely(() -> agentOrchestrator.handleUserMessage(userMessage, new AgentOrchestrator.Callback() {
             @Override
@@ -155,6 +166,15 @@ public class AssistantAiController {
                     return;
                 }
                 host.appendDebugTrace("ORCHESTRATOR_ERROR", errorMessage);
+                if (geminiManager.isQuotaCooldownActive() || shouldSkipLegacyFallback(errorMessage)) {
+                    host.appendDebugTrace("FALLBACK_SKIPPED",
+                            "Skipping legacy fallback because current error is provider-side (quota/config/network). ");
+                    String finalMessage = TextUtils.isEmpty(errorMessage)
+                            ? "Trợ lý AI đang bận hoặc chưa sẵn sàng. Bạn thử lại sau ít phút nhé."
+                            : errorMessage;
+                    host.showAssistantMessage(finalMessage);
+                    return;
+                }
                 fallbackToLegacyAgentFlow(userMessage);
             }
         }));
@@ -601,33 +621,56 @@ public class AssistantAiController {
         return context.toString().trim();
     }
 
+    private boolean shouldSkipLegacyFallback(String errorMessage) {
+        if (TextUtils.isEmpty(errorMessage)) {
+            return false;
+        }
+
+        String lowered = errorMessage.toLowerCase(Locale.ROOT);
+        return lowered.contains("429")
+                || lowered.contains("rpm")
+                || lowered.contains("rate limit")
+                || lowered.contains("resource_exhausted")
+                || lowered.contains("quota")
+                || lowered.contains("api key")
+                || lowered.contains("mô hình")
+                || lowered.contains("model")
+                || lowered.contains("không thể kết nối mạng")
+                || lowered.contains("failed to connect")
+                || lowered.contains("timeout");
+    }
+
     public boolean tryHandleQuickCreateIntent(String userText) {
         String lower = userText.toLowerCase(Locale.ROOT).trim();
         String normalized = lower.replaceAll("\\s+", " ");
-        boolean hasCreateVerb = normalized.startsWith("nhac toi")
-                || normalized.startsWith("tao task")
-                || normalized.startsWith("them task")
-                || normalized.startsWith("tao viec")
-                || normalized.startsWith("them viec")
-                || normalized.startsWith("tao cong viec")
-                || normalized.startsWith("them cong viec")
-                || normalized.startsWith("create task")
-                || normalized.startsWith("add task");
-        boolean hasTaskNoun = normalized.contains("task")
-                || normalized.contains("viec")
-                || normalized.contains("cong viec");
+        String intentText = normalizeIntentText(normalized);
+        boolean hasCreateVerb = intentText.startsWith("nhac toi")
+            || intentText.startsWith("tao task")
+            || intentText.startsWith("them task")
+            || intentText.startsWith("tao viec")
+            || intentText.startsWith("them viec")
+            || intentText.startsWith("tao cong viec")
+            || intentText.startsWith("them cong viec")
+            || intentText.startsWith("tao nhiem vu")
+            || intentText.startsWith("them nhiem vu")
+            || intentText.startsWith("create task")
+            || intentText.startsWith("add task");
+        boolean hasTaskNoun = intentText.contains("task")
+            || intentText.contains("viec")
+            || intentText.contains("cong viec")
+            || intentText.contains("nhiem vu");
         boolean likelyCreate = hasCreateVerb
-                || (hasTaskNoun
-                && (normalized.contains("tao")
-                || normalized.contains("them")
-                || normalized.contains("nhac")));
+            || (hasTaskNoun
+            && (intentText.contains("tao")
+            || intentText.contains("them")
+            || intentText.contains("nhac")));
 
         if (!likelyCreate) {
             return false;
         }
 
         String title = userText
-                .replaceFirst("(?i)^(nhắc tôi|nhac toi|tạo task|tao task|thêm task|them task|tạo việc|tao viec|thêm việc|them viec|tạo công việc|tao cong viec|thêm công việc|them cong viec|create task|add task)\\s*", "")
+            .replaceFirst("(?i)^(nhắc tôi|nhac toi|tạo task|tao task|thêm task|them task|tạo việc|tao viec|thêm việc|them viec|tạo công việc|tao cong viec|thêm công việc|them cong viec|tạo nhiệm vụ|tao nhiem vu|thêm nhiệm vụ|them nhiem vu|create task|add task)\\s*", "")
                 .replaceFirst("(?i)^(cho tôi|cho toi|giúp tôi|giup toi)\\s*", "")
                 .trim();
 
@@ -668,6 +711,18 @@ public class AssistantAiController {
         final String quickTitle = title;
         host.runWorkerSafely(() -> createTaskFromPayload(quickPayload, "Mình đã tạo nhanh công việc \"" + quickTitle + "\" cho bạn."));
         return true;
+    }
+
+    private String normalizeIntentText(String rawText) {
+        if (TextUtils.isEmpty(rawText)) {
+            return "";
+        }
+
+        String normalized = Normalizer.normalize(rawText, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd')
+                .replace('Đ', 'D');
+        return normalized.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
     }
 
     public Long parseNaturalDueDate(String lowerText) {

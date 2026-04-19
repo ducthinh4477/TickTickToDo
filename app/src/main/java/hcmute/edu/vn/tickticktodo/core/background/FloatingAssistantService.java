@@ -139,9 +139,9 @@ public class FloatingAssistantService extends Service {
     private static final float VOICE_BARGE_IN_RMS_THRESHOLD = 7.0f;
     private static final float VOICE_BARGE_IN_RMS_MIN = 4.0f;
     private static final float VOICE_BARGE_IN_RMS_MAX = 15.0f;
-    private static final float SUGGESTION_MIN_PRIORITY_FOR_BUBBLE = ProactiveConfig.OVERLAY_MIN_PRIORITY_SCORE;
     private static final int SUGGESTION_BUBBLE_LIMIT = ProactiveConfig.OVERLAY_MAX_SUGGESTIONS;
-    private static final long SUGGESTION_SURFACE_COOLDOWN_MS = ProactiveConfig.OVERLAY_SURFACE_COOLDOWN_MILLIS;
+    private static final long SUGGESTION_SURFACE_COOLDOWN_MIN_MS = ProactiveConfig.OVERLAY_SURFACE_COOLDOWN_MIN_MILLIS;
+    private static final long SUGGESTION_SURFACE_DECISION_LOG_COOLDOWN_MS = 45_000L;
     private static final long BUBBLE_LONG_PRESS_TRIGGER_MS = 1000L;
     private static final int BUBBLE_COLLAPSED_SIZE_DP = 90;
     private static final int BUBBLE_EXPANDED_SIZE_DP = 248;
@@ -249,6 +249,7 @@ public class FloatingAssistantService extends Service {
     private volatile String pendingPlanApplyKey;
     private volatile long pendingPlanApplyExpiresAt;
     private long lastSuggestionSurfaceAt;
+    private long lastSuggestionSurfaceDecisionLogAt;
     private AgentOrchestrator agentOrchestrator;
     private final Runnable voiceRetryRunnable = () -> startVoiceListening(true);
     private final Runnable autoListenAfterSpeechRunnable = () -> {
@@ -2625,10 +2626,16 @@ public class FloatingAssistantService extends Service {
 
     private void maybeShowHighPrioritySuggestions() {
         long now = System.currentTimeMillis();
-        if (now - lastSuggestionSurfaceAt < SUGGESTION_SURFACE_COOLDOWN_MS) {
+        if (now - lastSuggestionSurfaceAt < SUGGESTION_SURFACE_COOLDOWN_MIN_MS) {
+            logSuggestionSurfaceDecision("blocked", "hard-cooldown", false);
             return;
         }
-        lastSuggestionSurfaceAt = now;
+
+        String blockReason = getSuggestionSurfaceBlockReason();
+        if (blockReason != null) {
+            logSuggestionSurfaceDecision("blocked", blockReason, false);
+            return;
+        }
 
         runWorkerSafely(() -> {
             try {
@@ -2637,14 +2644,26 @@ public class FloatingAssistantService extends Service {
                     proactiveEngine = ProactiveEngine.getInstance(getApplicationContext());
                 }
 
-                List<SuggestionEntity> suggestions = proactiveEngine.getHighPriorityPendingSuggestionsSync(
-                        SUGGESTION_MIN_PRIORITY_FOR_BUBBLE,
-                        SUGGESTION_BUBBLE_LIMIT
-                );
-                if (suggestions == null || suggestions.isEmpty()) {
+                long adaptiveCooldown = proactiveEngine.getAdaptiveOverlayCooldownMillis();
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastSuggestionSurfaceAt < adaptiveCooldown) {
+                    logSuggestionSurfaceDecision("blocked", "adaptive-cooldown", false);
                     return;
                 }
 
+                float adaptiveMinPriority = proactiveEngine.getAdaptiveOverlayMinPriority();
+                lastSuggestionSurfaceAt = currentTime;
+
+                List<SuggestionEntity> suggestions = proactiveEngine.getHighPriorityPendingSuggestionsSync(
+                        adaptiveMinPriority,
+                        SUGGESTION_BUBBLE_LIMIT
+                );
+                if (suggestions == null || suggestions.isEmpty()) {
+                    logSuggestionSurfaceDecision("skipped", "no-high-priority", false);
+                    return;
+                }
+
+                int surfacedCount = 0;
                 for (SuggestionEntity suggestion : suggestions) {
                     if (suggestion == null || TextUtils.isEmpty(suggestion.id)) {
                         continue;
@@ -2655,12 +2674,72 @@ public class FloatingAssistantService extends Service {
                         lastSurfacedSuggestionId = suggestion.id;
                         showAssistantMessage(message, true, false);
                         proactiveEngine.markSuggestionShown(suggestion.id);
+                        surfacedCount++;
                     }
                 }
+
+                if (surfacedCount <= 0) {
+                    logSuggestionSurfaceDecision("skipped", "no-renderable-message", false);
+                    return;
+                }
+
+                logSuggestionSurfaceDecision(
+                        "surfaced",
+                        "count=" + surfacedCount + ", minPriority=" + adaptiveMinPriority
+                                + ", cooldownMs=" + adaptiveCooldown,
+                        true
+                );
             } catch (Exception e) {
                 Log.w(TAG, "Unable to surface high-priority suggestions", e);
             }
         });
+    }
+
+    private void logSuggestionSurfaceDecision(String decision, String detail, boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && now - lastSuggestionSurfaceDecisionLogAt < SUGGESTION_SURFACE_DECISION_LOG_COOLDOWN_MS) {
+            return;
+        }
+
+        lastSuggestionSurfaceDecisionLogAt = now;
+        long sinceLastSurface = Math.max(0L, now - lastSuggestionSurfaceAt);
+        Log.d(TAG, "suggestionSurface decision=" + decision
+                + ", detail=" + detail
+                + ", sinceLastSurfaceMs=" + sinceLastSurface);
+    }
+
+    private String getSuggestionSurfaceBlockReason() {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+        if (ProactiveConfig.isQuietHours(hour)) {
+            return "quiet-hours";
+        }
+        if (isDndBlockingSuggestions()) {
+            return "dnd";
+        }
+        return null;
+    }
+
+    private boolean isSuggestionSurfaceAllowedNow() {
+        return getSuggestionSurfaceBlockReason() == null;
+    }
+
+    private boolean isDndBlockingSuggestions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return false;
+        }
+
+        try {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager == null) {
+                return false;
+            }
+
+            int filter = notificationManager.getCurrentInterruptionFilter();
+            return filter != NotificationManager.INTERRUPTION_FILTER_ALL;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private String formatHighPrioritySuggestionMessage(SuggestionEntity suggestion) {

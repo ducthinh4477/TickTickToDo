@@ -25,6 +25,9 @@ public interface UserProfileDao {
     @Query("SELECT * FROM suggestion_feedback WHERE created_at_millis >= :sinceMillis ORDER BY created_at_millis DESC")
     List<SuggestionFeedbackEntity> getFeedbackSinceSync(long sinceMillis);
 
+    @Query("SELECT * FROM suggestion_feedback WHERE created_at_millis >= :sinceMillis ORDER BY created_at_millis DESC LIMIT :limit")
+    List<SuggestionFeedbackEntity> getRecentFeedbackSinceSync(long sinceMillis, int limit);
+
     @Query("SELECT COUNT(*) FROM suggestion_feedback WHERE feedback_type = :feedbackType AND created_at_millis >= :sinceMillis")
     int countFeedbackByTypeSinceSync(String feedbackType, long sinceMillis);
 

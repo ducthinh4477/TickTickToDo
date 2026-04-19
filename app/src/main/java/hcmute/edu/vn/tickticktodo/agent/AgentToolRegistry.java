@@ -15,9 +15,12 @@ import hcmute.edu.vn.tickticktodo.agent.tools.BreakdownTaskTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.EisenhowerSortTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.GetOverdueTasksTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.GetTodayTasksTool;
+import hcmute.edu.vn.tickticktodo.agent.tools.GetAllEventsTool;
+import hcmute.edu.vn.tickticktodo.agent.tools.GetHealthSummaryTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.ProposeDailyPlanTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.ProposeWeeklyPlanTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.RescheduleBulkTasksTool;
+import hcmute.edu.vn.tickticktodo.agent.tools.SyncNewDeadlinesTool;
 import hcmute.edu.vn.tickticktodo.agent.tools.StartPomodoroTool;
 
 public class AgentToolRegistry {
@@ -38,6 +41,9 @@ public class AgentToolRegistry {
         registry.register(new ProposeDailyPlanTool());
         registry.register(new ProposeWeeklyPlanTool());
         registry.register(new ApplyPlanOptionTool());
+        registry.register(new GetAllEventsTool());
+        registry.register(new SyncNewDeadlinesTool());
+        registry.register(new GetHealthSummaryTool());
         // Keep backwards-compatible action names so model outputs like CREATE_TASK still execute tools.
         registry.registerAlias(AgentAction.CREATE_TASK, AgentToolNames.CREATE_TASK_WITH_SUBTASKS);
         registry.registerAlias(AgentAction.COMPLETE_TASK, AgentToolNames.COMPLETE_TASK_TOOL);

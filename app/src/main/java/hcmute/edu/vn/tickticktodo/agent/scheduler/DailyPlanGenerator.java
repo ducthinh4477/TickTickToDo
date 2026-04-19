@@ -25,7 +25,7 @@ public class DailyPlanGenerator extends BasePlanGenerator {
                 .toInstant()
                 .toEpochMilli();
         long endMillis = anchorDate
-                .plusDays(1)
+                .plusDays(SchedulerConfig.DAILY_WINDOW_DAYS)
                 .atStartOfDay(zoneId)
                 .toInstant()
                 .toEpochMilli();

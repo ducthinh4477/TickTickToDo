@@ -14,6 +14,9 @@ public final class AgentToolNames {
     public static final String PROPOSE_DAILY_PLAN_TOOL = "PROPOSE_DAILY_PLAN_TOOL";
     public static final String PROPOSE_WEEKLY_PLAN_TOOL = "PROPOSE_WEEKLY_PLAN_TOOL";
     public static final String APPLY_PLAN_OPTION_TOOL = "APPLY_PLAN_OPTION_TOOL";
+    public static final String GET_ALL_EVENTS_TOOL = "GET_ALL_EVENTS_TOOL";
+    public static final String SYNC_NEW_DEADLINES_TOOL = "SYNC_NEW_DEADLINES_TOOL";
+    public static final String GET_HEALTH_SUMMARY_TOOL = "GET_HEALTH_SUMMARY_TOOL";
 
     private AgentToolNames() {
     }

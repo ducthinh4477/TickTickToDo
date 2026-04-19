@@ -14,6 +14,9 @@ import java.util.Locale;
 
 import hcmute.edu.vn.tickticktodo.agent.context.ContextAgent;
 import hcmute.edu.vn.tickticktodo.agent.context.ContextSnapshot;
+import hcmute.edu.vn.tickticktodo.agent.integration.IntegrationFacade;
+import hcmute.edu.vn.tickticktodo.agent.integration.model.ExternalEvent;
+import hcmute.edu.vn.tickticktodo.agent.integration.model.SchedulingConstraints;
 import hcmute.edu.vn.tickticktodo.agent.profile.ProfileAgent;
 import hcmute.edu.vn.tickticktodo.agent.scheduler.model.ConflictReport;
 import hcmute.edu.vn.tickticktodo.agent.scheduler.model.PlanBlock;
@@ -52,6 +55,7 @@ public class SchedulerAgent {
     private final TaskRepository taskRepository;
     private final ProfileAgent profileAgent;
     private final ContextAgent contextAgent;
+    private final IntegrationFacade integrationFacade;
     private final ConflictDetector conflictDetector;
     private final DailyPlanGenerator dailyPlanGenerator;
     private final WeeklyPlanGenerator weeklyPlanGenerator;
@@ -62,6 +66,7 @@ public class SchedulerAgent {
         this.taskRepository = new TaskRepository((android.app.Application) appContext);
         this.profileAgent = ProfileAgent.getInstance(appContext);
         this.contextAgent = ContextAgent.getInstance(appContext);
+        this.integrationFacade = IntegrationFacade.getInstance(appContext);
         this.conflictDetector = new ConflictDetector();
         this.dailyPlanGenerator = new DailyPlanGenerator();
         this.weeklyPlanGenerator = new WeeklyPlanGenerator();
@@ -362,6 +367,25 @@ public class SchedulerAgent {
         mergeIntervals(freeIntervals);
 
         List<Interval> busyIntervals = buildBusyIntervalsForDay(dayStart, dayEnd, candidateTasks);
+
+        SchedulingConstraints constraints = integrationFacade.getSchedulingConstraints(dayStart, dayEnd);
+        for (ExternalEvent event : constraints.getBusyEvents()) {
+            if (event == null || !event.isHardConstraint()) {
+                continue;
+            }
+
+            if (!event.overlaps(dayStart, dayEnd)) {
+                continue;
+            }
+
+            long start = Math.max(dayStart, event.getStartMillis());
+            long end = Math.min(dayEnd, event.getEndMillis());
+            if (end > start) {
+                busyIntervals.add(new Interval(start, end));
+            }
+        }
+
+        busyIntervals.sort(Comparator.comparingLong(interval -> interval.start));
         for (Interval busy : busyIntervals) {
             freeIntervals = subtractIntervalList(freeIntervals, busy);
         }

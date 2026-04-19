@@ -31,42 +31,42 @@ abstract class BasePlanGenerator {
         List<TimeSlot> safeSlots = timeSlots == null ? new ArrayList<>() : new ArrayList<>(timeSlots);
 
         OptionPolicy aggressive = new OptionPolicy(
-                "AGGRESSIVE",
-                "Aggressive",
-                "Ưu tiên xử lý tối đa task gấp, chấp nhận lịch dày.",
-                0.92f,
-                1.2f,
-                1.3f,
-                0.8f,
-                0.7f,
-                50,
-                3
+            SchedulerConfig.OPTION_ID_AGGRESSIVE,
+            SchedulerConfig.OPTION_LABEL_AGGRESSIVE,
+            SchedulerConfig.OPTION_DESCRIPTION_AGGRESSIVE,
+            SchedulerConfig.AGGRESSIVE_FILL_RATIO,
+            SchedulerConfig.WEIGHT_IMPORTANCE * SchedulerConfig.AGGRESSIVE_IMPORTANCE_MULTIPLIER,
+            SchedulerConfig.WEIGHT_URGENCY * SchedulerConfig.AGGRESSIVE_URGENCY_MULTIPLIER,
+            SchedulerConfig.WEIGHT_PROFILE_AFFINITY * SchedulerConfig.AGGRESSIVE_PROFILE_AFFINITY_MULTIPLIER,
+            SchedulerConfig.WEIGHT_ENERGY_FIT * SchedulerConfig.AGGRESSIVE_ENERGY_FIT_MULTIPLIER,
+            SchedulerConfig.AGGRESSIVE_DEFAULT_BLOCK_MINUTES,
+            SchedulerConfig.AGGRESSIVE_BREAK_MINUTES
         );
 
         OptionPolicy balanced = new OptionPolicy(
-                "BALANCED",
-                "Balanced",
-                "Cân bằng giữa độ gấp và sức bền trong ngày.",
-                0.78f,
-                1.0f,
-                1.0f,
-                1.0f,
-                0.9f,
-                40,
-                5
+            SchedulerConfig.OPTION_ID_BALANCED,
+            SchedulerConfig.OPTION_LABEL_BALANCED,
+            SchedulerConfig.OPTION_DESCRIPTION_BALANCED,
+            SchedulerConfig.BALANCED_FILL_RATIO,
+            SchedulerConfig.WEIGHT_IMPORTANCE * SchedulerConfig.BALANCED_IMPORTANCE_MULTIPLIER,
+            SchedulerConfig.WEIGHT_URGENCY * SchedulerConfig.BALANCED_URGENCY_MULTIPLIER,
+            SchedulerConfig.WEIGHT_PROFILE_AFFINITY * SchedulerConfig.BALANCED_PROFILE_AFFINITY_MULTIPLIER,
+            SchedulerConfig.WEIGHT_ENERGY_FIT * SchedulerConfig.BALANCED_ENERGY_FIT_MULTIPLIER,
+            SchedulerConfig.BALANCED_DEFAULT_BLOCK_MINUTES,
+            SchedulerConfig.BALANCED_BREAK_MINUTES
         );
 
         OptionPolicy lowStress = new OptionPolicy(
-                "LOW_STRESS",
-                "Low-stress",
-                "Giữ nhịp làm việc nhẹ, ưu tiên giảm quá tải.",
-                0.62f,
-                0.85f,
-                0.8f,
-                1.2f,
-                1.0f,
-                30,
-                8
+            SchedulerConfig.OPTION_ID_LOW_STRESS,
+            SchedulerConfig.OPTION_LABEL_LOW_STRESS,
+            SchedulerConfig.OPTION_DESCRIPTION_LOW_STRESS,
+            SchedulerConfig.LOW_STRESS_FILL_RATIO,
+            SchedulerConfig.WEIGHT_IMPORTANCE * SchedulerConfig.LOW_STRESS_IMPORTANCE_MULTIPLIER,
+            SchedulerConfig.WEIGHT_URGENCY * SchedulerConfig.LOW_STRESS_URGENCY_MULTIPLIER,
+            SchedulerConfig.WEIGHT_PROFILE_AFFINITY * SchedulerConfig.LOW_STRESS_PROFILE_AFFINITY_MULTIPLIER,
+            SchedulerConfig.WEIGHT_ENERGY_FIT * SchedulerConfig.LOW_STRESS_ENERGY_FIT_MULTIPLIER,
+            SchedulerConfig.LOW_STRESS_DEFAULT_BLOCK_MINUTES,
+            SchedulerConfig.LOW_STRESS_BREAK_MINUTES
         );
 
         List<PlanOption> options = new ArrayList<>();
@@ -172,10 +172,10 @@ abstract class BasePlanGenerator {
             }
         }
 
-        float score = (scheduledMinutes * 1.0f)
-                - (unscheduledMinutes * 1.35f)
-                + (scheduleQuality * 8f)
-                - (unscheduledTaskCount * 5f);
+        float score = (scheduledMinutes * SchedulerConfig.SCORE_SCHEDULED_MINUTES_FACTOR)
+            - (unscheduledMinutes * SchedulerConfig.PENALTY_UNSCHEDULED_MINUTES)
+            + (scheduleQuality * SchedulerConfig.SCORE_QUALITY_FACTOR)
+            - (unscheduledTaskCount * SchedulerConfig.PENALTY_FRAGMENTATION);
 
         return new PlanOption(
                 policy.optionId,
@@ -216,7 +216,8 @@ abstract class BasePlanGenerator {
             return 0f;
         }
 
-        float importance = (task.getPriority() / 3f) * policy.importanceWeight;
+        float importance = (task.getPriority() / SchedulerConfig.PRIORITY_NORMALIZATION_FACTOR)
+            * policy.importanceWeight;
         float urgency = computeUrgency(task.getDeadlineMillis(), windowStartMillis) * policy.urgencyWeight;
         float affinity = computeProfileAffinity(task, profile) * policy.profileWeight;
         float energy = estimateEnergyPotential(task) * policy.energyWeight;
@@ -225,61 +226,70 @@ abstract class BasePlanGenerator {
 
     private float computeUrgency(long deadlineMillis, long windowStartMillis) {
         if (deadlineMillis <= 0L) {
-            return 0.35f;
+            return SchedulerConfig.URGENCY_NO_DEADLINE;
         }
 
         long delta = deadlineMillis - windowStartMillis;
         if (delta <= 0L) {
-            return 1.0f;
+            return SchedulerConfig.URGENCY_OVERDUE;
         }
 
         float days = delta / (float) DAY_MILLIS;
-        if (days <= 1f) {
-            return 0.92f;
+        if (days <= SchedulerConfig.URGENCY_BUCKET_1_DAY) {
+            return SchedulerConfig.URGENCY_LE_1_DAY;
         }
-        if (days <= 2f) {
-            return 0.78f;
+        if (days <= SchedulerConfig.URGENCY_BUCKET_2_DAYS) {
+            return SchedulerConfig.URGENCY_LE_2_DAYS;
         }
-        if (days <= 4f) {
-            return 0.60f;
+        if (days <= SchedulerConfig.URGENCY_BUCKET_4_DAYS) {
+            return SchedulerConfig.URGENCY_LE_4_DAYS;
         }
-        if (days <= 7f) {
-            return 0.45f;
+        if (days <= SchedulerConfig.URGENCY_BUCKET_7_DAYS) {
+            return SchedulerConfig.URGENCY_LE_7_DAYS;
         }
-        return 0.25f;
+        return SchedulerConfig.URGENCY_DEFAULT;
     }
 
     private float computeProfileAffinity(SchedulableTask task, UserProfileEntity profile) {
         if (task == null || profile == null) {
-            return 0.5f;
+            return SchedulerConfig.PROFILE_DEFAULT_AFFINITY;
         }
 
-        int preferredSession = clamp(profile.preferredSessionMinutes, 20, 120);
+        int preferredSession = clamp(
+            profile.preferredSessionMinutes,
+            SchedulerConfig.PROFILE_PREFERRED_SESSION_MIN,
+            SchedulerConfig.PROFILE_PREFERRED_SESSION_MAX
+        );
         int sessionGap = Math.abs(task.getPreferredBlockMin() - preferredSession);
-        float sessionAffinity = 1f - Math.min(1f, sessionGap / 80f);
+        float sessionAffinity = 1f - Math.min(1f, sessionGap / SchedulerConfig.PROFILE_SESSION_GAP_DIVISOR);
 
-        float focusAffinity = 0.5f;
+        float focusAffinity = SchedulerConfig.PROFILE_FOCUS_BASE;
         if (SchedulableTask.ENERGY_HIGH_FOCUS.equals(task.getEnergyType())) {
-            focusAffinity = profile.focusStartHour <= 11 ? 1.0f : 0.65f;
+            focusAffinity = profile.focusStartHour <= SchedulerConfig.PROFILE_FOCUS_STRONG_START_HOUR_MAX
+                    ? SchedulerConfig.PROFILE_FOCUS_STRONG
+                    : SchedulerConfig.PROFILE_FOCUS_MEDIUM;
         } else if (SchedulableTask.ENERGY_LOW.equals(task.getEnergyType())) {
-            focusAffinity = profile.focusEndHour >= 15 ? 0.9f : 0.65f;
+            focusAffinity = profile.focusEndHour >= SchedulerConfig.PROFILE_FOCUS_RELAXED_END_HOUR_MIN
+                    ? SchedulerConfig.PROFILE_FOCUS_RELAXED
+                    : SchedulerConfig.PROFILE_FOCUS_MEDIUM;
         }
 
-        return (sessionAffinity * 0.6f) + (focusAffinity * 0.4f);
+        return (sessionAffinity * SchedulerConfig.PROFILE_SESSION_WEIGHT)
+                + (focusAffinity * SchedulerConfig.PROFILE_FOCUS_WEIGHT);
     }
 
     private float estimateEnergyPotential(SchedulableTask task) {
         if (task == null) {
-            return 0.5f;
+            return SchedulerConfig.ENERGY_POTENTIAL_DEFAULT;
         }
 
         if (SchedulableTask.ENERGY_HIGH_FOCUS.equals(task.getEnergyType())) {
-            return 0.95f;
+            return SchedulerConfig.ENERGY_POTENTIAL_HIGH_FOCUS;
         }
         if (SchedulableTask.ENERGY_LOW.equals(task.getEnergyType())) {
-            return 0.7f;
+            return SchedulerConfig.ENERGY_POTENTIAL_LOW;
         }
-        return 0.82f;
+        return SchedulerConfig.ENERGY_POTENTIAL_MEDIUM;
     }
 
     private MutableSlot chooseBestSlot(List<MutableSlot> freeSlots, SchedulableTask task) {
@@ -298,9 +308,9 @@ abstract class BasePlanGenerator {
             float fit = computeSlotFit(task, slot);
             long normalizedDeadline = normalizeDeadline(task.getDeadlineMillis());
             if (normalizedDeadline != Long.MAX_VALUE && slot.startMillis > normalizedDeadline) {
-                fit -= 0.6f;
+                fit -= SchedulerConfig.PENALTY_CONTEXT_MISMATCH;
             } else if (normalizedDeadline != Long.MAX_VALUE) {
-                fit += 0.2f;
+                fit += SchedulerConfig.BONUS_CONTEXT_MATCH;
             }
 
             if (fit > bestScore) {
@@ -319,23 +329,25 @@ abstract class BasePlanGenerator {
 
         int hour = slot.getStartHour();
         String slotEnergy;
-        if (hour >= 8 && hour <= 11) {
+        if (hour >= SchedulerConfig.SLOT_HIGH_FOCUS_START_HOUR
+                && hour <= SchedulerConfig.SLOT_HIGH_FOCUS_END_HOUR) {
             slotEnergy = SchedulableTask.ENERGY_HIGH_FOCUS;
-        } else if (hour >= 12 && hour <= 17) {
+        } else if (hour >= SchedulerConfig.SLOT_MEDIUM_START_HOUR
+                && hour <= SchedulerConfig.SLOT_MEDIUM_END_HOUR) {
             slotEnergy = SchedulableTask.ENERGY_MEDIUM;
         } else {
             slotEnergy = SchedulableTask.ENERGY_LOW;
         }
 
         if (slotEnergy.equals(task.getEnergyType())) {
-            return 1.0f;
+            return SchedulerConfig.SLOT_FIT_EXACT;
         }
 
         if (SchedulableTask.ENERGY_MEDIUM.equals(task.getEnergyType())) {
-            return 0.82f;
+            return SchedulerConfig.SLOT_FIT_MEDIUM_TASK;
         }
 
-        return 0.55f;
+        return SchedulerConfig.SLOT_FIT_MISMATCH;
     }
 
     private int resolveTargetBlockMinutes(SchedulableTask task,

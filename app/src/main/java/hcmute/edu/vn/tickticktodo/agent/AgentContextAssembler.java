@@ -15,6 +15,7 @@ import java.util.TimeZone;
 
 import hcmute.edu.vn.tickticktodo.agent.context.ContextAgent;
 import hcmute.edu.vn.tickticktodo.agent.context.ContextSnapshot;
+import hcmute.edu.vn.tickticktodo.agent.integration.IntegrationFacade;
 import hcmute.edu.vn.tickticktodo.agent.profile.ProfileAgent;
 import hcmute.edu.vn.tickticktodo.helper.AppRuntimeState;
 import hcmute.edu.vn.tickticktodo.helper.UserStatsManager;
@@ -51,12 +52,14 @@ public class AgentContextAssembler {
     private final TaskDatabase database;
     private final ContextAgent contextAgent;
     private final ProfileAgent profileAgent;
+    private final IntegrationFacade integrationFacade;
 
     public AgentContextAssembler(Application application) {
         this.application = application;
         this.database = TaskDatabase.getInstance(application);
         this.contextAgent = ContextAgent.getInstance(application);
         this.profileAgent = ProfileAgent.getInstance(application);
+        this.integrationFacade = IntegrationFacade.getInstance(application);
     }
 
     public String buildTieredContextBlock(String userMessage) {
@@ -90,8 +93,17 @@ public class AgentContextAssembler {
         safePut(tier0, "statsSnapshot", buildStatsSnapshot());
         safePut(tier0, "contextSnapshot", buildCompactContextSnapshot());
         safePut(tier0, "personaSummary", buildPersonaSummary());
+        safePut(tier0, "integrationSummary", buildIntegrationSummary(now));
 
         return tier0;
+    }
+
+    private JSONObject buildIntegrationSummary(long nowMillis) {
+        try {
+            return integrationFacade.buildQuickSummaryJson(nowMillis);
+        } catch (Exception ignored) {
+            return new JSONObject();
+        }
     }
 
     private JSONObject buildCompactContextSnapshot() {

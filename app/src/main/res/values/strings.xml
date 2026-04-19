@@ -322,6 +322,31 @@
     <string name="assistant_invalid_model_name">Tên mô hình không hợp lệ.</string>
     <string name="assistant_api_key_required">Vui lòng dán API Key trước khi lưu.</string>
     <string name="assistant_invalid_api_key">API Key không đúng định dạng. Vui lòng kiểm tra lại.</string>
+    <string name="assistant_integration_permissions_label">Kết nối tích hợp bên ngoài</string>
+    <string name="assistant_integration_permissions_hint">Bật quyền để AI đọc lịch thiết bị và dùng dữ liệu hoạt động cho gợi ý thông minh.</string>
+    <string name="assistant_integration_permission_calendar_label">Lịch thiết bị</string>
+    <string name="assistant_integration_permission_activity_label">Hoạt động thể chất</string>
+    <string name="assistant_integration_permission_health_label">Health Connect</string>
+    <string name="assistant_integration_permission_granted">Đã cấp</string>
+    <string name="assistant_integration_permission_missing">Chưa cấp</string>
+    <string name="assistant_integration_permission_not_required">Không cần trên phiên bản Android này</string>
+    <string name="assistant_integration_permission_disabled_by_toggle">Đang tắt theo cài đặt nguồn</string>
+    <string name="assistant_integration_permission_status_template">%1$s: %2$s
+%3$s: %4$s
+%5$s: %6$s</string>
+    <string name="assistant_integration_permissions_button_grant">Cấp quyền tích hợp</string>
+    <string name="assistant_integration_permissions_button_done">Quyền đã đầy đủ</string>
+    <string name="assistant_integration_calendar_toggle">Đồng bộ lịch thiết bị vào AI</string>
+    <string name="assistant_integration_moodle_toggle">Dùng deadline Moodle cho AI</string>
+    <string name="assistant_integration_health_toggle">Dùng tín hiệu năng lượng/sức khỏe</string>
+    <string name="assistant_integration_reset_sources_button">Khôi phục nguồn tích hợp mặc định</string>
+    <string name="assistant_integration_sources_reset_done">Đã khôi phục tất cả nguồn tích hợp về mặc định.</string>
+    <string name="assistant_integration_permissions_already_granted">Bạn đã cấp đủ quyền tích hợp.</string>
+    <string name="assistant_integration_permissions_granted_toast">Đã bật quyền tích hợp cho trợ lý AI.</string>
+    <string name="assistant_integration_permissions_partial_toast">Một số quyền tích hợp vẫn chưa được cấp.</string>
+    <string name="assistant_integration_permissions_settings_title">Quyền tích hợp bị từ chối</string>
+    <string name="assistant_integration_permissions_settings_message">Bạn đã tắt hỏi lại quyền. Vui lòng mở Cài đặt ứng dụng để bật quyền tích hợp.</string>
+    <string name="assistant_open_app_settings">Mở cài đặt ứng dụng</string>
     <string name="assistant_quick_title">Xin chào!</string>
     <string name="assistant_quick_subtitle">Tôi có thể giúp bạn lập kế hoạch, ưu tiên việc và tổng kết ngày làm việc.</string>
     <string name="assistant_quick_today_plan">Lập kế hoạch hôm nay</string>

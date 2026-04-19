@@ -1,8 +1,10 @@
 package hcmute.edu.vn.tickticktodo.ui.chat;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -42,6 +44,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,6 +56,7 @@ import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
 import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.agent.integration.IntegrationFacade;
 import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
 import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
 import hcmute.edu.vn.tickticktodo.agent.tools.ApplyPlanOptionTool;
@@ -82,11 +86,16 @@ public class AiAssistantActivity extends BaseActivity {
     private static final String ACTION_APPLY_PLAN_OPTION = "APPLY_PLAN_OPTION";
     private static final String ACTION_DATA_SEPARATOR = "::";
     private static final int MAX_MEMORY_LINES = 10;
+        private static final String HEALTH_PERMISSION_READ_STEPS = "android.permission.health.READ_STEPS";
+        private static final String HEALTH_PERMISSION_READ_SLEEP = "android.permission.health.READ_SLEEP";
+        private static final String HEALTH_PERMISSION_READ_ACTIVE_CALORIES =
+            "android.permission.health.READ_ACTIVE_CALORIES_BURNED";
     private static final Pattern API_KEY_PATTERN = Pattern.compile("^AIza[A-Za-z0-9_-]{16,}$");
     private static final Pattern GEMINI_MODEL_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._/-]{3,128}$");
         private static final Pattern SUGGESTION_FEEDBACK_PATTERN =
             Pattern.compile("^/(accept|dismiss|apply)\\s+([A-Za-z0-9-]+|last)$", Pattern.CASE_INSENSITIVE);
-    private static final ExecutorService DB_EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final Object DB_EXECUTOR_LOCK = new Object();
+    private static volatile ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
     private ActivityAiAssistantBinding binding;
     private ChatAdapter chatAdapter;
@@ -101,8 +110,11 @@ public class AiAssistantActivity extends BaseActivity {
 
     private SharedPreferences sharedPrefs;
     private ActivityResultLauncher<Intent> overlayPermissionLauncher;
+    private ActivityResultLauncher<String[]> integrationPermissionsLauncher;
     private ActivityResultLauncher<Intent> historyLauncher;
     private LiveData<List<SuggestionEntity>> suggestionLiveData;
+    private TextView integrationPermissionStatusView;
+    private Button integrationPermissionActionButton;
 
     private volatile long currentSessionId = -1L;
     private volatile boolean destroyed;
@@ -119,6 +131,10 @@ public class AiAssistantActivity extends BaseActivity {
         overlayPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> handleOverlayPermissionResult());
+
+        integrationPermissionsLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            result -> handleIntegrationPermissionsResult());
 
         historyLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -375,11 +391,23 @@ public class AiAssistantActivity extends BaseActivity {
         dialog.setContentView(view);
 
         SwitchMaterial switchFloating = view.findViewById(R.id.switchFloatingAi);
+        SwitchMaterial switchIntegrationCalendar = view.findViewById(R.id.switchIntegrationCalendar);
+        SwitchMaterial switchIntegrationMoodle = view.findViewById(R.id.switchIntegrationMoodle);
+        SwitchMaterial switchIntegrationHealth = view.findViewById(R.id.switchIntegrationHealth);
+        TextView tvIntegrationPermissionsStatus = view.findViewById(R.id.tvIntegrationPermissionsStatus);
+        Button btnGrantIntegrationPermissions = view.findViewById(R.id.btnGrantIntegrationPermissions);
+        Button btnResetIntegrationSources = view.findViewById(R.id.btnResetIntegrationSources);
         TextView tvCurrentAiModelValue = view.findViewById(R.id.tvCurrentAiModelValue);
         Button btnModelDetails = view.findViewById(R.id.btnModelDetails);
         Button btnAddAiModel = view.findViewById(R.id.btnAddAiModel);
         if (switchFloating == null
-            || btnModelDetails == null
+            || switchIntegrationCalendar == null
+            || switchIntegrationMoodle == null
+            || switchIntegrationHealth == null
+                || tvIntegrationPermissionsStatus == null
+                || btnGrantIntegrationPermissions == null
+                || btnResetIntegrationSources == null
+                || btnModelDetails == null
                 || btnAddAiModel == null
                 || tvCurrentAiModelValue == null) {
             dialog.dismiss();
@@ -412,6 +440,57 @@ public class AiAssistantActivity extends BaseActivity {
             }
         });
 
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        final boolean[] suppressIntegrationToggleSideEffects = {true};
+        switchIntegrationCalendar.setChecked(integrationFacade.isCalendarIntegrationEnabled());
+        switchIntegrationMoodle.setChecked(integrationFacade.isMoodleIntegrationEnabled());
+        switchIntegrationHealth.setChecked(integrationFacade.isHealthIntegrationEnabled());
+        suppressIntegrationToggleSideEffects[0] = false;
+
+        switchIntegrationCalendar.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (suppressIntegrationToggleSideEffects[0]) {
+                return;
+            }
+            integrationFacade.setCalendarIntegrationEnabled(isChecked);
+            if (isChecked && !hasCalendarReadPermission()) {
+                requestMissingIntegrationPermissions();
+            }
+            refreshIntegrationPermissionUi();
+        });
+
+        switchIntegrationMoodle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (suppressIntegrationToggleSideEffects[0]) {
+                return;
+            }
+            integrationFacade.setMoodleIntegrationEnabled(isChecked);
+        });
+
+        switchIntegrationHealth.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (suppressIntegrationToggleSideEffects[0]) {
+                return;
+            }
+            integrationFacade.setHealthIntegrationEnabled(isChecked);
+        });
+
+        btnResetIntegrationSources.setOnClickListener(v -> {
+            integrationFacade.resetSourceSettingsToDefault();
+
+            suppressIntegrationToggleSideEffects[0] = true;
+            switchIntegrationCalendar.setChecked(integrationFacade.isCalendarIntegrationEnabled());
+            switchIntegrationMoodle.setChecked(integrationFacade.isMoodleIntegrationEnabled());
+            switchIntegrationHealth.setChecked(integrationFacade.isHealthIntegrationEnabled());
+            suppressIntegrationToggleSideEffects[0] = false;
+
+            refreshIntegrationPermissionUi();
+            Toast.makeText(this, R.string.assistant_integration_sources_reset_done, Toast.LENGTH_SHORT).show();
+        });
+
+        integrationPermissionStatusView = tvIntegrationPermissionsStatus;
+        integrationPermissionActionButton = btnGrantIntegrationPermissions;
+        refreshIntegrationPermissionUi();
+
+        btnGrantIntegrationPermissions.setOnClickListener(v -> requestMissingIntegrationPermissions());
+
         btnModelDetails.setOnClickListener(v -> {
             showModelDetailDialog(tvCurrentAiModelValue);
         });
@@ -420,7 +499,184 @@ public class AiAssistantActivity extends BaseActivity {
             showAddModelDialog(tvCurrentAiModelValue);
         });
 
+        dialog.setOnDismissListener(listener -> {
+            if (integrationPermissionStatusView == tvIntegrationPermissionsStatus) {
+                integrationPermissionStatusView = null;
+            }
+            if (integrationPermissionActionButton == btnGrantIntegrationPermissions) {
+                integrationPermissionActionButton = null;
+            }
+        });
+
         dialog.show();
+    }
+
+    private void requestMissingIntegrationPermissions() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        List<String> missingPermissions = new ArrayList<>();
+        if (!hasCalendarReadPermission()) {
+            missingPermissions.add(Manifest.permission.READ_CALENDAR);
+        }
+        if (isActivityRecognitionRequired() && !hasActivityRecognitionPermission()) {
+            missingPermissions.add(Manifest.permission.ACTIVITY_RECOGNITION);
+        }
+        if (integrationFacade.isHealthIntegrationEnabled() && isHealthConnectPermissionRequired()) {
+            if (!hasHealthPermission(HEALTH_PERMISSION_READ_STEPS)) {
+                missingPermissions.add(HEALTH_PERMISSION_READ_STEPS);
+            }
+            if (!hasHealthPermission(HEALTH_PERMISSION_READ_SLEEP)) {
+                missingPermissions.add(HEALTH_PERMISSION_READ_SLEEP);
+            }
+            if (!hasHealthPermission(HEALTH_PERMISSION_READ_ACTIVE_CALORIES)) {
+                missingPermissions.add(HEALTH_PERMISSION_READ_ACTIVE_CALORIES);
+            }
+        }
+
+        if (missingPermissions.isEmpty()) {
+            Toast.makeText(this, R.string.assistant_integration_permissions_already_granted, Toast.LENGTH_SHORT).show();
+            refreshIntegrationPermissionUi();
+            return;
+        }
+
+        integrationPermissionsLauncher.launch(missingPermissions.toArray(new String[0]));
+    }
+
+    private void handleIntegrationPermissionsResult() {
+        refreshIntegrationPermissionUi();
+
+        if (hasAllIntegrationPermissions()) {
+            Toast.makeText(this, R.string.assistant_integration_permissions_granted_toast, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean permanentlyDenied = isPermissionPermanentlyDenied(Manifest.permission.READ_CALENDAR)
+                || (isActivityRecognitionRequired()
+                && isPermissionPermanentlyDenied(Manifest.permission.ACTIVITY_RECOGNITION))
+                || (isHealthConnectPermissionRequired()
+                && (isPermissionPermanentlyDenied(HEALTH_PERMISSION_READ_STEPS)
+                || isPermissionPermanentlyDenied(HEALTH_PERMISSION_READ_SLEEP)
+                || isPermissionPermanentlyDenied(HEALTH_PERMISSION_READ_ACTIVE_CALORIES)));
+
+        Toast.makeText(this, R.string.assistant_integration_permissions_partial_toast, Toast.LENGTH_SHORT).show();
+        if (permanentlyDenied) {
+            showOpenIntegrationSettingsDialog();
+        }
+    }
+
+    private void refreshIntegrationPermissionUi() {
+        if (integrationPermissionStatusView == null || integrationPermissionActionButton == null) {
+            return;
+        }
+
+        integrationPermissionStatusView.setText(buildIntegrationPermissionStatusMessage());
+        integrationPermissionActionButton.setText(hasAllIntegrationPermissions()
+                ? R.string.assistant_integration_permissions_button_done
+                : R.string.assistant_integration_permissions_button_grant);
+    }
+
+    private String buildIntegrationPermissionStatusMessage() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+
+        String calendarStatus = hasCalendarReadPermission()
+                ? getString(R.string.assistant_integration_permission_granted)
+                : getString(R.string.assistant_integration_permission_missing);
+
+        String activityStatus;
+        if (!isActivityRecognitionRequired()) {
+            activityStatus = getString(R.string.assistant_integration_permission_not_required);
+        } else if (hasActivityRecognitionPermission()) {
+            activityStatus = getString(R.string.assistant_integration_permission_granted);
+        } else {
+            activityStatus = getString(R.string.assistant_integration_permission_missing);
+        }
+
+        String healthStatus;
+        if (!integrationFacade.isHealthIntegrationEnabled()) {
+            healthStatus = getString(R.string.assistant_integration_permission_disabled_by_toggle);
+        } else if (!isHealthConnectPermissionRequired()) {
+            healthStatus = getString(R.string.assistant_integration_permission_not_required);
+        } else if (hasHealthConnectReadPermissions()) {
+            healthStatus = getString(R.string.assistant_integration_permission_granted);
+        } else {
+            healthStatus = getString(R.string.assistant_integration_permission_missing);
+        }
+
+        return getString(
+                R.string.assistant_integration_permission_status_template,
+                getString(R.string.assistant_integration_permission_calendar_label),
+                calendarStatus,
+                getString(R.string.assistant_integration_permission_activity_label),
+                activityStatus,
+                getString(R.string.assistant_integration_permission_health_label),
+                healthStatus
+        );
+    }
+
+    private boolean hasAllIntegrationPermissions() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        boolean healthPermissionOk = true;
+        if (integrationFacade.isHealthIntegrationEnabled() && isHealthConnectPermissionRequired()) {
+            healthPermissionOk = hasHealthConnectReadPermissions();
+        }
+        return hasCalendarReadPermission() && hasActivityRecognitionPermission() && healthPermissionOk;
+    }
+
+    private boolean hasCalendarReadPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean hasActivityRecognitionPermission() {
+        if (!isActivityRecognitionRequired()) {
+            return true;
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean isActivityRecognitionRequired() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+    }
+
+    private boolean isHealthConnectPermissionRequired() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        return integrationFacade.isHealthConnectSupported() && integrationFacade.isHealthConnectAvailable();
+    }
+
+    private boolean hasHealthConnectReadPermissions() {
+        return hasHealthPermission(HEALTH_PERMISSION_READ_STEPS)
+                && hasHealthPermission(HEALTH_PERMISSION_READ_SLEEP)
+                && hasHealthPermission(HEALTH_PERMISSION_READ_ACTIVE_CALORIES);
+    }
+
+    private boolean hasHealthPermission(String permission) {
+        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean isPermissionPermanentlyDenied(String permission) {
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return false;
+        }
+        return !shouldShowRequestPermissionRationale(permission);
+    }
+
+    private void showOpenIntegrationSettingsDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.assistant_integration_permissions_settings_title)
+                .setMessage(R.string.assistant_integration_permissions_settings_message)
+                .setPositiveButton(R.string.assistant_open_app_settings,
+                        (dialog, which) -> openAppDetailSettings())
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void openAppDetailSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        startActivity(intent);
     }
 
     private void showAddModelDialog(TextView tvCurrentAiModelValue) {
@@ -533,6 +789,15 @@ public class AiAssistantActivity extends BaseActivity {
             return;
         }
 
+        if (geminiManager != null && geminiManager.isQuotaCooldownActive()) {
+            String cooldownMessage = geminiManager.getQuotaCooldownMessage();
+            if (TextUtils.isEmpty(cooldownMessage)) {
+                cooldownMessage = "Trợ lý AI đang tạm quá tải. Bạn thử lại sau ít giây nữa nhé.";
+            }
+            showAssistantMessage(cooldownMessage);
+            return;
+        }
+
         if (agentOrchestrator == null) {
             runLegacyAgentFlow(userText);
             return;
@@ -569,10 +834,39 @@ public class AiAssistantActivity extends BaseActivity {
                 if (shouldIgnoreAsyncResult() || fallbackTriggered[0]) {
                     return;
                 }
+
+                 if ((geminiManager != null && geminiManager.isQuotaCooldownActive())
+                        || shouldSkipLegacyFallback(errorMessage)) {
+                    fallbackTriggered[0] = true;
+                    showAssistantMessage(TextUtils.isEmpty(errorMessage)
+                            ? "Trợ lý AI đang bận hoặc chưa sẵn sàng. Bạn thử lại sau ít phút nhé."
+                            : errorMessage);
+                    return;
+                }
+
                 fallbackTriggered[0] = true;
                 runLegacyAgentFlow(userText);
             }
         });
+    }
+
+    private boolean shouldSkipLegacyFallback(String errorMessage) {
+        if (TextUtils.isEmpty(errorMessage)) {
+            return false;
+        }
+
+        String lowered = errorMessage.toLowerCase(Locale.ROOT);
+        return lowered.contains("429")
+                || lowered.contains("rpm")
+                || lowered.contains("rate limit")
+                || lowered.contains("resource_exhausted")
+                || lowered.contains("quota")
+                || lowered.contains("api key")
+                || lowered.contains("mô hình")
+                || lowered.contains("model")
+                || lowered.contains("không thể kết nối mạng")
+                || lowered.contains("failed to connect")
+                || lowered.contains("timeout");
     }
 
     private boolean tryHandleSuggestionFeedbackCommand(String userText) {
@@ -1317,12 +1611,27 @@ public class AiAssistantActivity extends BaseActivity {
         stopService(new Intent(this, FloatingAssistantService.class));
     }
 
+    private static ExecutorService ensureDbExecutor() {
+        synchronized (DB_EXECUTOR_LOCK) {
+            if (dbExecutor == null || dbExecutor.isShutdown() || dbExecutor.isTerminated()) {
+                dbExecutor = Executors.newSingleThreadExecutor();
+            }
+            return dbExecutor;
+        }
+    }
+
     private void runDbTask(Runnable task) {
         if (task == null) {
             return;
         }
         try {
-            DB_EXECUTOR.execute(task);
+            ensureDbExecutor().execute(task);
+        } catch (RejectedExecutionException rejectedExecutionException) {
+            // If an external shutdown slipped through, recreate and retry once.
+            try {
+                ensureDbExecutor().execute(task);
+            } catch (Exception ignored) {
+            }
         } catch (Exception ignored) {
         }
     }

@@ -22,6 +22,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.core.ai.LlmProvider;
 
@@ -43,10 +45,14 @@ public class GeminiManager implements LlmProvider {
             "Không thể kết nối mạng tới Model. Hãy kiểm tra Internet và thử lại.";
     private static final String GENERIC_ERROR_MESSAGE =
             "Không thể kết nối Model lúc này. Vui lòng thử lại.";
-    private static final String QUOTA_ERROR_MESSAGE =
-            "API Key đã vượt hạn mức hoặc chưa có quota cho model hiện tại. Vui lòng kiểm tra quota/billing trên Google AI Studio.";
+        private static final String QUOTA_ERROR_MESSAGE =
+            "Đang chạm giới hạn tốc độ tạm thời (429) của model. Vui lòng thử lại sau ít phút.";
         private static final String MODEL_NOT_FOUND_ERROR_MESSAGE =
             "Model bạn nhập không tồn tại hoặc chưa hỗ trợ generateContent. Vui lòng kiểm tra lại tên model trong Cài đặt Trợ lý AI.";
+        private static final long DEFAULT_QUOTA_COOLDOWN_MILLIS = 30_000L;
+        private static final long MIN_QUOTA_COOLDOWN_MILLIS = 2_000L;
+        private static final Pattern RETRY_AFTER_SECONDS_PATTERN =
+            Pattern.compile("retry\\s+in\\s+([0-9]+(?:\\.[0-9]+)?)s", Pattern.CASE_INSENSITIVE);
 
     private static volatile GeminiManager instance;
     private static volatile Context appContext;
@@ -54,8 +60,10 @@ public class GeminiManager implements LlmProvider {
     private final ExecutorService workerExecutor;
     private final Handler mainHandler;
     private final Object modelLock = new Object();
+    private final Object quotaCooldownLock = new Object();
     private volatile GenerativeModelFutures modelFutures;
     private volatile String activeModelName = DEFAULT_MODEL_NAME;
+    private volatile long quotaCooldownUntilMillis = 0L;
 
     private GeminiManager() {
         workerExecutor = Executors.newSingleThreadExecutor();
@@ -84,6 +92,18 @@ public class GeminiManager implements LlmProvider {
         return modelFutures != null;
     }
 
+    public boolean isQuotaCooldownActive() {
+        return getQuotaCooldownRemainingMillis() > 0L;
+    }
+
+    public String getQuotaCooldownMessage() {
+        long remainingMillis = getQuotaCooldownRemainingMillis();
+        if (remainingMillis <= 0L) {
+            return "";
+        }
+        return buildQuotaErrorMessage(remainingMillis);
+    }
+
     public static String getConfigErrorMessage() {
         return CONFIG_ERROR_MESSAGE;
     }
@@ -99,6 +119,11 @@ public class GeminiManager implements LlmProvider {
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             mainHandler.post(() -> callback.onError(CONFIG_ERROR_MESSAGE));
+            return;
+        }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            mainHandler.post(() -> callback.onError(buildQuotaErrorMessage(quotaCooldownRemainingMillis)));
             return;
         }
         if (prompt == null || prompt.trim().isEmpty()) {
@@ -163,6 +188,11 @@ public class GeminiManager implements LlmProvider {
             postError(callback, CONFIG_ERROR_MESSAGE);
             return;
         }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            postError(callback, buildQuotaErrorMessage(quotaCooldownRemainingMillis));
+            return;
+        }
         if (prompt == null || prompt.trim().isEmpty()) {
             postError(callback, "Tin nhắn không hợp lệ. Vui lòng thử lại.");
             return;
@@ -206,6 +236,11 @@ public class GeminiManager implements LlmProvider {
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             postError(callback, CONFIG_ERROR_MESSAGE);
+            return;
+        }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            postError(callback, buildQuotaErrorMessage(quotaCooldownRemainingMillis));
             return;
         }
         if (bitmap == null) {
@@ -254,6 +289,10 @@ public class GeminiManager implements LlmProvider {
         if (currentModel == null) {
             throw new IllegalStateException(CONFIG_ERROR_MESSAGE);
         }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            throw new IllegalStateException(buildQuotaErrorMessage(quotaCooldownRemainingMillis));
+        }
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new IllegalArgumentException("Prompt rỗng.");
         }
@@ -278,25 +317,28 @@ public class GeminiManager implements LlmProvider {
     }
 
     private String mapErrorMessage(Throwable t) {
-        if (t == null || t.getMessage() == null) {
+        if (t == null) {
             return GENERIC_ERROR_MESSAGE;
         }
 
         if (isQuotaExceeded(t)) {
-            return QUOTA_ERROR_MESSAGE;
+            long retryAfterMillis = resolveQuotaRetryAfterMillis(t);
+            applyQuotaCooldown(retryAfterMillis);
+            return buildQuotaErrorMessage(retryAfterMillis);
         }
 
         if (isModelNotFound(t)) {
             return MODEL_NOT_FOUND_ERROR_MESSAGE;
         }
 
-        String message = t.getMessage().toLowerCase();
-        if (containsAny(message,
+        String message = t.getMessage();
+        String loweredMessage = message == null ? "" : message.toLowerCase();
+        if (containsAny(loweredMessage,
                 "api key", "invalid", "unauthenticated", "permission_denied", "forbidden", "401", "403")) {
             return CONFIG_ERROR_MESSAGE;
         }
 
-        if (containsAny(message,
+        if (containsAny(loweredMessage,
                 "timeout", "timed out", "unable to resolve host", "failed to connect", "network", "connection")) {
             return NETWORK_ERROR_MESSAGE;
         }
@@ -318,6 +360,7 @@ public class GeminiManager implements LlmProvider {
             try {
                 GenerativeModel model = new GenerativeModel(modelName, apiKey);
                 modelFutures = GenerativeModelFutures.from(model);
+                quotaCooldownUntilMillis = 0L;
             } catch (Exception exception) {
                 Log.e(TAG, "Failed to initialize Gemini model", exception);
                 modelFutures = null;
@@ -418,6 +461,59 @@ public class GeminiManager implements LlmProvider {
             cursor = cursor.getCause();
         }
         return false;
+    }
+
+    private long getQuotaCooldownRemainingMillis() {
+        long remaining = quotaCooldownUntilMillis - System.currentTimeMillis();
+        return Math.max(0L, remaining);
+    }
+
+    private void applyQuotaCooldown(long retryAfterMillis) {
+        long normalizedRetryAfterMillis = Math.max(MIN_QUOTA_COOLDOWN_MILLIS, retryAfterMillis);
+        long targetUntil = System.currentTimeMillis() + normalizedRetryAfterMillis;
+        synchronized (quotaCooldownLock) {
+            if (targetUntil > quotaCooldownUntilMillis) {
+                quotaCooldownUntilMillis = targetUntil;
+            }
+        }
+    }
+
+    private long resolveQuotaRetryAfterMillis(Throwable throwable) {
+        Throwable cursor = throwable;
+        while (cursor != null) {
+            long parsed = parseRetryAfterMillis(cursor.getMessage());
+            if (parsed > 0L) {
+                return parsed;
+            }
+            cursor = cursor.getCause();
+        }
+        return DEFAULT_QUOTA_COOLDOWN_MILLIS;
+    }
+
+    private long parseRetryAfterMillis(String message) {
+        if (TextUtils.isEmpty(message)) {
+            return -1L;
+        }
+
+        Matcher matcher = RETRY_AFTER_SECONDS_PATTERN.matcher(message);
+        if (!matcher.find()) {
+            return -1L;
+        }
+
+        try {
+            double seconds = Double.parseDouble(matcher.group(1));
+            return Math.max(MIN_QUOTA_COOLDOWN_MILLIS, (long) Math.ceil(seconds * 1000.0d));
+        } catch (Exception ignored) {
+            return -1L;
+        }
+    }
+
+    private String buildQuotaErrorMessage(long retryAfterMillis) {
+        long safeRetryAfterMillis = Math.max(MIN_QUOTA_COOLDOWN_MILLIS, retryAfterMillis);
+        long seconds = Math.max(1L, (long) Math.ceil(safeRetryAfterMillis / 1000.0d));
+        return "Đang chạm giới hạn theo phút (RPM) của model. Vui lòng thử lại sau khoảng "
+                + seconds
+                + " giây. Nếu bạn dùng key trả phí, hãy kiểm tra key đang trỏ đúng project và đúng model.";
     }
 
     private String normalizeModelName(String modelName) {

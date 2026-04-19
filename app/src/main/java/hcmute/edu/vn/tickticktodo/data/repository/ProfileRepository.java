@@ -109,4 +109,9 @@ public class ProfileRepository {
     public List<SuggestionFeedbackEntity> getFeedbackSinceSync(long sinceMillis) {
         return userProfileDao.getFeedbackSinceSync(sinceMillis);
     }
+
+    public List<SuggestionFeedbackEntity> getRecentFeedbackSinceSync(long sinceMillis, int limit) {
+        int safeLimit = Math.max(1, limit);
+        return userProfileDao.getRecentFeedbackSinceSync(sinceMillis, safeLimit);
+    }
 }
