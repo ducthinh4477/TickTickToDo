@@ -2669,7 +2669,7 @@ public class FloatingAssistantService extends Service {
                         continue;
                     }
 
-                    String message = formatHighPrioritySuggestionMessage(suggestion);
+                    String message = FloatingSuggestionMessageFormatter.formatHighPrioritySuggestionMessage(suggestion);
                     if (!TextUtils.isEmpty(message)) {
                         lastSurfacedSuggestionId = suggestion.id;
                         showAssistantMessage(message, true, false);
@@ -2740,23 +2740,6 @@ public class FloatingAssistantService extends Service {
         } catch (Exception ignored) {
             return false;
         }
-    }
-
-    private String formatHighPrioritySuggestionMessage(SuggestionEntity suggestion) {
-        if (suggestion == null || TextUtils.isEmpty(suggestion.title)) {
-            return null;
-        }
-
-        StringBuilder builder = new StringBuilder();
-        builder.append("[GOI Y UU TIEN] ").append(suggestion.title);
-        if (!TextUtils.isEmpty(suggestion.reason)) {
-            builder.append("\n").append(suggestion.reason);
-        }
-        if (!TextUtils.isEmpty(suggestion.id)) {
-            builder.append("\nID: ").append(suggestion.id);
-        }
-        builder.append("\nLenh nhanh: /accept last | /dismiss last | /apply last");
-        return builder.toString();
     }
 
     private boolean tryHandleSuggestionFeedbackCommand(String message) {
