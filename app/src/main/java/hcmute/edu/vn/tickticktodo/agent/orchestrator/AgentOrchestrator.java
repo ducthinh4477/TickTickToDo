@@ -39,8 +39,8 @@ public class AgentOrchestrator {
     private final PromptTemplateManager promptTemplateManager;
     private final ToolExecutionBridge toolExecutionBridge;
     private final AgentTraceFormatter traceFormatter;
+    private final AgentCallbackDispatcher callbackDispatcher;
     private final ExecutorService workerExecutor;
-    private final Handler mainHandler;
 
     public AgentOrchestrator(Application application) {
         this(
@@ -63,8 +63,8 @@ public class AgentOrchestrator {
         this.promptTemplateManager = new PromptTemplateManager();
         this.toolExecutionBridge = new ToolExecutionBridge(application, toolRegistry);
         this.traceFormatter = new AgentTraceFormatter();
+        this.callbackDispatcher = new AgentCallbackDispatcher(new Handler(Looper.getMainLooper()));
         this.workerExecutor = Executors.newSingleThreadExecutor();
-        this.mainHandler = new Handler(Looper.getMainLooper());
     }
 
     public void handleUserMessage(String userMessage, Callback callback) {
@@ -155,18 +155,18 @@ public class AgentOrchestrator {
     }
 
     private void postAssistantReply(Callback callback, String replyText) {
-        mainHandler.post(() -> callback.onAssistantReply(replyText));
+        callbackDispatcher.postAssistantReply(callback, replyText);
     }
 
     private void postToolResult(Callback callback, ToolResult toolResult) {
-        mainHandler.post(() -> callback.onToolResult(toolResult));
+        callbackDispatcher.postToolResult(callback, toolResult);
     }
 
     private void postError(Callback callback, String errorMessage) {
-        mainHandler.post(() -> callback.onError(errorMessage));
+        callbackDispatcher.postError(callback, errorMessage);
     }
 
     private void postDebugTrace(Callback callback, String stage, String payload) {
-        mainHandler.post(() -> callback.onDebugTrace(stage, traceFormatter.trimTrace(payload)));
+        callbackDispatcher.postDebugTrace(callback, stage, traceFormatter.trimTrace(payload));
     }
 }
