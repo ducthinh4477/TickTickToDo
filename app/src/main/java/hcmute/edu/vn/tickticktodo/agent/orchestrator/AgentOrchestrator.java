@@ -40,6 +40,8 @@ public class AgentOrchestrator {
     private final ToolExecutionBridge toolExecutionBridge;
     private final AgentTraceFormatter traceFormatter;
     private final AgentCallbackDispatcher callbackDispatcher;
+    private final AgentRequestAssemblyHelper requestAssemblyHelper;
+    private final AgentModelReplyComposer modelReplyComposer;
     private final ExecutorService workerExecutor;
 
     public AgentOrchestrator(Application application) {
@@ -64,6 +66,12 @@ public class AgentOrchestrator {
         this.toolExecutionBridge = new ToolExecutionBridge(application, toolRegistry);
         this.traceFormatter = new AgentTraceFormatter();
         this.callbackDispatcher = new AgentCallbackDispatcher(new Handler(Looper.getMainLooper()));
+        this.requestAssemblyHelper = new AgentRequestAssemblyHelper(
+            contextAssembler,
+            toolExecutionBridge,
+            promptTemplateManager
+        );
+        this.modelReplyComposer = new AgentModelReplyComposer();
         this.workerExecutor = Executors.newSingleThreadExecutor();
     }
 
@@ -80,15 +88,14 @@ public class AgentOrchestrator {
 
         workerExecutor.execute(() -> {
             try {
-                String contextBlock = contextAssembler.buildTieredContextBlock(userMessage);
-                String toolSchemas = toolExecutionBridge.getToolSchemas().toString();
-                String prompt = buildPrompt(userMessage, contextBlock, toolSchemas);
+                AgentRequestAssemblyHelper.PreparedRequest preparedRequest =
+                        requestAssemblyHelper.assemble(userMessage);
 
-                postDebugTrace(callback, "CONTEXT", contextBlock);
-                postDebugTrace(callback, "TOOL_SCHEMAS", toolSchemas);
-                postDebugTrace(callback, "PROMPT", prompt);
+                postDebugTrace(callback, "CONTEXT", preparedRequest.getContextBlock());
+                postDebugTrace(callback, "TOOL_SCHEMAS", preparedRequest.getToolSchemas());
+                postDebugTrace(callback, "PROMPT", preparedRequest.getPrompt());
 
-                llmProvider.generateResponse(prompt, new LlmProvider.ResponseCallback() {
+                llmProvider.generateResponse(preparedRequest.getPrompt(), new LlmProvider.ResponseCallback() {
                     @Override
                     public void onSuccess(String responseText) {
                         postDebugTrace(callback, "MODEL_RAW", responseText);
@@ -117,10 +124,7 @@ public class AgentOrchestrator {
         postDebugTrace(callback, "PARSED_ENVELOPE", traceFormatter.envelopeToTraceJson(envelope).toString());
 
         if (AgentAction.CHAT.equals(envelope.getAction())) {
-            String reply = TextUtils.isEmpty(envelope.getReply())
-                    ? envelope.getRawText()
-                    : envelope.getReply();
-            postAssistantReply(callback, reply);
+            postAssistantReply(callback, modelReplyComposer.composeChatReply(envelope));
             return;
         }
 
@@ -130,10 +134,11 @@ public class AgentOrchestrator {
         postDebugTrace(callback, "TOOL_RESULT", result.toJson().toString());
         postToolResult(callback, result);
 
-        if (!TextUtils.isEmpty(envelope.getReply())) {
-            String reply = envelope.getReply().trim();
-            if (result != null && result.isSuccess() && reply.length() < 24) {
-                postAssistantReply(callback, reply + "\n" + renderToolResultSummary(result));
+        String reply = modelReplyComposer.resolveToolFlowReplyOrNull(envelope);
+        if (reply != null) {
+            if (modelReplyComposer.shouldAppendToolResultSummary(reply, result)) {
+                postAssistantReply(callback,
+                        modelReplyComposer.appendToolResultSummary(reply, renderToolResultSummary(result)));
             } else {
                 postAssistantReply(callback, reply);
             }
@@ -144,10 +149,6 @@ public class AgentOrchestrator {
 
     private ToolResult dispatchToolCall(ToolCall call) {
         return toolExecutionBridge.dispatchToolCall(call);
-    }
-
-    private String buildPrompt(String userMessage, String contextBlock, String toolsBlock) {
-        return promptTemplateManager.buildPrompt(userMessage, contextBlock, toolsBlock);
     }
 
     private String renderToolResultSummary(ToolResult result) {

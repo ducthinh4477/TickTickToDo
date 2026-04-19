@@ -103,6 +103,8 @@ public class AiAssistantActivity extends BaseActivity {
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final AgentResponseParser responseParser = new AgentResponseParser();
     private final PlanPreviewMessageFormatter planPreviewMessageFormatter = new PlanPreviewMessageFormatter();
+    private final SuggestionCardMessageFormatter suggestionCardMessageFormatter =
+            new SuggestionCardMessageFormatter();
         private final SuggestionFeedbackCommandParser suggestionFeedbackCommandParser =
             new SuggestionFeedbackCommandParser();
     private final HashSet<String> surfacedSuggestionIds = new HashSet<>();
@@ -265,21 +267,10 @@ public class AiAssistantActivity extends BaseActivity {
 
         lastSurfacedSuggestionId = suggestion.id;
 
-        StringBuilder card = new StringBuilder();
-        card.append("[GOI Y] ").append(TextUtils.isEmpty(suggestion.title) ? "Co goi y moi" : suggestion.title);
-        if (!TextUtils.isEmpty(suggestion.reason)) {
-            card.append("\nLy do: ").append(suggestion.reason);
+        String card = suggestionCardMessageFormatter.buildSuggestionCard(suggestion);
+        if (!TextUtils.isEmpty(card)) {
+            showAssistantMessage(card);
         }
-        card.append("\nDo tin cay: ").append(Math.round(suggestion.confidence * 100f)).append("%");
-        if (!TextUtils.isEmpty(suggestion.id)) {
-            card.append("\nID: ").append(suggestion.id);
-        }
-        if (suggestion.requiresConfirmation) {
-            card.append("\nCan xac nhan truoc khi ap dung.");
-        }
-        card.append("\nLenh nhanh: /accept last | /dismiss last | /apply last");
-
-        showAssistantMessage(card.toString());
     }
 
     private void openProactiveDebugScreen() {
@@ -950,7 +941,7 @@ public class AiAssistantActivity extends BaseActivity {
         JSONArray options = data.optJSONArray("options");
 
         if (options == null || options.length() == 0) {
-            showAssistantMessage("Mình đã tạo đề xuất kế hoạch nhưng chưa có option khả dụng.");
+            showAssistantMessage(planPreviewMessageFormatter.buildEmptyStateMessage());
             return;
         }
 

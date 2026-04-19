@@ -659,13 +659,13 @@ public class FloatingAssistantService extends Service {
         safePostMain(() -> {
             switch (newState) {
                 case LISTENING:
-                    updateVoiceUiState(true, "Đang lắng nghe...");
+                    updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatListeningStatus());
                     break;
                 case THINKING:
-                    updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
+                    updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatThinkingStatus());
                     break;
                 case SPEAKING:
-                    updateVoiceUiState(false, "Trợ lý đang phản hồi...");
+                    updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatAssistantReplyingStatus());
                     break;
                 case IDLE:
                 default:
@@ -833,7 +833,7 @@ public class FloatingAssistantService extends Service {
         isVoiceListening = true;
         voiceStopRequestedByUser = false;
         updateState(AssistantState.LISTENING);
-        updateVoiceUiState(true, "Đang lắng nghe...");
+        updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatListeningStatus());
         appendDebugTrace("VOICE_READY", "SpeechRecognizer ready.");
     }
 
@@ -841,7 +841,7 @@ public class FloatingAssistantService extends Service {
         isVoiceListening = true;
         voiceStopRequestedByUser = false;
         updateState(AssistantState.LISTENING);
-        updateVoiceUiState(true, "Đang lắng nghe...");
+        updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatListeningStatus());
         appendDebugTrace("VOICE_BEGIN", "Detected beginning of speech.");
     }
 
@@ -865,7 +865,7 @@ public class FloatingAssistantService extends Service {
         releaseVoiceAudioFocus();
         restoreForegroundAfterVoiceIfNeeded();
         updateState(AssistantState.THINKING);
-        updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
+        updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatThinkingStatus());
         appendDebugTrace("VOICE_END", "End of speech captured.");
     }
 
@@ -881,7 +881,7 @@ public class FloatingAssistantService extends Service {
             autoListenAfterAssistantReply = false;
             cancelVoiceRetry();
             updateState(AssistantState.IDLE);
-            updateVoiceUiState(false, "Đã dừng nghe.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStoppedStatus());
             appendDebugTrace("VOICE_STOPPED", "Stopped by user.");
             return;
         }
@@ -893,7 +893,7 @@ public class FloatingAssistantService extends Service {
 
         if (error == SpeechRecognizer.ERROR_CLIENT && !voiceSessionRequested) {
             appendDebugTrace("VOICE_ERROR_CLIENT_IGNORED", "No active voice session requested.");
-            updateVoiceUiState(false, "Voice đã dừng.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStoppedClientIgnoredStatus());
             return;
         }
 
@@ -917,7 +917,11 @@ public class FloatingAssistantService extends Service {
         updateState(AssistantState.IDLE);
         updateVoiceUiState(false, mapSpeechErrorMessage(error));
         safePostMain(() ->
-                Toast.makeText(FloatingAssistantService.this, "Loi thu am: " + error, Toast.LENGTH_SHORT).show());
+            Toast.makeText(
+                FloatingAssistantService.this,
+                FloatingVoiceStatusFormatter.formatVoiceErrorToast(error),
+                Toast.LENGTH_SHORT
+            ).show());
     }
 
     private void handleVoiceResults(ArrayList<String> data) {
@@ -949,7 +953,7 @@ public class FloatingAssistantService extends Service {
 
         latestPartialTranscript = text;
         updateVoicePreviewText(text);
-        updateVoiceUiState(true, "Đang nghe: " + abbreviateForStatus(text));
+        updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatLiveListeningPreviewStatus(abbreviateForStatus(text)));
     }
 
     private void initFloatingBubble() {
@@ -1763,18 +1767,18 @@ public class FloatingAssistantService extends Service {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-            updateVoiceUiState(false, "Thiếu quyền Microphone. Chuyển sang màn hình cấp quyền...");
+            updateVoiceUiState(false, FloatingVoicePermissionStatusFormatter.formatMissingPermissionDetailedStatus());
             Toast.makeText(this,
-                    "Chưa có quyền Microphone. Mình sẽ mở phần cài đặt app để bạn cấp quyền.",
+                FloatingVoicePermissionStatusFormatter.formatMissingPermissionToast(),
                     Toast.LENGTH_LONG).show();
             openAppSettings();
             return;
         }
 
         if (!ensureSpeechRecognizerReady()) {
-            updateVoiceUiState(false, "Speech recognizer chưa sẵn sàng.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatSpeechRecognizerNotReadyStatus());
             Toast.makeText(this,
-                    "Speech recognizer chưa sẵn sàng. Vui lòng thử lại.",
+                FloatingVoiceStatusFormatter.formatSpeechRecognizerNotReadyToast(),
                     Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1796,16 +1800,16 @@ public class FloatingAssistantService extends Service {
                 }
                 isVoiceListening = false;
                 updateState(AssistantState.IDLE);
-                updateVoiceUiState(false, "Đang dừng nghe...");
-                Toast.makeText(this, "Đang dừng nghe...", Toast.LENGTH_SHORT).show();
+                updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatStoppingListeningStatus());
+                Toast.makeText(this, FloatingVoiceStatusFormatter.formatStoppingListeningStatus(), Toast.LENGTH_SHORT).show();
             } else {
                 startVoiceListening(false);
             }
         } catch (Exception e) {
             isVoiceListening = false;
-            updateVoiceUiState(false, "Không thể bật voice lúc này.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceUnavailableStatus());
             Log.e(TAG, "Unable to toggle voice listening", e);
-            Toast.makeText(this, "Không thể bật voice lúc này.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, FloatingVoiceStatusFormatter.formatVoiceUnavailableStatus(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1824,13 +1828,13 @@ public class FloatingAssistantService extends Service {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-            updateVoiceUiState(false, "Thiếu quyền Microphone.");
+            updateVoiceUiState(false, FloatingVoicePermissionStatusFormatter.formatMissingPermissionShortStatus());
             cancelVoiceRetry();
             return;
         }
 
         if (!ensureSpeechRecognizerReady()) {
-            updateVoiceUiState(false, "Speech recognizer chưa sẵn sàng.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatSpeechRecognizerNotReadyStatus());
             cancelVoiceRetry();
             return;
         }
@@ -1865,10 +1869,7 @@ public class FloatingAssistantService extends Service {
             }
             isVoiceListening = true;
             updateState(AssistantState.LISTENING);
-            updateVoiceUiState(true,
-                    fromRetry
-                            ? "Đang thử nghe lại..."
-                            : "Đang lắng nghe... chạm mic lần nữa để dừng");
+                updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatVoiceStartStatus(fromRetry));
             appendDebugTrace("VOICE_START", fromRetry ? "Retry start listening" : "Start listening");
         } catch (Exception e) {
             isVoiceListening = false;
@@ -1881,21 +1882,21 @@ public class FloatingAssistantService extends Service {
                 return;
             }
 
-            updateVoiceUiState(false, "Không thể khởi động nhận diện giọng nói.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStartFailureStatus());
         }
     }
 
     private void scheduleVoiceRetry(int errorCode) {
         if (voiceStopRequestedByUser || !voiceSessionRequested) {
             cancelVoiceRetry();
-            updateVoiceUiState(false, "Đã dừng nghe.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStoppedStatus());
             return;
         }
 
         if (voiceAutoRetryCount >= MAX_VOICE_AUTO_RETRY) {
             voiceSessionRequested = false;
             String finalMessage = errorCode == SpeechRecognizer.ERROR_NO_MATCH
-                    ? "Mình chưa nghe rõ. Bạn thử nói chậm và gần mic hơn nhé."
+                    ? FloatingVoiceStatusFormatter.formatNoMatchRetryExhaustedStatus()
                     : mapSpeechErrorMessage(errorCode);
             updateVoiceUiState(false, finalMessage);
             appendDebugTrace("VOICE_RETRY_EXHAUSTED", "error=" + errorCode);
@@ -1908,13 +1909,11 @@ public class FloatingAssistantService extends Service {
             retryDelay += 350L;
         }
         updateVoiceUiState(false,
-                "Không nghe rõ, đang thử lại ("
-                        + voiceAutoRetryCount
-                        + "/"
-                        + MAX_VOICE_AUTO_RETRY
-                        + ") sau "
-                        + String.format(Locale.getDefault(), "%.1fs", retryDelay / 1000f)
-                        + "...");
+            FloatingVoiceStatusFormatter.formatVoiceRetryStatus(
+                voiceAutoRetryCount,
+                MAX_VOICE_AUTO_RETRY,
+                retryDelay
+            ));
         appendDebugTrace("VOICE_RETRY", "error=" + errorCode + ", attempt=" + voiceAutoRetryCount + ", delayMs=" + retryDelay);
         cancelVoiceRetry();
         safePostMainDelayed(voiceRetryRunnable, retryDelay);
@@ -1981,10 +1980,7 @@ public class FloatingAssistantService extends Service {
             mainHandler.removeCallbacks(autoListenAfterSpeechRunnable);
         }
 
-        updateVoiceUiState(false,
-                fromPartial
-                        ? "Đã dùng kết quả nghe tạm thời."
-                        : "Đã nhận giọng nói.");
+        updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatRecognizedVoiceAppliedStatus(fromPartial));
         updateState(AssistantState.THINKING);
         appendDebugTrace("VOICE_TEXT", text);
 

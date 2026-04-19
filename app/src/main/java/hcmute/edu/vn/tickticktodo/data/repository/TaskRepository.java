@@ -7,9 +7,6 @@ import android.widget.Toast;
 
 import androidx.lifecycle.LiveData;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +42,7 @@ public class TaskRepository {
     private final Application application; // giữ để pass Context cho ReminderScheduler
     private final ActivityLogRepository logRepository;
     private final UserStatsManager userStatsManager;
-    private final AgentEventBus eventBus;
+    private final TaskEventSideEffectPublisher taskEventSideEffectPublisher;
 
     public LiveData<List<Task>> getAllCompletedTasksLog() {
         return taskDao.getAllCompletedTasksLog();
@@ -65,7 +62,8 @@ public class TaskRepository {
         this.application = application;
         this.logRepository = new ActivityLogRepository(application);
         this.userStatsManager = UserStatsManager.getInstance(application);
-        this.eventBus = AgentEventBus.getInstance();
+        this.taskEventSideEffectPublisher =
+            new TaskEventSideEffectPublisher(AgentEventBus.getInstance());
     }
 
     // ─── READ ────────────────────────────────────────────────────────────────────
@@ -135,7 +133,7 @@ public class TaskRepository {
             // Notification if due today
             checkAndNotifyIfToday(task);
 
-            publishTaskEvent(AgentEvent.TYPE_TASK_CREATED, task);
+            taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_CREATED, task);
 
             postToMain(onComplete);
         });
@@ -157,7 +155,7 @@ public class TaskRepository {
                 if (!task.isCompleted()) {
                     ReminderScheduler.scheduleReminder(application, task);
                 }
-                publishTaskEvent(AgentEvent.TYPE_TASK_CREATED, task);
+                taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_CREATED, task);
             }
 
             logRepository.insertLog("TẠO HÀNG LOẠT", "Số lượng: " + tasks.size());
@@ -187,7 +185,7 @@ public class TaskRepository {
                 if (task != null && !task.isCompleted()) {
                     ReminderScheduler.scheduleReminder(application, task);
                 }
-                publishTaskEvent(AgentEvent.TYPE_TASK_RESCHEDULED, task);
+                taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_RESCHEDULED, task);
             }
 
             logRepository.insertLog("DỜI CÔNG VIỆC", "Số lượng: " + taskIds.size());
@@ -237,7 +235,7 @@ public class TaskRepository {
                 ReminderScheduler.scheduleReminder(application, task);
             }
 
-            publishTaskEvent(task.isCompleted() && !wasCompleted
+                taskEventSideEffectPublisher.publishTaskEvent(task.isCompleted() && !wasCompleted
                     ? AgentEvent.TYPE_TASK_COMPLETED
                     : AgentEvent.TYPE_TASK_UPDATED, task);
         });
@@ -251,7 +249,7 @@ public class TaskRepository {
             logRepository.insertLog("XÓA", task.getTitle());
             
             ReminderScheduler.cancelReminder(application, task.getId()); // huỷ alarm
-            publishTaskEvent(AgentEvent.TYPE_TASK_DELETED, task);
+            taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_DELETED, task);
         });
     }
 
@@ -326,7 +324,10 @@ public class TaskRepository {
             }
 
             Task latestTask = taskDao.getTaskByIdSync(taskId);
-            publishTaskEvent(isCompleted ? AgentEvent.TYPE_TASK_COMPLETED : AgentEvent.TYPE_TASK_UPDATED, latestTask);
+                taskEventSideEffectPublisher.publishTaskEvent(
+                    isCompleted ? AgentEvent.TYPE_TASK_COMPLETED : AgentEvent.TYPE_TASK_UPDATED,
+                    latestTask
+                );
         });
     }
 
@@ -435,25 +436,4 @@ public class TaskRepository {
         }
     }
 
-    private void publishTaskEvent(String eventType, Task task) {
-        if (task == null) {
-            return;
-        }
-
-        JSONObject payload = new JSONObject();
-        safePut(payload, "taskId", task.getId());
-        safePut(payload, "title", task.getTitle());
-        safePut(payload, "dueDate", task.getDueDate());
-        safePut(payload, "priority", task.getPriority());
-        safePut(payload, "completed", task.isCompleted());
-        safePut(payload, "source", task.getSource());
-        eventBus.publish(AgentEvent.now(eventType, "TaskRepository", payload));
-    }
-
-    private void safePut(JSONObject target, String key, Object value) {
-        try {
-            target.put(key, value);
-        } catch (JSONException ignored) {
-        }
-    }
 }

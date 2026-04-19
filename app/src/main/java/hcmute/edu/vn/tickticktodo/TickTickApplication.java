@@ -13,26 +13,9 @@ import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
-import androidx.work.Constraints;
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.NetworkType;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
-
-import java.util.concurrent.TimeUnit;
-
 import hcmute.edu.vn.tickticktodo.agent.context.ContextAgent;
 import hcmute.edu.vn.tickticktodo.agent.core.AgentEventBus;
 import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
-import hcmute.edu.vn.tickticktodo.core.background.ContextRefreshWorker;
-import hcmute.edu.vn.tickticktodo.core.background.DatabaseCleanupWorker;
-import hcmute.edu.vn.tickticktodo.core.background.DailyReviewWorker;
-import hcmute.edu.vn.tickticktodo.core.background.DailyProfileReflectionWorker;
-import hcmute.edu.vn.tickticktodo.core.background.ProactiveTickWorker;
-import hcmute.edu.vn.tickticktodo.core.background.SyncWorker;
-import hcmute.edu.vn.tickticktodo.core.background.DailyDigestWorker;
-import hcmute.edu.vn.tickticktodo.core.background.OverdueCheckWorker;
-import hcmute.edu.vn.tickticktodo.core.background.WeeklyProfileReflectionWorker;
 import hcmute.edu.vn.tickticktodo.helper.AppRuntimeState;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.helper.NotificationHelper;
@@ -50,6 +33,8 @@ public class TickTickApplication extends Application {
         private int startedActivities = 0;
         private SystemStateReceiver systemStateReceiver;
         private boolean systemStateReceiverRegistered;
+        private final TickTickWorkerBootstrapCoordinator workerBootstrapCoordinator =
+                new TickTickWorkerBootstrapCoordinator();
 
     @Override
     public void onCreate() {
@@ -205,65 +190,7 @@ public class TickTickApplication extends Application {
         }
 
     private void scheduleWorkers() {
-        WorkManager workManager = WorkManager.getInstance(this);
-
-        // 1. Database Cleanup Worker (Weekly)
-        // Constraints: Requires Battery Not Low and Device Charging (for intensive cleanup)
-        Constraints cleanupConstraints = new Constraints.Builder()
-                .setRequiresBatteryNotLow(true)
-                .setRequiresCharging(true)
-                .build();
-
-        PeriodicWorkRequest cleanupRequest =
-                new PeriodicWorkRequest.Builder(DatabaseCleanupWorker.class, 7, TimeUnit.DAYS)
-                        .setConstraints(cleanupConstraints)
-                        .addTag("database_cleanup")
-                        .build();
-
-        workManager.enqueueUniquePeriodicWork(
-                "DatabaseCleanupWorker",
-                ExistingPeriodicWorkPolicy.KEEP, // If exists, keep existing periodic schedule
-                cleanupRequest
-        );
-
-        // 2. Sync Worker (Periodic, e.g., every 12 hours)
-        // Constraints: Network Connected + Charging (optional but good for background sync)
-        Constraints syncConstraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresCharging(true)
-                .build();
-
-        PeriodicWorkRequest syncRequest =
-                new PeriodicWorkRequest.Builder(SyncWorker.class, 12, TimeUnit.HOURS)
-                        .setConstraints(syncConstraints)
-                        .addTag("data_sync")
-                        .build();
-
-        workManager.enqueueUniquePeriodicWork(
-                "SyncWorker",
-                ExistingPeriodicWorkPolicy.KEEP,
-                syncRequest
-        );
-
-        // 3. School Sync Worker
-        // Checks every 6 hours for new school tasks if enabled
-        hcmute.edu.vn.tickticktodo.ui.moodle.SchoolSyncWorker.schedulePeriodicSync(this);
-
-        // 4. Daily Digest Worker — gửi tổng hợp công việc lúc 8:00 AM mỗi ngày
-        DailyDigestWorker.schedule(this);
-
-        // 5. Overdue Check Worker — kiểm tra task quá hạn mỗi 12 giờ
-        OverdueCheckWorker.schedule(this);
-
-                // 6. Daily Review Worker — tổng kết cuối ngày lúc 21:00
-                DailyReviewWorker.schedule(this);
-
-        // 7. Phase 1 workers for context refresh + proactive rule tick
-        schedulePhase1Workers(workManager);
-
-                // 8. Phase 2 workers for profile reflection and persona updates
-                DailyProfileReflectionWorker.schedule(this);
-                WeeklyProfileReflectionWorker.schedule(this);
+        workerBootstrapCoordinator.schedule(this);
     }
 
     private void initializePhase1ProactiveComponents() {
@@ -274,32 +201,4 @@ public class TickTickApplication extends Application {
         proactiveEngine.evaluateNow("APP_STARTUP");
     }
 
-    private void schedulePhase1Workers(WorkManager workManager) {
-        PeriodicWorkRequest contextRefreshRequest =
-                new PeriodicWorkRequest.Builder(ContextRefreshWorker.class, 1, TimeUnit.HOURS)
-                        .addTag("context_refresh")
-                        .build();
-
-        workManager.enqueueUniquePeriodicWork(
-                "ContextRefreshWorker",
-                ExistingPeriodicWorkPolicy.KEEP,
-                contextRefreshRequest
-        );
-
-        Constraints proactiveConstraints = new Constraints.Builder()
-                .setRequiresBatteryNotLow(true)
-                .build();
-
-        PeriodicWorkRequest proactiveTickRequest =
-                new PeriodicWorkRequest.Builder(ProactiveTickWorker.class, 6, TimeUnit.HOURS)
-                        .setConstraints(proactiveConstraints)
-                        .addTag("proactive_tick")
-                        .build();
-
-        workManager.enqueueUniquePeriodicWork(
-                "ProactiveTickWorker",
-                ExistingPeriodicWorkPolicy.KEEP,
-                proactiveTickRequest
-        );
-    }
 }

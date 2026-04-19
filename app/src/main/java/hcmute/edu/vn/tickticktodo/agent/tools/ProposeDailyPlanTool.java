@@ -8,7 +8,7 @@ import java.time.format.DateTimeParseException;
 
 import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentTool;
-import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
 import hcmute.edu.vn.tickticktodo.agent.scheduler.SchedulerAgent;
 import hcmute.edu.vn.tickticktodo.agent.scheduler.SchedulerJsonMapper;
 import hcmute.edu.vn.tickticktodo.agent.scheduler.model.ScheduleProposal;

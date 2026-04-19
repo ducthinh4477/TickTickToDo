@@ -8,7 +8,7 @@ import java.util.List;
 
 import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentTool;
-import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
 import hcmute.edu.vn.tickticktodo.agent.integration.IntegrationFacade;
 import hcmute.edu.vn.tickticktodo.agent.integration.model.ExternalEvent;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;

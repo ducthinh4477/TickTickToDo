@@ -2,6 +2,10 @@ package hcmute.edu.vn.tickticktodo.ui.chat;
 
 final class PlanPreviewMessageFormatter {
 
+    String buildEmptyStateMessage() {
+        return "Mình đã tạo đề xuất kế hoạch nhưng chưa có option khả dụng.";
+    }
+
     String buildProposalSummary(String proposalType, String anchorDate, int optionCount) {
         return "[KE HOACH " + proposalType + "] " + anchorDate
                 + "\nMình đã tạo " + optionCount + " phương án cho bạn chọn.";
