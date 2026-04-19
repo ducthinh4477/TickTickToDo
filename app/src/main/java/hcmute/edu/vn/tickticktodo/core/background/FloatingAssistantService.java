@@ -1713,9 +1713,11 @@ public class FloatingAssistantService extends Service {
         }
 
         if (floatingModeText != null) {
-            floatingModeText.setText(overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY
-                    ? R.string.floating_chat_mode_chat
-                    : R.string.floating_chat_mode_voice);
+            floatingModeText.setText(
+                FloatingOverlayStatusFormatter.resolveModeLabelResId(
+                    overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY
+                )
+            );
         }
 
         if (overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY) {
