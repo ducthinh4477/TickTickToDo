@@ -8,7 +8,7 @@ import org.json.JSONObject;
 
 import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentTool;
-import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
 import hcmute.edu.vn.tickticktodo.agent.AgentToolRegistry;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;

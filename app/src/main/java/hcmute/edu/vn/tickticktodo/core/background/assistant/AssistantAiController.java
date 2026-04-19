@@ -22,7 +22,7 @@ import java.text.Normalizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import hcmute.edu.vn.tickticktodo.agent.AgentAction;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentAction;
 import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
