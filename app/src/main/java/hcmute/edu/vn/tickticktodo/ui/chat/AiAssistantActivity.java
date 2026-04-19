@@ -45,7 +45,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
@@ -92,8 +91,6 @@ public class AiAssistantActivity extends BaseActivity {
             "android.permission.health.READ_ACTIVE_CALORIES_BURNED";
     private static final Pattern API_KEY_PATTERN = Pattern.compile("^AIza[A-Za-z0-9_-]{16,}$");
     private static final Pattern GEMINI_MODEL_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._/-]{3,128}$");
-        private static final Pattern SUGGESTION_FEEDBACK_PATTERN =
-            Pattern.compile("^/(accept|dismiss|apply)\\s+([A-Za-z0-9-]+|last)$", Pattern.CASE_INSENSITIVE);
     private static final Object DB_EXECUTOR_LOCK = new Object();
     private static volatile ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
@@ -105,6 +102,9 @@ public class AiAssistantActivity extends BaseActivity {
     private Handler mainHandler;
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final AgentResponseParser responseParser = new AgentResponseParser();
+    private final PlanPreviewMessageFormatter planPreviewMessageFormatter = new PlanPreviewMessageFormatter();
+        private final SuggestionFeedbackCommandParser suggestionFeedbackCommandParser =
+            new SuggestionFeedbackCommandParser();
     private final HashSet<String> surfacedSuggestionIds = new HashSet<>();
     private volatile String lastSurfacedSuggestionId;
 
@@ -870,19 +870,14 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private boolean tryHandleSuggestionFeedbackCommand(String userText) {
-        if (TextUtils.isEmpty(userText)) {
+        SuggestionFeedbackCommandParser.ParsedSuggestionFeedbackCommand parsedCommand =
+                suggestionFeedbackCommandParser.parse(userText);
+        if (parsedCommand == null) {
             return false;
         }
 
-        Matcher matcher = SUGGESTION_FEEDBACK_PATTERN.matcher(userText.trim());
-        if (!matcher.matches()) {
-            return false;
-        }
-
-        String feedbackType = matcher.group(1) == null
-                ? null
-                : matcher.group(1).trim().toUpperCase(Locale.ROOT);
-        String target = matcher.group(2);
+        String feedbackType = parsedCommand.getFeedbackType();
+        String target = parsedCommand.getTargetToken();
 
         String suggestionId;
         if ("last".equalsIgnoreCase(target)) {
@@ -959,8 +954,11 @@ public class AiAssistantActivity extends BaseActivity {
             return;
         }
 
-        showAssistantMessage("[KE HOACH " + proposalType + "] " + anchorDate
-                + "\nMình đã tạo " + options.length() + " phương án cho bạn chọn.");
+        showAssistantMessage(planPreviewMessageFormatter.buildProposalSummary(
+            proposalType,
+            anchorDate,
+            options.length()
+        ));
 
         for (int i = 0; i < options.length(); i++) {
             JSONObject option = options.optJSONObject(i);
@@ -974,28 +972,23 @@ public class AiAssistantActivity extends BaseActivity {
             int scheduled = option.optInt("scheduledMinutes", 0);
             int unscheduled = option.optInt("unscheduledMinutes", 0);
 
-            StringBuilder card = new StringBuilder();
-            card.append("[OPTION] ").append(label);
-            if (!TextUtils.isEmpty(optionId)) {
-                card.append(" (ID: ").append(optionId).append(")");
-            }
-            if (!TextUtils.isEmpty(description)) {
-                card.append("\n").append(description);
-            }
-            card.append("\nXep lich: ").append(scheduled).append(" phut");
-            if (unscheduled > 0) {
-                card.append(" | Con ton: ").append(unscheduled).append(" phut");
-            }
+            String card = planPreviewMessageFormatter.buildOptionCard(
+                    label,
+                    optionId,
+                    description,
+                    scheduled,
+                    unscheduled
+            );
 
             if (!TextUtils.isEmpty(proposalId) && !TextUtils.isEmpty(optionId)) {
                 showAssistantActionMessage(
-                        card.toString(),
+                        card,
                         ACTION_APPLY_PLAN_OPTION,
                         "Áp dụng kế hoạch này",
                         encodeActionData(proposalId, optionId)
                 );
             } else {
-                showAssistantMessage(card.toString());
+                showAssistantMessage(card);
             }
         }
     }
