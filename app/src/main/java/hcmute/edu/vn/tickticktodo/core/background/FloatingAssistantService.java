@@ -2824,7 +2824,7 @@ public class FloatingAssistantService extends Service {
         JSONArray options = data.optJSONArray("options");
 
         if (options == null || options.length() == 0) {
-            showAssistantMessage("Mình đã tạo đề xuất kế hoạch nhưng chưa có option khả dụng.", true, false);
+            showAssistantMessage(FloatingPlanProposalEmptyStateFormatter.formatEmptyStateMessage(), true, false);
             return;
         }
 
