@@ -2829,8 +2829,11 @@ public class FloatingAssistantService extends Service {
         }
 
         showAssistantMessage(
-                "[KE HOACH " + proposalType + "] " + anchorDate + "\n"
-                        + "Mình đã tạo " + options.length() + " phương án, bạn có thể áp dụng ngay từng option.",
+            FloatingPlanProposalHeaderFormatter.formatProposalSummaryHeader(
+                proposalType,
+                anchorDate,
+                options.length()
+            ),
                 true,
                 false
         );
@@ -2847,28 +2850,23 @@ public class FloatingAssistantService extends Service {
             int scheduled = option.optInt("scheduledMinutes", 0);
             int unscheduled = option.optInt("unscheduledMinutes", 0);
 
-            StringBuilder card = new StringBuilder();
-            card.append("[OPTION] ").append(label);
-            if (!TextUtils.isEmpty(optionId)) {
-                card.append(" (ID: ").append(optionId).append(")");
-            }
-            if (!TextUtils.isEmpty(description)) {
-                card.append("\n").append(description);
-            }
-            card.append("\nXep lich: ").append(scheduled).append(" phut");
-            if (unscheduled > 0) {
-                card.append(" | Con ton: ").append(unscheduled).append(" phut");
-            }
+            String card = FloatingPlanOptionCardFormatter.formatOptionCard(
+                    optionId,
+                    label,
+                    description,
+                    scheduled,
+                    unscheduled
+            );
 
             if (!TextUtils.isEmpty(proposalId) && !TextUtils.isEmpty(optionId)) {
                 showAssistantActionMessage(
-                        card.toString(),
+                        card,
                         ACTION_APPLY_PLAN_OPTION,
                         "Áp dụng kế hoạch này",
                         encodeActionData(proposalId, optionId)
                 );
             } else {
-                showAssistantMessage(card.toString(), true, false);
+                showAssistantMessage(card, true, false);
             }
         }
     }
