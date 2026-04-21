@@ -98,10 +98,14 @@ public class CountdownActivity extends BaseActivity {
     }
 
     private void updateButtonsState(TimerService.TimerState state) {
+        btnStartPause.animate().scaleX(0.95f).scaleY(0.95f).setDuration(80)
+                .withEndAction(() -> btnStartPause.animate()
+                        .scaleX(1f).scaleY(1f).setDuration(120).start())
+                .start();
         if (state == TimerService.TimerState.RUNNING) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             btnStartPause.setText(getString(R.string.countdown_btn_pause));
-            tvTimerStatus.setText(getString(R.string.countdown_status_focus));
+            updateStatusText(getString(R.string.countdown_status_focus));
             btnStop.setEnabled(true);
             setToggleEnabled(false);
             
@@ -122,7 +126,7 @@ public class CountdownActivity extends BaseActivity {
         } else if (state == TimerService.TimerState.PAUSED) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             btnStartPause.setText(getString(R.string.countdown_btn_resume));
-            tvTimerStatus.setText(getString(R.string.countdown_status_paused));
+            updateStatusText(getString(R.string.countdown_status_paused));
             btnStop.setEnabled(true);
             setToggleEnabled(false);
             
@@ -132,7 +136,7 @@ public class CountdownActivity extends BaseActivity {
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             btnStartPause.setText(getString(R.string.countdown_btn_start));
-            tvTimerStatus.setText(getString(R.string.countdown_status_ready));
+            updateStatusText(getString(R.string.countdown_status_ready));
             btnStop.setEnabled(false);
             setToggleEnabled(true); // Allow toggle only when idle
             
@@ -175,6 +179,7 @@ public class CountdownActivity extends BaseActivity {
     private android.view.View vRingDashed;
     private android.animation.ObjectAnimator rotationAnimator;
     private ImageButton btnAmbientSound;
+    private TextView tvAmbientIndicator;
 
     // ── Factory ──────────────────────────────────────────────────────────────────
     public static Intent newIntent(Context context) {
@@ -234,6 +239,7 @@ public class CountdownActivity extends BaseActivity {
         vRingOuter      = findViewById(R.id.v_ring_outer);
         vRingDashed     = findViewById(R.id.v_ring_dashed);
         btnAmbientSound = findViewById(R.id.btn_ambient_sound);
+        tvAmbientIndicator = findViewById(R.id.tv_ambient_indicator);
 
         ImageButton btnBack = findViewById(R.id.btn_countdown_back);
         btnBack.setOnClickListener(v -> finish());
@@ -347,12 +353,40 @@ public class CountdownActivity extends BaseActivity {
         long minutes = millis / 1000 / 60;
         long seconds = (millis / 1000) % 60;
         tvCountdown.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+        animateTick();
+    }
+
+    private void animateTick() {
+        tvCountdown.animate().scaleX(1.04f).scaleY(1.04f).setDuration(80)
+                .withEndAction(() -> tvCountdown.animate()
+                        .scaleX(1f).scaleY(1f).setDuration(120).start())
+                .start();
+    }
+
+    private void updateStatusText(String newText) {
+        tvTimerStatus.animate().alpha(0f).setDuration(120)
+                .withEndAction(() -> {
+                    tvTimerStatus.setText(newText);
+                    tvTimerStatus.animate().alpha(1f).setDuration(120).start();
+                }).start();
+    }
+
+    private void updateAmbientIndicator(boolean isPlaying) {
+        if (tvAmbientIndicator == null) return;
+        if (isPlaying) {
+            tvAmbientIndicator.setVisibility(android.view.View.VISIBLE);
+            tvAmbientIndicator.animate().alpha(1f).setDuration(300).start();
+        } else {
+            tvAmbientIndicator.animate().alpha(0f).setDuration(200)
+                    .withEndAction(() -> tvAmbientIndicator.setVisibility(android.view.View.GONE))
+                    .start();
+        }
     }
 
     private void onTimerFinished(int modeMins) {
         btnStartPause.setText(R.string.countdown_btn_start);
         btnStop.setEnabled(false);
-        tvTimerStatus.setText(R.string.countdown_status_done);
+        updateStatusText(getString(R.string.countdown_status_done));
 
         if (isBound && timerService != null) {
             tvSessionCount.setText(String.valueOf(timerService.getSessionCount()));
@@ -412,6 +446,7 @@ public class CountdownActivity extends BaseActivity {
                     Toast.makeText(this, R.string.countdown_sound_applied, Toast.LENGTH_SHORT).show();
                 }
             }
+            updateAmbientIndicator(selectedMode != TimerService.AMBIENT_SOUND_NONE);
 
             dialog.dismiss();
         });
