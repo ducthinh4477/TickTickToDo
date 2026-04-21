@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UpTodo-style dark card task item -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -7,8 +6,8 @@
     android:id="@+id/item_task_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="8dp"
-    android:layout_marginBottom="8dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
     android:layout_marginHorizontal="16dp"
     android:clickable="true"
     android:focusable="true"
@@ -21,68 +20,51 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
 
-        <!-- Checkbox -->
+        <!-- Zone 1: Priority dot — 8dp circle left of checkbox -->
+        <View
+            android:id="@+id/priority_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/bg_priority_dot"
+            app:layout_constraintBottom_toBottomOf="@id/cb_task_completed"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/cb_task_completed" />
+
+        <!-- Zone 1: Checkbox — 44dp touch target via layout size -->
         <CheckBox
             android:id="@+id/cb_task_completed"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="4dp"
             android:button="@null"
             android:background="@drawable/checkbox_square_selector"
-            app:layout_constraintStart_toStartOf="parent"
+            android:padding="10dp"
+            app:layout_constraintStart_toEndOf="@id/priority_dot"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Title -->
+        <!-- Zone 1: Task title — single line, ellipsize -->
         <TextView
             android:id="@+id/tv_task_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="8dp"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            app:layout_constraintEnd_toStartOf="@id/iv_priority_flag"
-            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:text="Design meeting with team" />
-
-        <!-- Time -->
-        <TextView
-            android:id="@+id/tv_task_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            app:layout_constraintTop_toBottomOf="@id/tv_task_title"
-            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
-            tools:text="14:00" />
-
-        <!-- Subtitle -->
-        <TextView
-            android:id="@+id/tv_task_subtitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:layout_marginTop="4dp"
             android:layout_marginEnd="8dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            android:visibility="gone"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            app:layout_constraintBottom_toBottomOf="@id/cb_task_completed"
             app:layout_constraintEnd_toStartOf="@id/iv_priority_flag"
-            app:layout_constraintStart_toEndOf="@id/tv_task_time"
-            app:layout_constraintTop_toBottomOf="@id/tv_task_title"
-            app:layout_constraintBottom_toBottomOf="@id/tv_task_time"
-            tools:text="Discuss Room Database"
-            tools:visibility="visible" />
+            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
+            app:layout_constraintTop_toTopOf="@id/cb_task_completed"
+            tools:text="Design meeting with team" />
 
-        <!-- Priority flag -->
+        <!-- Zone 1: Priority flag at end of title row -->
         <ImageView
             android:id="@+id/iv_priority_flag"
             android:layout_width="18dp"
@@ -94,18 +76,67 @@
             app:layout_constraintTop_toTopOf="@id/tv_task_title"
             app:tint="@color/priority_none" />
 
+        <!-- Zone 2: Metadata chips row — date, tag, time -->
+        <HorizontalScrollView
+            android:id="@+id/scroll_task_meta"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="4dp"
+            android:scrollbars="none"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/cb_task_completed"
+            app:layout_constraintTop_toBottomOf="@id/cb_task_completed">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_task_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="6dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    tools:text="⏰ 09:00"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/tv_task_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="6dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    tools:text="📚 Study"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Zone 3: Attachments (shown when task has attachments) -->
         <LinearLayout
             android:id="@+id/layout_task_attachments"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"
             android:orientation="vertical"
             android:visibility="gone"
-            app:layout_constraintEnd_toStartOf="@id/iv_priority_flag"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/cb_task_completed"
-            app:layout_constraintTop_toBottomOf="@id/tv_task_time">
+            app:layout_constraintTop_toBottomOf="@id/scroll_task_meta">
 
             <ImageView
                 android:id="@+id/iv_task_attachment_image"
@@ -143,21 +174,19 @@
 
         </LinearLayout>
 
+        <!-- Zone 3: Subtasks (shown when task has subtasks) -->
         <LinearLayout
             android:id="@+id/layout_task_subtasks"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"
             android:orientation="vertical"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/iv_priority_flag"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/cb_task_completed"
-            app:layout_constraintTop_toBottomOf="@id/layout_task_attachments">
-
-        </LinearLayout>
+            app:layout_constraintTop_toBottomOf="@id/layout_task_attachments" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
