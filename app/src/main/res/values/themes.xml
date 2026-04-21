@@ -23,6 +23,12 @@
 
     <style name="Theme.TickTickToDo" parent="Base.Theme.TickTickToDo" />
 
+    <style name="Theme.TickTickToDo.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_round</item>
+        <item name="windowSplashScreenBackground">@color/background_primary</item>
+        <item name="postSplashScreenTheme">@style/Theme.TickTickToDo</item>
+    </style>
+
     <!-- CalendarView date text -->
     <style name="CalendarDateText" parent="android:TextAppearance">
         <item name="android:textSize">14sp</item>

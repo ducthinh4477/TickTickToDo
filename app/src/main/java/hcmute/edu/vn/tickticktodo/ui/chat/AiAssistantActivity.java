@@ -163,6 +163,7 @@ public class AiAssistantActivity extends BaseActivity {
         setupRecyclerView();
         setupQuickPrompts();
         setupGemini();
+        updateModelNameIndicator();
         observeProactiveSuggestions();
         ensureFloatingServiceState();
 
@@ -209,17 +210,17 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void setupQuickPrompts() {
-        if (binding.cardQuickTodayPlan != null) {
-            binding.cardQuickTodayPlan.setOnClickListener(v -> sendMessage("Lên kế hoạch công việc hôm nay theo mức ưu tiên giúp tôi."));
+        if (binding.chipQuickTodayPlan != null) {
+            binding.chipQuickTodayPlan.setOnClickListener(v -> sendMessage("Lên kế hoạch công việc hôm nay theo mức ưu tiên giúp tôi."));
         }
-        if (binding.cardQuickPrioritize != null) {
-            binding.cardQuickPrioritize.setOnClickListener(v -> sendMessage("Hãy giúp tôi phân loại việc cần làm theo mức độ khẩn cấp và quan trọng."));
+        if (binding.chipQuickPrioritize != null) {
+            binding.chipQuickPrioritize.setOnClickListener(v -> sendMessage("Hãy giúp tôi phân loại việc cần làm theo mức độ khẩn cấp và quan trọng."));
         }
-        if (binding.cardQuickHabit != null) {
-            binding.cardQuickHabit.setOnClickListener(v -> sendMessage("Gợi ý cho tôi 3 thói quen nhỏ để duy trì năng suất trong ngày."));
+        if (binding.chipQuickHabit != null) {
+            binding.chipQuickHabit.setOnClickListener(v -> sendMessage("Gợi ý cho tôi 3 thói quen nhỏ để duy trì năng suất trong ngày."));
         }
-        if (binding.cardQuickReview != null) {
-            binding.cardQuickReview.setOnClickListener(v -> sendMessage("Tổng kết ngày hôm nay và đề xuất việc cần chuẩn bị cho ngày mai."));
+        if (binding.chipQuickReview != null) {
+            binding.chipQuickReview.setOnClickListener(v -> sendMessage("Tổng kết ngày hôm nay và đề xuất việc cần chuẩn bị cho ngày mai."));
         }
     }
 
@@ -751,6 +752,7 @@ public class AiAssistantActivity extends BaseActivity {
                 geminiManager = manager;
 
                 tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
+                updateModelNameIndicator();
                 Toast.makeText(this, R.string.assistant_settings_saved, Toast.LENGTH_SHORT).show();
                 popupDialog.dismiss();
             } catch (Exception exception) {
@@ -1530,6 +1532,12 @@ public class AiAssistantActivity extends BaseActivity {
 
     private boolean hasOverlayPermission() {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
+    }
+
+    private void updateModelNameIndicator() {
+        if (binding != null && binding.tvModelName != null) {
+            binding.tvModelName.setText(getCurrentModelDisplayName());
+        }
     }
 
     private String getCurrentModelDisplayName() {

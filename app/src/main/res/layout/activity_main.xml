@@ -12,7 +12,7 @@
     <!-- ═══════════════ NAV RAIL ═══════════════ -->
     <LinearLayout
         android:id="@+id/nav_rail"
-        android:layout_width="72dp"
+        android:layout_width="80dp"
         android:layout_height="match_parent"
         android:background="@color/background_surface"
         android:elevation="6dp"
@@ -38,17 +38,15 @@
         <LinearLayout
             android:id="@+id/nav_item_home"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:orientation="vertical">
 
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <!-- Active pill indicator -->
                 <View
@@ -74,7 +72,7 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/nav_home"
                 android:textColor="@color/accent_primary"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -82,17 +80,15 @@
         <LinearLayout
             android:id="@+id/nav_item_calendar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:orientation="vertical">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_calendar"
@@ -116,24 +112,22 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/nav_calendar_desc"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Focus -->
         <LinearLayout
             android:id="@+id/nav_item_focus"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:orientation="vertical">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_focus"
@@ -157,24 +151,23 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/nav_focus"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- School -->
         <LinearLayout
             android:id="@+id/nav_item_school"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:visibility="gone">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_school"
@@ -198,24 +191,23 @@
                 android:layout_marginTop="3dp"
                 android:text="School"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Habits -->
         <LinearLayout
             android:id="@+id/nav_item_habits"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:visibility="gone">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_habits"
@@ -239,24 +231,23 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/nav_habits"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Ma trận -->
         <LinearLayout
             android:id="@+id/nav_item_eisenhower"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:visibility="gone">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_eisenhower"
@@ -280,24 +271,23 @@
                 android:layout_marginTop="3dp"
                 android:text="Ma trận"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Đếm ngược -->
         <LinearLayout
             android:id="@+id/nav_item_countdown"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:visibility="gone">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_countdown"
@@ -321,24 +311,22 @@
                 android:layout_marginTop="3dp"
                 android:text="Đếm ngược"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Trợ lý AI -->
         <LinearLayout
             android:id="@+id/nav_item_ai_assistant"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:orientation="vertical">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_ai_assistant"
@@ -362,7 +350,46 @@
                 android:layout_marginTop="3dp"
                 android:text="Trợ lý AI"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- More -->
+        <LinearLayout
+            android:id="@+id/nav_item_more"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:orientation="vertical">
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_more"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_more"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/nav_more"
+                    android:src="@drawable/ic_more_horiz"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
+            <TextView
+                android:id="@+id/nav_label_more"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="@string/nav_more"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Spacer đẩy Settings xuống dưới -->
@@ -371,21 +398,20 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <!-- Settings (ghim dưới cùng) -->
+        <!-- Settings moved to drawer -->
         <LinearLayout
             android:id="@+id/nav_item_settings"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="12dp">
+            android:visibility="gone">
             <FrameLayout
-                android:layout_width="48dp"
-                android:layout_height="30dp"
+                android:layout_width="56dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center_horizontal">
                 <View
                     android:id="@+id/nav_pill_settings"
@@ -409,7 +435,7 @@
                 android:layout_marginTop="3dp"
                 android:text="@string/nav_settings"
                 android:textColor="@color/text_secondary"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
     </LinearLayout>
@@ -449,9 +475,17 @@
                         android:layout_weight="1"
                         android:orientation="vertical">
                         <TextView
+                            android:id="@+id/tv_header_greeting"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/header_greeting_default"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
+                        <TextView
                             android:id="@+id/tv_header_today"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
                             android:text="@string/header_today"
                             android:textColor="@color/text_primary"
                             android:textSize="24sp"
@@ -464,6 +498,14 @@
                             android:layout_marginTop="2dp"
                             android:textColor="@color/text_secondary"
                             android:textSize="13sp" />
+                        <TextView
+                            android:id="@+id/tv_task_count_summary"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/header_task_summary_initial"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <ImageButton
@@ -512,8 +554,8 @@
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:contentDescription="@string/add_task_desc"
-                            android:src="@drawable/ic_search"
-                            app:tint="@color/text_hint" />
+                            android:src="@drawable/ic_add"
+                            app:tint="@color/accent_primary" />
                         <EditText
                             android:id="@+id/et_quick_add"
                             android:layout_width="0dp"
@@ -529,6 +571,15 @@
                             android:textColor="@color/text_primary"
                             android:textColorHint="@color/text_hint"
                             android:textSize="14sp" />
+                        <ImageButton
+                            android:id="@+id/btn_voice_add"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:layout_marginEnd="2dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/quick_add_voice_desc"
+                            android:src="@drawable/ic_mic"
+                            app:tint="@color/text_secondary" />
                         <ImageButton
                             android:id="@+id/btn_send_task"
                             android:layout_width="36dp"
@@ -637,33 +688,112 @@
 
                 <!-- Drawer header -->
                 <LinearLayout
+                    android:id="@+id/drawer_header"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:paddingStart="20dp"
                     android:paddingTop="36dp"
                     android:paddingEnd="20dp"
                     android:paddingBottom="16dp">
-                    <ImageView
-                        android:id="@+id/nav_avatar"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:background="@drawable/bg_avatar_circle"
-                        android:clickable="true"
-                        android:contentDescription="@string/nav_avatar_desc"
-                        android:focusable="true"
-                        android:padding="10dp"
-                        android:src="@drawable/ic_user" />
-                    <TextView
-                        android:layout_width="0dp"
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="14dp"
-                        android:layout_weight="1"
-                        android:text="@string/nav_guest_user"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/nav_avatar"
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            android:background="@drawable/bg_avatar_circle"
+                            android:clickable="true"
+                            android:contentDescription="@string/nav_avatar_desc"
+                            android:focusable="true"
+                            android:padding="11dp"
+                            android:src="@drawable/ic_user" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_user_name"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/nav_guest_user"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_user_sub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/nav_tap_to_login"
+                                android:textColor="@color/accent_primary"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/header_stats"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/stat_completed"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/stat_completed_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/stat_streak"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/stat_streak_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
                 </LinearLayout>
 
                 <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
@@ -756,6 +886,10 @@
                     android:orientation="vertical"
                     android:paddingTop="4dp"
                     android:paddingBottom="8dp">
+                    <LinearLayout android:id="@+id/panel_item_settings" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_settings" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_settings" android:textColor="@color/text_secondary" android:textSize="14sp" />
+                    </LinearLayout>
                     <LinearLayout android:id="@+id/panel_item_notifications" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
                         <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_notifications" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_notifications" android:textColor="@color/text_secondary" android:textSize="14sp" />

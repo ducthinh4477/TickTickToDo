@@ -23,6 +23,7 @@ import android.widget.Toast;
 
 import androidx.core.graphics.Insets;
 import androidx.core.content.ContextCompat;
+import androidx.core.splashscreen.SplashScreen;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -59,8 +60,10 @@ import hcmute.edu.vn.tickticktodo.ui.calendar.CalendarActivity;
 import hcmute.edu.vn.tickticktodo.ui.countdown.CountdownActivity;
 import hcmute.edu.vn.tickticktodo.ui.habit.HabitTrackerActivity;
 import hcmute.edu.vn.tickticktodo.ui.LanguageSelectionDialog;
+import hcmute.edu.vn.tickticktodo.ui.MoodleActivity;
 import hcmute.edu.vn.tickticktodo.ui.StatisticsActivity;
 import hcmute.edu.vn.tickticktodo.ui.ThemeSelectionDialog;
+import hcmute.edu.vn.tickticktodo.ui.VoicePromptActivity;
 import hcmute.edu.vn.tickticktodo.ui.task.TaskDetailBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.task.ViewOptionsBottomSheet;
 import hcmute.edu.vn.tickticktodo.ui.SchoolLoginActivity;
@@ -86,12 +89,17 @@ public class MainActivity extends BaseActivity {
     private RecyclerView rvListsPanel;
     private ListPanelAdapter listPanelAdapter;
     private ImageButton btnAddList;
+    private TextView tvUserSub;
+    private TextView statCompleted;
+    private TextView statStreak;
 
     // UI — Header
     private TextView tvHeaderTitle;
+    private TextView tvHeaderGreeting;
     private ImageView navAvatar;
     private ImageButton btnHamburger;
     private TextView tvHeaderDate;
+    private TextView tvTaskCountSummary;
     private ImageButton btnSort;
     private ImageButton btnMore;
 
@@ -99,13 +107,14 @@ public class MainActivity extends BaseActivity {
     private RecyclerView rvTasks;
     private LinearLayout layoutEmpty;
     private EditText etQuickAdd;
+    private ImageButton btnVoiceAdd;
     private ImageButton btnSendTask;
     private FloatingActionButton fabAddTask;
 
     // UI — Nav Rail items
-    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemHabits, navItemSettings, navItemAiAssistant;
-    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant;
-    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant;
+    private LinearLayout navItemHome, navItemCalendar, navItemFocus, navItemSchool, navItemHabits, navItemSettings, navItemAiAssistant, navItemMore;
+    private ImageView navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant, navIconMore;
+    private TextView navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant, navLabelMore;
 
     // Adapters
     private TaskAdapter overdueAdapter;
@@ -123,6 +132,7 @@ public class MainActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
 
         // Bật edge-to-edge để layout nhận đúng window insets (tai thỏ / status bar)
@@ -198,17 +208,23 @@ public class MainActivity extends BaseActivity {
         menuBoxContainer = findViewById(R.id.menuBoxContainer);
         rvListsPanel     = findViewById(R.id.rv_lists_panel);
         btnAddList       = findViewById(R.id.btn_add_list);
+        tvUserSub        = findViewById(R.id.tv_user_sub);
+        statCompleted    = findViewById(R.id.stat_completed);
+        statStreak       = findViewById(R.id.stat_streak);
 
         navAvatar        = findViewById(R.id.nav_avatar);
         btnHamburger     = findViewById(R.id.btn_hamburger);
+        tvHeaderGreeting = findViewById(R.id.tv_header_greeting);
         tvHeaderTitle    = findViewById(R.id.tv_header_today);
         tvHeaderDate     = findViewById(R.id.tv_header_date);
+        tvTaskCountSummary = findViewById(R.id.tv_task_count_summary);
         btnSort          = findViewById(R.id.btn_sort);
         btnMore          = findViewById(R.id.btn_more);
 
         rvTasks          = findViewById(R.id.rv_tasks);
         layoutEmpty      = findViewById(R.id.layout_empty);
         etQuickAdd       = findViewById(R.id.et_quick_add);
+        btnVoiceAdd      = findViewById(R.id.btn_voice_add);
         btnSendTask      = findViewById(R.id.btn_send_task);
         fabAddTask       = findViewById(R.id.fab_add_task);
 
@@ -219,6 +235,7 @@ public class MainActivity extends BaseActivity {
         navItemSchool   = findViewById(R.id.nav_item_school);
         navItemHabits   = findViewById(R.id.nav_item_habits);
         navItemSettings  = findViewById(R.id.nav_item_settings);
+        navItemMore     = findViewById(R.id.nav_item_more);
         navIconHome     = findViewById(R.id.nav_icon_home);
         navIconCalendar = findViewById(R.id.nav_icon_calendar);
         navIconFocus    = findViewById(R.id.nav_icon_focus);
@@ -226,6 +243,7 @@ public class MainActivity extends BaseActivity {
         navIconHabits   = findViewById(R.id.nav_icon_habits);
         navIconSettings  = findViewById(R.id.nav_icon_settings);
         navIconAiAssistant = findViewById(R.id.nav_icon_ai_assistant);
+        navIconMore     = findViewById(R.id.nav_icon_more);
         navLabelHome    = findViewById(R.id.nav_label_home);
         navLabelCalendar= findViewById(R.id.nav_label_calendar);
         navLabelFocus   = findViewById(R.id.nav_label_focus);
@@ -233,6 +251,7 @@ public class MainActivity extends BaseActivity {
         navLabelHabits  = findViewById(R.id.nav_label_habits);
         if (findViewById(R.id.nav_label_settings) != null) navLabelSettings = findViewById(R.id.nav_label_settings);
         navLabelAiAssistant = findViewById(R.id.nav_label_ai_assistant);
+        navLabelMore    = findViewById(R.id.nav_label_more);
         navItemAiAssistant = findViewById(R.id.nav_item_ai_assistant);
 
         // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
@@ -257,6 +276,8 @@ public class MainActivity extends BaseActivity {
     private void setupHeader() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
         tvHeaderDate.setText(dateFormat.format(new Date()));
+        updateHeaderGreeting();
+        updateTaskCountSummary();
 
         btnHamburger.setOnClickListener(v -> toggleMenu());
 
@@ -305,6 +326,49 @@ public class MainActivity extends BaseActivity {
         });
     }
 
+    private void updateHeaderGreeting() {
+        if (tvHeaderGreeting == null) {
+            return;
+        }
+
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        String greeting;
+        if (hour < 12) {
+            greeting = "Chào buổi sáng!";
+        } else if (hour < 18) {
+            greeting = "Chào buổi chiều!";
+        } else {
+            greeting = "Chào buổi tối!";
+        }
+        tvHeaderGreeting.setText(greeting);
+    }
+
+    private void updateTaskCountSummary() {
+        if (tvTaskCountSummary == null) {
+            return;
+        }
+
+        int todayCount = 0;
+        if (taskViewModel != null && taskViewModel.getTodayIncompleteTasks().getValue() != null) {
+            todayCount = taskViewModel.getTodayIncompleteTasks().getValue().size();
+        } else if (mainStateViewModel.getCurrentModeValue() == 0) {
+            todayCount = currentIncompleteTasks.size();
+        }
+
+        int overdueCount = currentOverdueTasks.size();
+        tvTaskCountSummary.setText(getString(R.string.header_task_summary_template, todayCount, overdueCount));
+    }
+
+    private void updateDrawerStats() {
+        if (statCompleted != null) {
+            statCompleted.setText(String.valueOf(currentCompletedTasks.size()));
+        }
+        if (statStreak != null) {
+            int streak = currentCompletedTasks.isEmpty() ? 0 : 1;
+            statStreak.setText(String.valueOf(streak));
+        }
+    }
+
     // ─── Slide-in menu ──────────────────────────────────────────────────────
 
     private void toggleMenu() {
@@ -341,7 +405,11 @@ public class MainActivity extends BaseActivity {
         rvListsPanel.setAdapter(listPanelAdapter);
 
         navAvatar.setOnClickListener(v -> showLoginDialog());
+        if (tvUserSub != null) {
+            tvUserSub.setOnClickListener(v -> showLoginDialog());
+        }
         btnAddList.setOnClickListener(v -> AddListDialog.show(this, taskViewModel));
+        updateDrawerStats();
 
         // Tapping backdrop closes menu
         menuBackdrop.setOnClickListener(v -> closeMenu());
@@ -372,6 +440,10 @@ public class MainActivity extends BaseActivity {
         setClickListenerIfPresent(R.id.panel_item_notifications, v -> {
             closeMenu();
             Toast.makeText(this, R.string.toast_notifications_wip, Toast.LENGTH_SHORT).show();
+        });
+        setClickListenerIfPresent(R.id.panel_item_settings, v -> {
+            closeMenu();
+            showSettingsDialog();
         });
         setClickListenerIfPresent(R.id.panel_item_help, v -> {
             closeMenu();
@@ -527,8 +599,44 @@ public class MainActivity extends BaseActivity {
                 }
         );
 
+        if (navItemMore != null) {
+            navItemMore.setOnClickListener(this::showNavMoreMenu);
+        }
+
         Integer selectedNavId = mainStateViewModel.getSelectedNavItem().getValue();
         selectNavItem(selectedNavId == null || selectedNavId == 0 ? R.id.nav_item_home : selectedNavId);
+    }
+
+    private void showNavMoreMenu(View anchor) {
+        PopupMenu popupMenu = new PopupMenu(this, anchor);
+        popupMenu.getMenu().add(0, 1, 0, getString(R.string.nav_school));
+        popupMenu.getMenu().add(0, 2, 1, getString(R.string.nav_habits));
+        popupMenu.getMenu().add(0, 3, 2, getString(R.string.nav_matrix));
+        popupMenu.getMenu().add(0, 4, 3, getString(R.string.nav_countdown));
+
+        popupMenu.setOnMenuItemClickListener(item -> {
+            selectNavItem(R.id.nav_item_more);
+            int id = item.getItemId();
+            if (id == 1) {
+                startActivity(new Intent(MainActivity.this, MoodleActivity.class));
+                return true;
+            }
+            if (id == 2) {
+                startActivity(HabitTrackerActivity.newIntent(this));
+                return true;
+            }
+            if (id == 3) {
+                startActivity(new Intent(MainActivity.this, EisenhowerActivity.class));
+                return true;
+            }
+            if (id == 4) {
+                startActivity(new Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.countdown.EventCountdownActivity.class));
+                return true;
+            }
+            return false;
+        });
+
+        popupMenu.show();
     }
 
     private void showSettingsDialog() {
@@ -581,9 +689,9 @@ public class MainActivity extends BaseActivity {
 
     private void selectNavItem(int selectedId) {
         mainStateViewModel.setSelectedNavItem(selectedId);
-        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_habits, R.id.nav_item_settings, R.id.nav_item_ai_assistant};
-        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant};
-        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant};
+        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_habits, R.id.nav_item_settings, R.id.nav_item_ai_assistant, R.id.nav_item_more};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant, navIconMore};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant, navLabelMore};
         mainNavigationHelper.selectNavItem(selectedId, ids, icons, labels);
     }
 
@@ -698,6 +806,10 @@ public class MainActivity extends BaseActivity {
 
         btnSendTask.setOnClickListener(v -> submitQuickAdd());
 
+        if (btnVoiceAdd != null) {
+            btnVoiceAdd.setOnClickListener(v -> startActivity(new Intent(this, VoicePromptActivity.class)));
+        }
+
         etQuickAdd.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 submitQuickAdd();
@@ -761,11 +873,14 @@ public class MainActivity extends BaseActivity {
                 overdueAdapter.submitList(new ArrayList<>(currentOverdueTasks));
             }
             overdueHeaderAdapter.setHeader("Đã quá hạn", currentOverdueTasks.size());
+            updateTaskCountSummary();
+            updateDrawerStats();
             updateEmptyStateCheck();
         });
 
         taskViewModel.getTodayIncompleteTasks().observe(this, incompleteTasks -> {
             if (mainStateViewModel.getCurrentModeValue() == 0) updateIncompleteList(incompleteTasks);
+            updateTaskCountSummary();
         });
 
         taskViewModel.getNext7DaysTasks().observe(this, nextTasks -> {
@@ -778,12 +893,17 @@ public class MainActivity extends BaseActivity {
                 completedAdapter.submitList(new ArrayList<>(currentCompletedTasks));
             }
             completedHeaderAdapter.setHeader("Hoàn thành", currentCompletedTasks.size());
+            updateTaskCountSummary();
+            updateDrawerStats();
             updateEmptyStateCheck();
         });
 
         taskViewModel.getAllLists().observe(this, lists -> {
             if (lists != null) listPanelAdapter.submitList(new ArrayList<>(lists));
         });
+
+        updateTaskCountSummary();
+        updateDrawerStats();
     }
 
     private void updateIncompleteList(List<Task> tasks) {
@@ -807,6 +927,7 @@ public class MainActivity extends BaseActivity {
             incompleteAdapter.submitList(new ArrayList<>(currentIncompleteTasks));
         }
         todayHeaderAdapter.setHeader(mainStateViewModel.getCurrentModeValue() == 0 ? "Hôm nay" : "7 ngày tới", currentIncompleteTasks.size());
+        updateTaskCountSummary();
         updateEmptyStateCheck();
     }
 

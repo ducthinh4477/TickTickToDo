@@ -72,6 +72,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private ImageButton btnPriority;
     private ImageButton btnMoreOptions;
     private MaterialButton btnSave;
+    private View dividerDetails;
     private View layoutExtraOptions;
     private View btnAddImage;
     private View btnAddAudio;
@@ -106,6 +107,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private final Calendar selectedDate = Calendar.getInstance(); // mặc định = today
     private int selectedPriority = 0; // 0 = None
     private boolean hasTimeSelected = false;
+    private boolean isExpandedMode = false;
     private final SimpleDateFormat dateFormat =
             new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
     private final SimpleDateFormat timeFormat =
@@ -199,6 +201,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         btnPriority = view.findViewById(R.id.btn_priority);
         btnMoreOptions = view.findViewById(R.id.btn_more_options);
         btnSave = view.findViewById(R.id.btn_save_task);
+        dividerDetails = view.findViewById(R.id.divider_details);
         layoutExtraOptions = view.findViewById(R.id.layout_extra_options);
         btnAddImage = view.findViewById(R.id.btn_add_image);
         btnAddAudio = view.findViewById(R.id.btn_add_audio);
@@ -537,11 +540,8 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
     private void setupMoreOptions() {
         btnMoreOptions.setOnClickListener(v -> {
-            if (layoutExtraOptions.getVisibility() == View.GONE) {
-                layoutExtraOptions.setVisibility(View.VISIBLE);
-            } else {
-                layoutExtraOptions.setVisibility(View.GONE);
-            }
+            isExpandedMode = !isExpandedMode;
+            updateExpandedModeUi();
         });
 
         btnAddImage.setOnClickListener(v -> imagePickerLauncher.launch(new String[]{"image/*"}));
@@ -552,6 +552,23 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
         if (btnScanFromCamera != null) {
             btnScanFromCamera.setOnClickListener(v -> launchCameraCapture());
+        }
+
+        updateExpandedModeUi();
+    }
+
+    private void updateExpandedModeUi() {
+        if (etDescription != null) {
+            etDescription.setVisibility(isExpandedMode ? View.VISIBLE : View.GONE);
+        }
+        if (dividerDetails != null) {
+            dividerDetails.setVisibility(isExpandedMode ? View.VISIBLE : View.GONE);
+        }
+        if (layoutExtraOptions != null) {
+            layoutExtraOptions.setVisibility(isExpandedMode ? View.VISIBLE : View.GONE);
+        }
+        if (btnMoreOptions != null) {
+            btnMoreOptions.setImageResource(isExpandedMode ? R.drawable.ic_expand : R.drawable.ic_expand_more);
         }
     }
 

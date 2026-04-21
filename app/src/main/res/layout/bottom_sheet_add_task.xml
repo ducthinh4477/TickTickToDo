@@ -47,16 +47,19 @@
         android:maxLines="4"
         android:textColor="@color/text_primary"
         android:textColorHint="@color/text_secondary"
-        android:textSize="14sp" />
+        android:textSize="14sp"
+        android:visibility="gone" />
 
     <!-- ══════ Divider ══════ -->
     <View
+        android:id="@+id/divider_details"
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
         android:layout_marginStart="20dp"
         android:layout_marginTop="12dp"
         android:layout_marginEnd="20dp"
-        android:background="@color/divider" />
+        android:background="@color/divider"
+        android:visibility="gone" />
 
     <!-- ══════ Toolbar: Due Date + Priority + Save ══════ -->
     <LinearLayout
@@ -103,8 +106,8 @@
             android:layout_height="36dp"
             android:layout_marginStart="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Thêm tùy chọn"
-            android:src="@drawable/ic_more_horiz"
+            android:contentDescription="@string/task_expand_details_desc"
+            android:src="@drawable/ic_expand_more"
             app:tint="@color/text_secondary" />
 
         <!-- Spacer -->

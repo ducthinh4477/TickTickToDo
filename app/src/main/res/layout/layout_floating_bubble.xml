@@ -94,8 +94,8 @@
 
     <ImageView
         android:id="@+id/iv_floating_bubble"
-        android:layout_width="58dp"
-        android:layout_height="58dp"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:layout_gravity="center"
         android:background="@drawable/bg_floating_bubble_circle"
         android:contentDescription="@string/floating_action_center_desc"
@@ -105,4 +105,18 @@
         android:src="@drawable/ic_ai_spark"
         app:tint="@android:color/white"
         />
+
+    <TextView
+        android:id="@+id/bubble_badge"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="center"
+        android:layout_marginStart="34dp"
+        android:layout_marginTop="-34dp"
+        android:background="@drawable/bg_bubble_badge"
+        android:gravity="center"
+        android:text="0"
+        android:textColor="@android:color/white"
+        android:textSize="10sp"
+        android:visibility="gone" />
 </FrameLayout>

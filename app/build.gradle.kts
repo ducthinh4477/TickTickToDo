@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
