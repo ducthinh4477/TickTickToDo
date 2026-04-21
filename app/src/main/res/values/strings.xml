@@ -409,4 +409,6 @@
     <string name="habit_section_list_title">Thói quen của bạn</string>
     <string name="habit_section_heatmap_title">Bảng theo dõi 30 ngày</string>
     <string name="habit_section_subtitle">Theo dõi nhịp độ và giữ chuỗi thói quen mỗi ngày.</string>
+    <!-- Eisenhower -->
+    <string name="eisenhower_empty">Chưa có task</string>
 </resources>

@@ -46,6 +46,7 @@ public class EisenhowerActivity extends BaseActivity {
     private View appBar;
     private ImageButton btnBack;
     private LinearLayout llTasksUrgent, llTasksNotUrgent, llTasksNormal, llTasksSlow;
+    private android.widget.TextView tvEmptyUrgent, tvEmptyNotUrgent, tvEmptyNormal, tvEmptySlow;
     private TaskViewModel taskViewModel;
 
     private float dX, dY;
@@ -77,6 +78,10 @@ public class EisenhowerActivity extends BaseActivity {
         llTasksNotUrgent = findViewById(R.id.ll_tasks_not_urgent);
         llTasksNormal = findViewById(R.id.ll_tasks_normal);
         llTasksSlow = findViewById(R.id.ll_tasks_slow);
+        tvEmptyUrgent = findViewById(R.id.tv_empty_urgent);
+        tvEmptyNotUrgent = findViewById(R.id.tv_empty_not_urgent);
+        tvEmptyNormal = findViewById(R.id.tv_empty_normal);
+        tvEmptySlow = findViewById(R.id.tv_empty_slow);
 
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
         taskViewModel.getTodayAllTasks().observe(this, this::updateMatrixes);
@@ -170,7 +175,7 @@ public class EisenhowerActivity extends BaseActivity {
 
     private void updateMatrixes(List<Task> tasks) {
         if (tasks == null) return;
-        
+
         llTasksUrgent.removeAllViews();
         llTasksNotUrgent.removeAllViews();
         llTasksNormal.removeAllViews();
@@ -222,6 +227,10 @@ public class EisenhowerActivity extends BaseActivity {
                 case 0: llTasksSlow.addView(taskView); break;
             }
         }
+        if (tvEmptyUrgent != null) tvEmptyUrgent.setVisibility(llTasksUrgent.getChildCount() == 0 ? View.VISIBLE : View.GONE);
+        if (tvEmptyNotUrgent != null) tvEmptyNotUrgent.setVisibility(llTasksNotUrgent.getChildCount() == 0 ? View.VISIBLE : View.GONE);
+        if (tvEmptyNormal != null) tvEmptyNormal.setVisibility(llTasksNormal.getChildCount() == 0 ? View.VISIBLE : View.GONE);
+        if (tvEmptySlow != null) tvEmptySlow.setVisibility(llTasksSlow.getChildCount() == 0 ? View.VISIBLE : View.GONE);
     }
 
     private void showAddTaskDialog(int quadrantIndex) {
