@@ -49,8 +49,8 @@ public class GeminiManager implements LlmProvider {
             "Đang chạm giới hạn tốc độ tạm thời (429) của model. Vui lòng thử lại sau ít phút.";
         private static final String MODEL_NOT_FOUND_ERROR_MESSAGE =
             "Model bạn nhập không tồn tại hoặc chưa hỗ trợ generateContent. Vui lòng kiểm tra lại tên model trong Cài đặt Trợ lý AI.";
-        private static final long DEFAULT_QUOTA_COOLDOWN_MILLIS = 30_000L;
-        private static final long MIN_QUOTA_COOLDOWN_MILLIS = 2_000L;
+        private static final long DEFAULT_QUOTA_COOLDOWN_MILLIS = 00_000L;
+        private static final long MIN_QUOTA_COOLDOWN_MILLIS = 00_000L;
         private static final Pattern RETRY_AFTER_SECONDS_PATTERN =
             Pattern.compile("retry\\s+in\\s+([0-9]+(?:\\.[0-9]+)?)s", Pattern.CASE_INSENSITIVE);
 

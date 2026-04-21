@@ -9,292 +9,412 @@
     android:fitsSystemWindows="true"
     tools:context=".ui.main.MainActivity">
 
+    <!-- ═══════════════ NAV RAIL ═══════════════ -->
     <LinearLayout
         android:id="@+id/nav_rail"
         android:layout_width="72dp"
         android:layout_height="match_parent"
         android:background="@color/background_surface"
-        android:elevation="4dp"
+        android:elevation="6dp"
         android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:gravity="top">
 
+        <!-- Hamburger -->
         <ImageButton
             android:id="@+id/btn_hamburger"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/menu_desc"
             android:scaleType="centerInside"
             android:src="@drawable/ic_menu"
             app:tint="@color/text_primary" />
 
-
+        <!-- Home -->
         <LinearLayout
             android:id="@+id/nav_item_home"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_home"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_home"
-                android:src="@drawable/ic_home"
-                app:tint="@color/accent_primary" />
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <!-- Active pill indicator -->
+                <View
+                    android:id="@+id/nav_pill_home"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="visible" />
+                <ImageView
+                    android:id="@+id/nav_icon_home"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/nav_home"
+                    android:src="@drawable/ic_home"
+                    app:tint="@color/accent_primary" />
+            </FrameLayout>
+
             <TextView
                 android:id="@+id/nav_label_home"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="@string/nav_home"
                 android:textColor="@color/accent_primary"
-                android:textSize="11sp" />
+                android:textSize="10sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- Calendar -->
         <LinearLayout
             android:id="@+id/nav_item_calendar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_calendar"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_calendar_desc"
-                android:src="@drawable/ic_calendar"
-                app:tint="@color/text_secondary" />
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_calendar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_calendar"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/nav_calendar_desc"
+                    android:src="@drawable/ic_calendar"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
             <TextView
                 android:id="@+id/nav_label_calendar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="@string/nav_calendar_desc"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
+        <!-- Focus -->
         <LinearLayout
             android:id="@+id/nav_item_focus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_focus"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_focus"
-                android:src="@drawable/ic_timer"
-                app:tint="@color/text_secondary" />
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_focus"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_focus"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/nav_focus"
+                    android:src="@drawable/ic_timer"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
             <TextView
                 android:id="@+id/nav_label_focus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="@string/nav_focus"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
+        <!-- School -->
         <LinearLayout
             android:id="@+id/nav_item_school"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_school"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="School"
-                android:src="@drawable/ic_study"
-                app:tint="@color/text_secondary" />
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_school"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_school"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="School"
+                    android:src="@drawable/ic_study"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
             <TextView
                 android:id="@+id/nav_label_school"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="School"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
+        <!-- Habits -->
         <LinearLayout
             android:id="@+id/nav_item_habits"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_habits"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="Habits"
-                android:src="@drawable/ic_health"
-                app:tint="@color/text_secondary" />
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_habits"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_habits"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Habits"
+                    android:src="@drawable/ic_health"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
             <TextView
                 android:id="@+id/nav_label_habits"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="@string/nav_habits"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
-          <LinearLayout
-              android:id="@+id/nav_item_eisenhower"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:background="?attr/selectableItemBackground"
-              android:clickable="true"
-              android:focusable="true"
-              android:gravity="center"
-              android:orientation="vertical"
-              android:paddingTop="10dp"
-              android:paddingBottom="10dp">
-              <ImageView
-                  android:id="@+id/nav_icon_eisenhower"
-                  android:layout_width="26dp"
-                  android:layout_height="26dp"
-                  android:contentDescription="Matrix"
-                  android:src="@drawable/ic_matrix"
-                  app:tint="@color/text_secondary" />
-              <TextView
-                  android:id="@+id/nav_label_eisenhower"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="4dp"
-                  android:text="Ma trận"
-                  android:textColor="@color/text_secondary"
-                  android:textSize="11sp" />
-          </LinearLayout>
+        <!-- Ma trận -->
+        <LinearLayout
+            android:id="@+id/nav_item_eisenhower"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_eisenhower"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_eisenhower"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Matrix"
+                    android:src="@drawable/ic_matrix"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
+            <TextView
+                android:id="@+id/nav_label_eisenhower"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="Ma trận"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp" />
+        </LinearLayout>
 
+        <!-- Đếm ngược -->
         <LinearLayout
             android:id="@+id/nav_item_countdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-
-            <ImageView
-                android:id="@+id/nav_icon_countdown"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="Đếm ngược"
-                android:src="@drawable/ic_timer"
-                app:tint="@color/text_secondary" />
-
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_countdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_countdown"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Đếm ngược"
+                    android:src="@drawable/ic_timer"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
             <TextView
                 android:id="@+id/nav_label_countdown"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="Đếm ngược"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
+        <!-- Trợ lý AI -->
         <LinearLayout
             android:id="@+id/nav_item_ai_assistant"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_ai_assistant"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="AI Assistant"
-                android:src="@drawable/ic_user"
-                app:tint="@color/text_secondary" />
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_ai_assistant"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_ai_assistant"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="AI Assistant"
+                    android:src="@drawable/ic_user"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
             <TextView
                 android:id="@+id/nav_label_ai_assistant"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="Trợ lý AI"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
-          <LinearLayout
+        <!-- Spacer đẩy Settings xuống dưới -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Settings (ghim dưới cùng) -->
+        <LinearLayout
             android:id="@+id/nav_item_settings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_settings"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_settings"
-                android:src="@drawable/ic_settings"
-                app:tint="@color/text_secondary" />
+            android:paddingTop="6dp"
+            android:paddingBottom="12dp">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_horizontal">
+                <View
+                    android:id="@+id/nav_pill_settings"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_nav_pill_active"
+                    android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/nav_icon_settings"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/nav_settings"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/text_secondary" />
+            </FrameLayout>
             <TextView
                 android:id="@+id/nav_label_settings"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="@string/nav_settings"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="10sp" />
         </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="8dp" />
 
     </LinearLayout>
 
-    <View
-        android:layout_width="1dp"
-        android:layout_height="match_parent"
-        android:background="@color/divider" />
-
+    <!-- ═══════════════ CONTENT ═══════════════ -->
     <FrameLayout
         android:id="@+id/content_frame"
         android:layout_width="0dp"
@@ -311,16 +431,17 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical">
 
+                <!-- Header -->
                 <LinearLayout
                     android:id="@+id/header"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingStart="12dp"
-                    android:paddingTop="12dp"
+                    android:paddingStart="16dp"
+                    android:paddingTop="16dp"
                     android:paddingEnd="4dp"
-                    android:paddingBottom="4dp">
+                    android:paddingBottom="8dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -333,13 +454,14 @@
                             android:layout_height="wrap_content"
                             android:text="@string/header_today"
                             android:textColor="@color/text_primary"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="-0.01" />
                         <TextView
                             android:id="@+id/tv_header_date"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="1dp"
+                            android:layout_marginTop="2dp"
                             android:textColor="@color/text_secondary"
                             android:textSize="13sp" />
                     </LinearLayout>
@@ -365,23 +487,27 @@
                         app:tint="@color/text_secondary" />
                 </LinearLayout>
 
+                <!-- Quick add bar -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_quick_add"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginBottom="10dp"
                     app:cardBackgroundColor="@color/background_card"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="0dp">
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/divider"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="46dp"
+                        android:layout_height="50dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingStart="14dp">
+                        android:paddingStart="14dp"
+                        android:paddingEnd="6dp">
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
@@ -401,12 +527,13 @@
                             android:inputType="text"
                             android:maxLines="1"
                             android:textColor="@color/text_primary"
-                            android:textColorHint="@color/text_hint" />
+                            android:textColorHint="@color/text_hint"
+                            android:textSize="14sp" />
                         <ImageButton
                             android:id="@+id/btn_send_task"
                             android:layout_width="36dp"
                             android:layout_height="36dp"
-                            android:layout_marginEnd="6dp"
+                            android:layout_marginEnd="4dp"
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="@string/send_task_desc"
                             android:src="@drawable/ic_send"
@@ -415,6 +542,7 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Task list -->
                 <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
@@ -428,8 +556,9 @@
                         android:paddingStart="16dp"
                         android:paddingTop="4dp"
                         android:paddingEnd="16dp"
-                        android:paddingBottom="80dp" />
+                        android:paddingBottom="96dp" />
 
+                    <!-- Empty state -->
                     <LinearLayout
                         android:id="@+id/layout_empty"
                         android:layout_width="wrap_content"
@@ -439,24 +568,24 @@
                         android:orientation="vertical"
                         android:visibility="gone">
                         <ImageView
-                            android:layout_width="140dp"
-                            android:layout_height="140dp"
-                            android:alpha="0.7"
+                            android:layout_width="120dp"
+                            android:layout_height="120dp"
+                            android:alpha="0.5"
                             android:contentDescription="@string/empty_title"
                             android:src="@drawable/ic_empty_tasks" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
+                            android:layout_marginTop="20dp"
                             android:gravity="center"
                             android:text="@string/empty_title"
                             android:textColor="@color/text_primary"
-                            android:textSize="16sp"
+                            android:textSize="17sp"
                             android:textStyle="bold" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="6dp"
                             android:gravity="center"
                             android:text="@string/empty_subtitle"
                             android:textColor="@color/text_secondary"
@@ -466,21 +595,24 @@
 
             </LinearLayout>
 
+            <!-- FAB -->
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fab_add_task"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|center_horizontal"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="28dp"
                 android:contentDescription="@string/fab_add_desc"
                 android:src="@drawable/ic_add"
                 app:backgroundTint="@color/accent_primary"
-                app:elevation="8dp"
+                app:elevation="6dp"
                 app:fabSize="normal"
-                app:tint="@color/white" />
+                app:tint="@color/white"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.FAB.Rounded" />
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+        <!-- Drawer overlay -->
         <FrameLayout
             android:id="@+id/menu_overlay"
             android:layout_width="match_parent"
@@ -496,20 +628,21 @@
 
             <LinearLayout
                 android:id="@+id/menuBoxContainer"
-                android:layout_width="240dp"
+                android:layout_width="248dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="start"
                 android:background="@color/background_surface"
-                android:elevation="8dp"
+                android:elevation="12dp"
                 android:orientation="vertical">
 
+                <!-- Drawer header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="20dp"
-                    android:paddingTop="32dp"
+                    android:paddingTop="36dp"
                     android:paddingEnd="20dp"
                     android:paddingBottom="16dp">
                     <ImageView
@@ -520,7 +653,7 @@
                         android:clickable="true"
                         android:contentDescription="@string/nav_avatar_desc"
                         android:focusable="true"
-                        android:padding="8dp"
+                        android:padding="10dp"
                         android:src="@drawable/ic_user" />
                     <TextView
                         android:layout_width="0dp"
@@ -529,7 +662,7 @@
                         android:layout_weight="1"
                         android:text="@string/nav_guest_user"
                         android:textColor="@color/text_primary"
-                        android:textSize="17sp"
+                        android:textSize="16sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -540,17 +673,20 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
+                    android:paddingBottom="4dp">
+
                     <LinearLayout android:id="@+id/panel_item_today" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_today" app:tint="@color/accent_primary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_today" app:tint="@color/accent_primary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/header_today" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
+
                     <LinearLayout android:id="@+id/panel_item_next7days" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_calendar" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_calendar" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_next_7_days" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
+
                     <LinearLayout android:id="@+id/panel_item_inbox" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_all_tasks" app:tint="@color/accent_primary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_all_tasks" app:tint="@color/accent_primary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/panel_inbox" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -560,26 +696,28 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:paddingTop="4dp">
                     <LinearLayout android:id="@+id/panel_item_completed" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_completed" app:tint="@color/tag_study" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_completed" app:tint="@color/tag_study" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_completed" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
                     <LinearLayout android:id="@+id/panel_item_trash" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_delete" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_delete" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_trash" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
 
+                <!-- Lists section -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="20dp"
-                    android:paddingTop="12dp"
+                    android:paddingTop="14dp"
                     android:paddingEnd="12dp"
                     android:paddingBottom="4dp">
                     <TextView
@@ -616,19 +754,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingTop="4dp">
+                    android:paddingTop="4dp"
+                    android:paddingBottom="8dp">
                     <LinearLayout android:id="@+id/panel_item_notifications" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_notifications" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_notifications" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_notifications" android:textColor="@color/text_secondary" android:textSize="14sp" />
                     </LinearLayout>
                     <LinearLayout android:id="@+id/panel_item_help" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_help" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_help" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_help" android:textColor="@color/text_secondary" android:textSize="14sp" />
                     </LinearLayout>
                 </LinearLayout>
 
             </LinearLayout>
-
         </FrameLayout>
 
     </FrameLayout>

@@ -43,6 +43,7 @@ public class TaskRepository {
     private final ActivityLogRepository logRepository;
     private final UserStatsManager userStatsManager;
     private final TaskEventSideEffectPublisher taskEventSideEffectPublisher;
+    private final TaskNotificationSideEffectHelper taskNotificationSideEffectHelper;
 
     public LiveData<List<Task>> getAllCompletedTasksLog() {
         return taskDao.getAllCompletedTasksLog();
@@ -64,6 +65,8 @@ public class TaskRepository {
         this.userStatsManager = UserStatsManager.getInstance(application);
         this.taskEventSideEffectPublisher =
             new TaskEventSideEffectPublisher(AgentEventBus.getInstance());
+        this.taskNotificationSideEffectHelper =
+            new TaskNotificationSideEffectHelper(application);
     }
 
     // ─── READ ────────────────────────────────────────────────────────────────────
@@ -131,7 +134,7 @@ public class TaskRepository {
             logRepository.insertLog("TẠO MỚI", task.getTitle());
 
             // Notification if due today
-            checkAndNotifyIfToday(task);
+            taskNotificationSideEffectHelper.checkAndNotifyIfToday(task);
 
             taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_CREATED, task);
 
@@ -191,29 +194,6 @@ public class TaskRepository {
             logRepository.insertLog("DỜI CÔNG VIỆC", "Số lượng: " + taskIds.size());
             postToMain(onComplete);
         });
-    }
-
-    private void checkAndNotifyIfToday(Task task) {
-        if (task.getDueDate() == null) return;
-
-        java.util.Calendar todayStart = java.util.Calendar.getInstance();
-        todayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        todayStart.set(java.util.Calendar.MINUTE, 0);
-        todayStart.set(java.util.Calendar.SECOND, 0);
-        todayStart.set(java.util.Calendar.MILLISECOND, 0);
-
-        java.util.Calendar todayEnd = (java.util.Calendar) todayStart.clone();
-        todayEnd.add(java.util.Calendar.DAY_OF_YEAR, 1);
-
-        long due = task.getDueDate();
-        if (due >= todayStart.getTimeInMillis() && due < todayEnd.getTimeInMillis()) {
-            hcmute.edu.vn.tickticktodo.helper.NotificationHelper.showTaskNotification(
-                    application,
-                    "Bạn có công việc mới cho hôm nay",
-                    task.getTitle(),
-                    (int) task.getId()
-            );
-        }
     }
 
     public void update(Task task) {

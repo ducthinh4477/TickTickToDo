@@ -49,12 +49,12 @@ import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.agent.AgentAction;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentAction;
 import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
-import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
 import hcmute.edu.vn.tickticktodo.agent.integration.IntegrationFacade;
 import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
 import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;

@@ -77,7 +77,7 @@ import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveConfig;
 import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
 import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
-import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
 import hcmute.edu.vn.tickticktodo.agent.tools.ApplyPlanOptionTool;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantAiController;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantStateMonitor;
