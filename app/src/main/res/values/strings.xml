@@ -367,6 +367,8 @@
     <string name="assistant_quick_review">Tổng kết cuối ngày</string>
     <string name="assistant_input_hint">Hỏi Trợ lý AI...</string>
     <string name="assistant_typing">Trợ lý đang soạn…</string>
+    <string name="assistant_attach_task_desc">Đính kèm task</string>
+    <string name="assistant_attach_no_tasks">Chưa có task nào để đính kèm</string>
 
     <string name="chat_history_title">Lịch sử trò chuyện</string>
     <string name="chat_history_subtitle">Chọn một cuộc hội thoại để tiếp tục làm việc.</string>

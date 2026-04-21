@@ -190,6 +190,10 @@ public class AiAssistantActivity extends BaseActivity {
             }
         });
 
+        if (binding.btnAttachTask != null) {
+            binding.btnAttachTask.setOnClickListener(v -> showAttachTaskPicker());
+        }
+
         binding.messageInput.setOnFocusChangeListener((v, hasFocus) ->
                 binding.inputLayout.animate()
                         .translationZ(hasFocus ? 8f : 4f)
@@ -386,6 +390,32 @@ public class AiAssistantActivity extends BaseActivity {
         Intent intent = new Intent(this, ChatHistoryActivity.class);
         intent.putExtra(EXTRA_SESSION_ID, currentSessionId);
         historyLauncher.launch(intent);
+    }
+
+    private void showAttachTaskPicker() {
+        runDbTask(() -> {
+            List<Task> tasks = TaskDatabase.getInstance(this).taskDao().getAllTasksSync();
+            if (tasks == null || tasks.isEmpty()) {
+                mainHandler.post(() -> Toast.makeText(this,
+                        getString(R.string.assistant_attach_no_tasks), Toast.LENGTH_SHORT).show());
+                return;
+            }
+            String[] titles = new String[tasks.size()];
+            for (int i = 0; i < tasks.size(); i++) {
+                titles[i] = tasks.get(i).getTitle();
+            }
+            mainHandler.post(() -> new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.assistant_attach_task_desc))
+                    .setItems(titles, (dialog, which) -> {
+                        String taskTitle = tasks.get(which).getTitle();
+                        String current = binding.messageInput.getText().toString();
+                        String inserted = current.isEmpty() ? "[Task: " + taskTitle + "] "
+                                : current + " [Task: " + taskTitle + "] ";
+                        binding.messageInput.setText(inserted);
+                        binding.messageInput.setSelection(inserted.length());
+                    })
+                    .show());
+        });
     }
 
     private void showSettingsDialog() {

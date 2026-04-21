@@ -203,6 +203,15 @@
             android:textColorHint="@color/text_secondary" />
 
         <ImageButton
+            android:id="@+id/btnAttachTask"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/assistant_attach_task_desc"
+            android:src="@drawable/ic_attach_file"
+            app:tint="@color/text_secondary" />
+
+        <ImageButton
             android:id="@+id/btnSend"
             android:layout_width="48dp"
             android:layout_height="48dp"
