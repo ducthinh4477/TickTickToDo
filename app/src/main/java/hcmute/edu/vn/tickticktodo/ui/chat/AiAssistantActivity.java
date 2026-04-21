@@ -89,7 +89,8 @@ public class AiAssistantActivity extends BaseActivity {
         private static final String HEALTH_PERMISSION_READ_SLEEP = "android.permission.health.READ_SLEEP";
         private static final String HEALTH_PERMISSION_READ_ACTIVE_CALORIES =
             "android.permission.health.READ_ACTIVE_CALORIES_BURNED";
-    private static final Pattern API_KEY_PATTERN = Pattern.compile("^AIza[A-Za-z0-9_-]{16,}$");
+    // Accepts Gemini (AIza...), OpenAI (sk-...), Anthropic (sk-ant-...), and other providers
+    private static final Pattern API_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9_\\-\\.]{10,}$");
     private static final Pattern GEMINI_MODEL_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._/-]{3,128}$");
     private static final Object DB_EXECUTOR_LOCK = new Object();
     private static volatile ExecutorService dbExecutor = Executors.newSingleThreadExecutor();

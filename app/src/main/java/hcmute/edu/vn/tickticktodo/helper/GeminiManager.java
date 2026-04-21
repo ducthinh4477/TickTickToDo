@@ -19,6 +19,13 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -54,6 +61,8 @@ public class GeminiManager implements LlmProvider {
         private static final Pattern RETRY_AFTER_SECONDS_PATTERN =
             Pattern.compile("retry\\s+in\\s+([0-9]+(?:\\.[0-9]+)?)s", Pattern.CASE_INSENSITIVE);
 
+    public enum ProviderType { GEMINI, OPENAI, ANTHROPIC }
+
     private static volatile GeminiManager instance;
     private static volatile Context appContext;
 
@@ -64,6 +73,8 @@ public class GeminiManager implements LlmProvider {
     private volatile GenerativeModelFutures modelFutures;
     private volatile String activeModelName = DEFAULT_MODEL_NAME;
     private volatile long quotaCooldownUntilMillis = 0L;
+    private volatile ProviderType currentProviderType = ProviderType.GEMINI;
+    private volatile String currentApiKey = "";
 
     private GeminiManager() {
         workerExecutor = Executors.newSingleThreadExecutor();
@@ -89,7 +100,22 @@ public class GeminiManager implements LlmProvider {
     }
 
     public boolean hasConfiguredApiKey() {
+        if (currentProviderType != ProviderType.GEMINI) {
+            return !TextUtils.isEmpty(currentApiKey) && !TextUtils.isEmpty(activeModelName);
+        }
         return modelFutures != null;
+    }
+
+    public ProviderType getCurrentProviderType() {
+        return currentProviderType;
+    }
+
+    public static ProviderType detectProvider(String apiKey) {
+        if (TextUtils.isEmpty(apiKey)) return ProviderType.GEMINI;
+        String trimmed = apiKey.trim();
+        if (trimmed.startsWith("sk-ant-")) return ProviderType.ANTHROPIC;
+        if (trimmed.startsWith("sk-")) return ProviderType.OPENAI;
+        return ProviderType.GEMINI;
     }
 
     public boolean isQuotaCooldownActive() {
@@ -116,6 +142,29 @@ public class GeminiManager implements LlmProvider {
     private void generateResponseStreamInternal(String prompt,
                                                 LlmProvider.StreamResponseCallback callback) {
         if (callback == null) return;
+
+        if (currentProviderType != ProviderType.GEMINI) {
+            String key = currentApiKey;
+            String model = activeModelName;
+            if (TextUtils.isEmpty(key) || TextUtils.isEmpty(model)) {
+                mainHandler.post(() -> callback.onError(CONFIG_ERROR_MESSAGE));
+                return;
+            }
+            workerExecutor.execute(() -> {
+                try {
+                    String response = callHttpProvider(key, model, prompt, currentProviderType);
+                    mainHandler.post(() -> {
+                        callback.onNext(response);
+                        callback.onComplete();
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "HTTP provider stream failed", e);
+                    mainHandler.post(() -> callback.onError(mapHttpError(e)));
+                }
+            });
+            return;
+        }
+
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             mainHandler.post(() -> callback.onError(CONFIG_ERROR_MESSAGE));
@@ -183,6 +232,30 @@ public class GeminiManager implements LlmProvider {
         if (callback == null) {
             return;
         }
+
+        if (currentProviderType != ProviderType.GEMINI) {
+            String key = currentApiKey;
+            String model = activeModelName;
+            if (TextUtils.isEmpty(key) || TextUtils.isEmpty(model)) {
+                postError(callback, CONFIG_ERROR_MESSAGE);
+                return;
+            }
+            if (prompt == null || prompt.trim().isEmpty()) {
+                postError(callback, "Tin nhắn không hợp lệ. Vui lòng thử lại.");
+                return;
+            }
+            workerExecutor.execute(() -> {
+                try {
+                    String response = callHttpProvider(key, model, prompt, currentProviderType);
+                    postSuccess(callback, response);
+                } catch (Exception e) {
+                    Log.e(TAG, "HTTP provider request failed", e);
+                    postError(callback, mapHttpError(e));
+                }
+            });
+            return;
+        }
+
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             postError(callback, CONFIG_ERROR_MESSAGE);
@@ -285,6 +358,18 @@ public class GeminiManager implements LlmProvider {
 
     private String generateResponseBlockingInternal(String prompt,
                                                     long timeoutMillis) throws Exception {
+        if (currentProviderType != ProviderType.GEMINI) {
+            String key = currentApiKey;
+            String model = activeModelName;
+            if (TextUtils.isEmpty(key) || TextUtils.isEmpty(model)) {
+                throw new IllegalStateException(CONFIG_ERROR_MESSAGE);
+            }
+            if (prompt == null || prompt.trim().isEmpty()) {
+                throw new IllegalArgumentException("Prompt rỗng.");
+            }
+            return callHttpProvider(key, model, prompt, currentProviderType);
+        }
+
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             throw new IllegalStateException(CONFIG_ERROR_MESSAGE);
@@ -314,6 +399,139 @@ public class GeminiManager implements LlmProvider {
 
     public String getActiveModelName() {
         return activeModelName;
+    }
+
+    // ── HTTP provider calls (OpenAI / Anthropic) ──────────────────────────────────
+
+    private String callHttpProvider(String apiKey, String modelName,
+                                    String prompt, ProviderType provider) throws Exception {
+        if (provider == ProviderType.OPENAI) {
+            return callOpenAi(apiKey, modelName, prompt);
+        } else if (provider == ProviderType.ANTHROPIC) {
+            return callAnthropic(apiKey, modelName, prompt);
+        }
+        throw new IllegalArgumentException("Unsupported provider: " + provider);
+    }
+
+    private String callOpenAi(String apiKey, String modelName, String prompt) throws Exception {
+        URL url = new URL("https://api.openai.com/v1/chat/completions");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30_000);
+            conn.setReadTimeout(60_000);
+
+            JSONObject body = new JSONObject();
+            body.put("model", modelName);
+            body.put("max_tokens", 2048);
+            JSONArray messages = new JSONArray();
+            JSONObject msg = new JSONObject();
+            msg.put("role", "user");
+            msg.put("content", prompt);
+            messages.put(msg);
+            body.put("messages", messages);
+
+            byte[] input = body.toString().getBytes("UTF-8");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(input);
+            }
+
+            int code = conn.getResponseCode();
+            InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String responseStr = readStream(is);
+
+            if (code >= 400) {
+                throw new java.io.IOException("OpenAI API error " + code + ": " + responseStr);
+            }
+
+            JSONObject response = new JSONObject(responseStr);
+            return response.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content")
+                    .trim();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private String callAnthropic(String apiKey, String modelName, String prompt) throws Exception {
+        URL url = new URL("https://api.anthropic.com/v1/messages");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("x-api-key", apiKey);
+            conn.setRequestProperty("anthropic-version", "2023-06-01");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30_000);
+            conn.setReadTimeout(60_000);
+
+            JSONObject body = new JSONObject();
+            body.put("model", modelName);
+            body.put("max_tokens", 2048);
+            JSONArray messages = new JSONArray();
+            JSONObject msg = new JSONObject();
+            msg.put("role", "user");
+            msg.put("content", prompt);
+            messages.put(msg);
+            body.put("messages", messages);
+
+            byte[] input = body.toString().getBytes("UTF-8");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(input);
+            }
+
+            int code = conn.getResponseCode();
+            InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String responseStr = readStream(is);
+
+            if (code >= 400) {
+                throw new java.io.IOException("Anthropic API error " + code + ": " + responseStr);
+            }
+
+            JSONObject response = new JSONObject(responseStr);
+            return response.getJSONArray("content")
+                    .getJSONObject(0)
+                    .getString("text")
+                    .trim();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private String readStream(InputStream is) throws java.io.IOException {
+        if (is == null) return "";
+        StringBuilder sb = new StringBuilder();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = is.read(buf)) != -1) {
+            sb.append(new String(buf, 0, n, "UTF-8"));
+        }
+        is.close();
+        return sb.toString();
+    }
+
+    private String mapHttpError(Exception e) {
+        if (e == null) return GENERIC_ERROR_MESSAGE;
+        String msg = e.getMessage();
+        if (msg == null) return GENERIC_ERROR_MESSAGE;
+        String lower = msg.toLowerCase();
+        if (lower.contains("401") || lower.contains("403") || lower.contains("unauthorized")
+                || lower.contains("invalid api") || lower.contains("authentication")) {
+            return CONFIG_ERROR_MESSAGE;
+        }
+        if (lower.contains("429") || lower.contains("rate limit") || lower.contains("quota")) {
+            return QUOTA_ERROR_MESSAGE;
+        }
+        if (lower.contains("timeout") || lower.contains("connect") || lower.contains("network")
+                || lower.contains("unable to resolve")) {
+            return NETWORK_ERROR_MESSAGE;
+        }
+        return GENERIC_ERROR_MESSAGE;
     }
 
     private String mapErrorMessage(Throwable t) {
@@ -352,18 +570,27 @@ public class GeminiManager implements LlmProvider {
 
         synchronized (modelLock) {
             activeModelName = modelName;
+            currentApiKey = apiKey;
+            quotaCooldownUntilMillis = 0L;
+
             if (TextUtils.isEmpty(apiKey) || TextUtils.isEmpty(modelName)) {
                 modelFutures = null;
+                currentProviderType = ProviderType.GEMINI;
                 return;
             }
 
-            try {
-                GenerativeModel model = new GenerativeModel(modelName, apiKey);
-                modelFutures = GenerativeModelFutures.from(model);
-                quotaCooldownUntilMillis = 0L;
-            } catch (Exception exception) {
-                Log.e(TAG, "Failed to initialize Gemini model", exception);
-                modelFutures = null;
+            currentProviderType = detectProvider(apiKey);
+
+            if (currentProviderType == ProviderType.GEMINI) {
+                try {
+                    GenerativeModel model = new GenerativeModel(modelName, apiKey);
+                    modelFutures = GenerativeModelFutures.from(model);
+                } catch (Exception exception) {
+                    Log.e(TAG, "Failed to initialize Gemini model", exception);
+                    modelFutures = null;
+                }
+            } else {
+                modelFutures = null; // OpenAI/Anthropic use direct HTTP, no SDK instance needed
             }
         }
     }
