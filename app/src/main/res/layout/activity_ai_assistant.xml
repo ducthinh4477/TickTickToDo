@@ -63,7 +63,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/assistant_current_model_empty"
-                android:textColor="@color/accent_primary"
+                android:textColor="@color/ai_accent"
                 android:textSize="12sp" />
         </LinearLayout>
 
