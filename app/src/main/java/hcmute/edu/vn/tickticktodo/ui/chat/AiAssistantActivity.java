@@ -190,6 +190,12 @@ public class AiAssistantActivity extends BaseActivity {
             }
         });
 
+        binding.messageInput.setOnFocusChangeListener((v, hasFocus) ->
+                binding.inputLayout.animate()
+                        .translationZ(hasFocus ? 8f : 4f)
+                        .setDuration(200)
+                        .start());
+
         initializeSessionFromIntent(getIntent());
     }
 
@@ -366,8 +372,13 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void updateQuickPromptVisibility() {
-        if (binding.quickPromptContainer != null) {
-            binding.quickPromptContainer.setVisibility(chatAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        if (binding.quickPromptContainer == null) return;
+        if (chatAdapter.getItemCount() == 0) {
+            binding.quickPromptContainer.setVisibility(View.VISIBLE);
+        } else if (binding.quickPromptContainer.getVisibility() == View.VISIBLE) {
+            binding.quickPromptContainer.animate().alpha(0f).setDuration(300)
+                    .withEndAction(() -> binding.quickPromptContainer.setVisibility(View.GONE))
+                    .start();
         }
     }
 
@@ -776,6 +787,7 @@ public class AiAssistantActivity extends BaseActivity {
         }
 
         showUserMessage(userText);
+        showTypingIndicator();
         binding.chatRecyclerView.smoothScrollToPosition(Math.max(0, chatAdapter.getItemCount() - 1));
 
         if (tryHandleQuickCreateIntent(userText)) {
@@ -1339,6 +1351,21 @@ public class AiAssistantActivity extends BaseActivity {
         }
     }
 
+    private void showTypingIndicator() {
+        mainHandler.post(() -> {
+            if (binding.tvTypingIndicator == null) return;
+            binding.tvTypingIndicator.setVisibility(View.VISIBLE);
+            binding.tvTypingIndicator.animate().alpha(1f).setDuration(200).start();
+        });
+    }
+
+    private void hideTypingIndicator() {
+        if (binding.tvTypingIndicator == null) return;
+        binding.tvTypingIndicator.animate().alpha(0f).setDuration(150)
+                .withEndAction(() -> binding.tvTypingIndicator.setVisibility(View.GONE))
+                .start();
+    }
+
     private void showUserMessage(String text) {
         if (TextUtils.isEmpty(text)) {
             return;
@@ -1351,6 +1378,7 @@ public class AiAssistantActivity extends BaseActivity {
 
     private void showAssistantMessage(String text) {
         mainHandler.post(() -> {
+            hideTypingIndicator();
             if (TextUtils.isEmpty(text)) {
                 return;
             }
