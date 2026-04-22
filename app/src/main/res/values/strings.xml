@@ -322,8 +322,10 @@
     <string name="assistant_model_detail_button">Chi tiết</string>
     <string name="assistant_add_model_popup_title">Thêm mô hình AI</string>
     <string name="assistant_add_model_popup_subtitle">Nhập tên mô hình và API key để bắt đầu</string>
-    <string name="assistant_model_name_helper">Ví dụ: gemini-1.5-flash · gpt-4o · claude-opus-4-7</string>
-    <string name="assistant_api_key_provider_hint">Gemini (AIza…) · OpenAI (sk-…) · Anthropic (sk-ant-…)</string>
+    <string name="assistant_model_name_helper">Ví dụ: gemini-1.5-flash · gpt-4o · llama-3.3-70b-versatile</string>
+    <string name="assistant_api_key_provider_hint">Gemini (AIza…) · OpenAI (sk-…) · Anthropic (sk-ant-…) · Groq (gsk_…)</string>
+    <string name="assistant_saved_keys_label">Key đã lưu — chọn để điền nhanh</string>
+    <string name="assistant_switch_model_label">Chuyển nhanh</string>
     <string name="assistant_model_detail_popup_title">Chi tiết mô hình AI</string>
     <string name="assistant_save_model_button">Lưu</string>
     <string name="assistant_update_model_button">Cập nhật</string>

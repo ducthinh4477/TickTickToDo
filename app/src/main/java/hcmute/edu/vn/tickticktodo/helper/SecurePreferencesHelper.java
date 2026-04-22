@@ -23,8 +23,10 @@ public class SecurePreferencesHelper {
     private static final String SECURE_PREFS_NAME = "secure_ai_settings";
     private static final String FALLBACK_PREFS_NAME = "ai_settings_fallback";
     private static final String KEY_API_KEY = "ai_api_key";
+    private static final String KEY_API_KEY_HISTORY = "ai_api_key_history";
     private static final String KEY_AI_MODEL = "ai_model";
     private static final String KEY_AI_MODELS = "ai_model_options";
+    private static final int MAX_KEY_HISTORY = 10;
 
     private static volatile SecurePreferencesHelper instance;
 
@@ -52,6 +54,42 @@ public class SecurePreferencesHelper {
     public synchronized void saveApiKey(String key) {
         String normalized = normalizeKeyForStorage(key);
         preferences.edit().putString(KEY_API_KEY, normalized).apply();
+        if (!TextUtils.isEmpty(normalized)) {
+            addApiKeyToHistory(normalized);
+        }
+    }
+
+    /** Adds a key to the saved-key history (max {@value MAX_KEY_HISTORY} entries). */
+    public synchronized void addApiKeyToHistory(String key) {
+        String normalized = normalizeKeyForStorage(key);
+        if (TextUtils.isEmpty(normalized)) return;
+        LinkedHashSet<String> history = new LinkedHashSet<>(getApiKeyHistoryInternal());
+        // Remove then re-add to bump to end (most-recently-used order)
+        history.remove(normalized);
+        history.add(normalized);
+        // Trim to max size from the front (oldest first)
+        while (history.size() > MAX_KEY_HISTORY) {
+            history.remove(history.iterator().next());
+        }
+        preferences.edit().putStringSet(KEY_API_KEY_HISTORY, history).apply();
+    }
+
+    /** Returns all saved API keys, most-recently-used last. */
+    public synchronized List<String> getSavedApiKeys() {
+        return new ArrayList<>(getApiKeyHistoryInternal());
+    }
+
+    private Set<String> getApiKeyHistoryInternal() {
+        Set<String> raw = preferences.getStringSet(KEY_API_KEY_HISTORY, new LinkedHashSet<>());
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        if (raw == null) return result;
+        for (String item : raw) {
+            String normalized = normalizeKeyForStorage(item);
+            if (!TextUtils.isEmpty(normalized)) {
+                result.add(normalized);
+            }
+        }
+        return result;
     }
 
     public synchronized String getApiKey() {

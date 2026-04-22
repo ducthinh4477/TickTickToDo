@@ -61,7 +61,7 @@ public class GeminiManager implements LlmProvider {
         private static final Pattern RETRY_AFTER_SECONDS_PATTERN =
             Pattern.compile("retry\\s+in\\s+([0-9]+(?:\\.[0-9]+)?)s", Pattern.CASE_INSENSITIVE);
 
-    public enum ProviderType { GEMINI, OPENAI, ANTHROPIC }
+    public enum ProviderType { GEMINI, OPENAI, ANTHROPIC, GROQ }
 
     private static volatile GeminiManager instance;
     private static volatile Context appContext;
@@ -114,6 +114,7 @@ public class GeminiManager implements LlmProvider {
         if (TextUtils.isEmpty(apiKey)) return ProviderType.GEMINI;
         String trimmed = apiKey.trim();
         if (trimmed.startsWith("sk-ant-")) return ProviderType.ANTHROPIC;
+        if (trimmed.startsWith("gsk_")) return ProviderType.GROQ;
         if (trimmed.startsWith("sk-")) return ProviderType.OPENAI;
         return ProviderType.GEMINI;
     }
@@ -409,6 +410,8 @@ public class GeminiManager implements LlmProvider {
             return callOpenAi(apiKey, modelName, prompt);
         } else if (provider == ProviderType.ANTHROPIC) {
             return callAnthropic(apiKey, modelName, prompt);
+        } else if (provider == ProviderType.GROQ) {
+            return callGroq(apiKey, modelName, prompt);
         }
         throw new IllegalArgumentException("Unsupported provider: " + provider);
     }
@@ -497,6 +500,51 @@ public class GeminiManager implements LlmProvider {
             return response.getJSONArray("content")
                     .getJSONObject(0)
                     .getString("text")
+                    .trim();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private String callGroq(String apiKey, String modelName, String prompt) throws Exception {
+        URL url = new URL("https://api.groq.com/openai/v1/chat/completions");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30_000);
+            conn.setReadTimeout(60_000);
+
+            JSONObject body = new JSONObject();
+            body.put("model", modelName);
+            body.put("max_tokens", 2048);
+            JSONArray messages = new JSONArray();
+            JSONObject msg = new JSONObject();
+            msg.put("role", "user");
+            msg.put("content", prompt);
+            messages.put(msg);
+            body.put("messages", messages);
+
+            byte[] input = body.toString().getBytes("UTF-8");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(input);
+            }
+
+            int code = conn.getResponseCode();
+            InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String responseStr = readStream(is);
+
+            if (code >= 400) {
+                throw new java.io.IOException("Groq API error " + code + ": " + responseStr);
+            }
+
+            JSONObject response = new JSONObject(responseStr);
+            return response.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content")
                     .trim();
         } finally {
             conn.disconnect();

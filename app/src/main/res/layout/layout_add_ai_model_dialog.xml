@@ -105,6 +105,40 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Saved API key chips (hidden when history is empty) -->
+        <LinearLayout
+            android:id="@+id/layoutSavedKeys"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/assistant_saved_keys_label"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="6dp" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupSavedKeys"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleLine="true"
+                    app:singleSelection="true"
+                    app:selectionRequired="false" />
+
+            </HorizontalScrollView>
+
+        </LinearLayout>
+
         <!-- API key field -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/inputPopupApiKeyContainer"

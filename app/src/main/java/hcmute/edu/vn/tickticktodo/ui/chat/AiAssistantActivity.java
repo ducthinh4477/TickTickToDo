@@ -26,7 +26,11 @@ import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.switchmaterial.SwitchMaterial;
+
+import android.widget.LinearLayout;
 
 import org.json.JSONException;
 import org.json.JSONArray;
@@ -450,6 +454,8 @@ public class AiAssistantActivity extends BaseActivity {
         TextView tvCurrentAiModelValue = view.findViewById(R.id.tvCurrentAiModelValue);
         Button btnModelDetails = view.findViewById(R.id.btnModelDetails);
         Button btnAddAiModel = view.findViewById(R.id.btnAddAiModel);
+        LinearLayout layoutModelSwitcher = view.findViewById(R.id.layoutModelSwitcher);
+        ChipGroup chipGroupModels = view.findViewById(R.id.chipGroupModels);
         if (switchFloating == null
             || switchIntegrationCalendar == null
             || switchIntegrationMoodle == null
@@ -466,6 +472,33 @@ public class AiAssistantActivity extends BaseActivity {
         }
 
         tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
+
+        // Populate quick model switcher chips
+        if (chipGroupModels != null && layoutModelSwitcher != null) {
+            List<String> savedModels = securePreferencesHelper.getAiModelOptions();
+            String activeModel = securePreferencesHelper.getAiModel();
+            if (savedModels.size() > 1) {
+                layoutModelSwitcher.setVisibility(View.VISIBLE);
+                chipGroupModels.removeAllViews();
+                for (String modelName : savedModels) {
+                    Chip chip = new Chip(this);
+                    chip.setText(modelName);
+                    chip.setCheckable(true);
+                    chip.setChecked(modelName.equalsIgnoreCase(activeModel));
+                    chip.setOnCheckedChangeListener((c, checked) -> {
+                        if (checked) {
+                            securePreferencesHelper.saveAiModel(modelName);
+                            GeminiManager.getInstance().reloadConfiguration();
+                            tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
+                            updateModelNameIndicator();
+                        }
+                    });
+                    chipGroupModels.addView(chip);
+                }
+            } else {
+                layoutModelSwitcher.setVisibility(View.GONE);
+            }
+        }
 
         boolean isEnabled = sharedPrefs.getBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false);
         if (isEnabled && !hasOverlayPermission()) {
@@ -746,6 +779,8 @@ public class AiAssistantActivity extends BaseActivity {
         EditText editPopupModelName = popupView.findViewById(R.id.editPopupModelName);
         EditText editPopupApiKey = popupView.findViewById(R.id.editPopupApiKey);
         Button btnSaveAiModelPopup = popupView.findViewById(R.id.btnSaveAiModelPopup);
+        LinearLayout layoutSavedKeys = popupView.findViewById(R.id.layoutSavedKeys);
+        ChipGroup chipGroupSavedKeys = popupView.findViewById(R.id.chipGroupSavedKeys);
 
         if (tvModelDialogTitle == null
                 || editPopupModelName == null
@@ -754,6 +789,37 @@ public class AiAssistantActivity extends BaseActivity {
             popupDialog.dismiss();
             Toast.makeText(this, R.string.assistant_settings_save_failed, Toast.LENGTH_SHORT).show();
             return;
+        }
+
+        // Populate saved key chips
+        if (chipGroupSavedKeys != null && layoutSavedKeys != null) {
+            List<String> savedKeys = securePreferencesHelper.getSavedApiKeys();
+            if (!savedKeys.isEmpty()) {
+                layoutSavedKeys.setVisibility(View.VISIBLE);
+                chipGroupSavedKeys.removeAllViews();
+                // Show newest-first (reverse iteration)
+                for (int i = savedKeys.size() - 1; i >= 0; i--) {
+                    final String fullKey = savedKeys.get(i);
+                    String label = fullKey.length() > 12
+                            ? fullKey.substring(0, 8) + "…" + fullKey.substring(fullKey.length() - 4)
+                            : fullKey;
+                    Chip chip = new Chip(this);
+                    chip.setText(label);
+                    chip.setCheckable(false);
+                    chip.setOnClickListener(cv -> {
+                        editPopupApiKey.setText(fullKey);
+                        editPopupApiKey.setSelection(fullKey.length());
+                        // Deselect all chips visually
+                        for (int j = 0; j < chipGroupSavedKeys.getChildCount(); j++) {
+                            chipGroupSavedKeys.getChildAt(j).setAlpha(0.55f);
+                        }
+                        cv.setAlpha(1f);
+                    });
+                    chipGroupSavedKeys.addView(chip);
+                }
+            } else {
+                layoutSavedKeys.setVisibility(View.GONE);
+            }
         }
 
         if (detailMode) {
