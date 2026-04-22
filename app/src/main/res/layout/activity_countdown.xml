@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF1A1A2E"
+    android:background="?attr/colorSurface"
     android:gravity="center_horizontal"
     android:orientation="vertical"
     android:paddingStart="24dp"
     android:paddingEnd="24dp"
     tools:context=".ui.countdown.CountdownActivity">
 
-    <!-- Back button + Title -->
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
     <RelativeLayout
         android:id="@+id/countdown_header"
         android:layout_width="match_parent"
@@ -23,29 +23,30 @@
             android:id="@+id/btn_countdown_back"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/countdown_back_desc"
             android:src="@drawable/ic_close"
-            app:tint="#FFFFFFFF" />
+            app:tint="?attr/colorOnSurface" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="@string/countdown_title"
-            android:textColor="#FFFFFFFF"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <!-- Ambient sound button + playing indicator -->
+        <!-- Ambient sound indicator + button -->
         <LinearLayout
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/tv_ambient_indicator"
@@ -53,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:text="♫"
-                android:textColor="#AAFFFFFF"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="12sp"
                 android:visibility="gone" />
 
@@ -63,74 +64,81 @@
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/countdown_sound_desc"
-                android:src="@drawable/ic_timer"
-                app:tint="#FFFFFFFF" />
+                android:src="@drawable/ic_audio"
+                app:tint="?attr/colorOnSurface" />
 
         </LinearLayout>
 
     </RelativeLayout>
 
+    <!-- ── Mode Toggle ─────────────────────────────────────────────────── -->
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/toggle_timer_mode"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        app:singleSelection="true"
+        android:layout_marginTop="12dp"
+        app:checkedButton="@+id/btn_mode_countdown"
         app:selectionRequired="true"
-        app:checkedButton="@+id/btn_mode_countdown">
+        app:singleSelection="true">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_mode_countdown"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Đếm ngược"
-            android:textColor="#FFFFFFFF"
-            app:strokeColor="#50FFFFFF" />
+            android:text="Đếm ngược" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_mode_stopwatch"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Bấm giờ"
-            android:textColor="#FFFFFFFF"
-            app:strokeColor="#50FFFFFF" />
+            android:text="Bấm giờ" />
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
-    <!-- Spacer -->
-    <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+    <!-- ── Flex space above ring ────────────────────────────────────────── -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
-    <!-- Timer circle -->
+    <!-- ── Timer ring ───────────────────────────────────────────────────── -->
     <FrameLayout
         android:layout_width="280dp"
-        android:layout_height="280dp">
+        android:layout_height="280dp"
+        android:layout_gravity="center_horizontal">
 
-        <!-- Outer glow ring -->
-        <View
-            android:id="@+id/v_ring_outer"
-            android:layout_width="280dp"
-            android:layout_height="280dp"
+        <!-- Countdown progress arc (COUNTDOWN mode) -->
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progress_countdown"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_gravity="center"
-            android:alpha="0.18"
-            android:background="@drawable/bg_timer_ring_outer" />
+            android:indeterminate="false"
+            android:max="1000"
+            android:progress="1000"
+            app:indicatorColor="?attr/colorPrimary"
+            app:indicatorSize="268dp"
+            app:trackColor="?attr/colorSurfaceVariant"
+            app:trackCornerRadius="6dp"
+            app:trackThickness="10dp" />
 
-        <!-- Dashed ring for stopwatch -->
-        <View
-            android:id="@+id/v_ring_dashed"
-            android:layout_width="280dp"
-            android:layout_height="280dp"
+        <!-- Stopwatch tick bars (STOPWATCH mode) -->
+        <hcmute.edu.vn.tickticktodo.ui.countdown.StopwatchBarsView
+            android:id="@+id/view_stopwatch_bars"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_gravity="center"
-            android:visibility="gone"
-            android:background="@drawable/bg_timer_ring_dashed" />
+            android:visibility="gone" />
 
-        <!-- Main circle -->
+        <!-- Inner circle with time + status text -->
         <FrameLayout
-            android:layout_width="248dp"
-            android:layout_height="248dp"
+            android:layout_width="244dp"
+            android:layout_height="244dp"
             android:layout_gravity="center"
-            android:background="@drawable/bg_timer_circle">
+            android:background="@drawable/bg_timer_circle"
+            android:elevation="2dp">
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -139,18 +147,18 @@
                 android:gravity="center"
                 android:orientation="vertical">
 
-                <!-- Countdown text -->
+                <!-- Timer digits -->
                 <TextView
                     android:id="@+id/tv_countdown"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:fontFamily="monospace"
                     android:text="25:00"
                     android:textColor="#FFFFFFFF"
-                    android:textSize="64sp"
+                    android:textSize="60sp"
                     android:textStyle="bold"
                     tools:text="25:00" />
 
@@ -162,7 +170,8 @@
                     android:layout_marginTop="4dp"
                     android:text="@string/countdown_status_ready"
                     android:textColor="#CCFFFFFF"
-                    android:textSize="14sp" />
+                    android:textSize="13sp"
+                    android:letterSpacing="0.03" />
 
             </LinearLayout>
 
@@ -170,70 +179,164 @@
 
     </FrameLayout>
 
-    <!-- Session counter -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+    <!-- ── Lap list (STOPWATCH mode only) ──────────────────────────────── -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_laps"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.8"
+        android:layout_marginTop="12dp"
+        android:clipToPadding="false"
+        android:visibility="gone"
+        tools:visibility="visible"
+        tools:listitem="@layout/item_lap" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/countdown_session"
-            android:textColor="#AAFFFFFF"
-            android:textSize="13sp" />
+    <!-- ── Flex space below ring ────────────────────────────────────────── -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
-        <TextView
-            android:id="@+id/tv_session_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:text="1"
-            android:textColor="#FFFFFFFF"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-    </LinearLayout>
-
-    <!-- Spacer -->
-    <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
-
-    <!-- Control Buttons -->
-    <LinearLayout
+    <!-- ════════════════════════════════════════════════════════════════════
+         COUNTDOWN button container  (VISIBLE when mode = COUNTDOWN)
+         ════════════════════════════════════════════════════════════════════ -->
+    <FrameLayout
+        android:id="@+id/container_countdown_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:paddingBottom="48dp">
+        android:paddingBottom="40dp">
 
-        <!-- Stop/Reset button -->
-        <Button
-            android:id="@+id/btn_stop"
-            android:layout_width="140dp"
+        <!-- IDLE: single full-width Start button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_countdown_start"
+            android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:layout_marginEnd="12dp"
-            android:background="@drawable/bg_btn_timer_secondary"
-            android:enabled="false"
-            android:text="@string/countdown_btn_stop"
-            android:textColor="#FF4A90D9"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <!-- Start/Pause button -->
-        <Button
-            android:id="@+id/btn_start_pause"
-            android:layout_width="140dp"
-            android:layout_height="56dp"
-            android:layout_marginStart="12dp"
-            android:background="@drawable/bg_btn_timer_primary"
             android:text="@string/countdown_btn_start"
-            android:textColor="#FFFFFFFF"
             android:textSize="15sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            app:cornerRadius="28dp" />
 
-    </LinearLayout>
+        <!-- RUNNING / PAUSED: Reset  +  Pause|Resume -->
+        <LinearLayout
+            android:id="@+id/ll_countdown_dual"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_countdown_reset"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="10dp"
+                android:layout_weight="1"
+                android:text="@string/countdown_btn_reset"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="28dp"
+                app:icon="@drawable/ic_repeat"
+                app:iconGravity="textStart"
+                app:iconSize="18dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_countdown_pause_resume"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:text="@string/countdown_btn_pause"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="28dp"
+                app:icon="@drawable/ic_pause"
+                app:iconGravity="textStart"
+                app:iconSize="18dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         STOPWATCH button container  (GONE until mode = STOPWATCH)
+         ════════════════════════════════════════════════════════════════════ -->
+    <FrameLayout
+        android:id="@+id/container_sw_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="40dp"
+        android:visibility="gone">
+
+        <!-- IDLE: single full-width Start button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_sw_start"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/countdown_btn_start"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="28dp"
+            app:icon="@drawable/ic_play"
+            app:iconGravity="textStart"
+            app:iconSize="18dp" />
+
+        <!-- RUNNING / STOPPED: Flag  |  Stop-or-Resume  |  Reset -->
+        <LinearLayout
+            android:id="@+id/ll_sw_active"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <!-- Flag (left) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_sw_flag"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="@string/countdown_btn_flag"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="28dp"
+                app:icon="@drawable/ic_flag"
+                app:iconGravity="textStart"
+                app:iconSize="16dp" />
+
+            <!-- Stop / Resume (centre — slightly wider) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_sw_stop_resume"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1.6"
+                android:text="@string/countdown_btn_stop"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="28dp"
+                app:icon="@drawable/ic_stop"
+                app:iconGravity="textStart"
+                app:iconSize="18dp" />
+
+            <!-- Reset (right) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_sw_reset"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/countdown_btn_reset"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="28dp"
+                app:icon="@drawable/ic_repeat"
+                app:iconGravity="textStart"
+                app:iconSize="16dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
 
 </LinearLayout>
-

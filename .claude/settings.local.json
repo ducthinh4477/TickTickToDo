@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr create --base test --title 'feat: UI/UX redesign pass — layouts, colors, and design tokens' --body ' *)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" checkout -b ui-redesign-batch2)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" diff --name-only HEAD)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" diff origin/test --name-only)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" show origin/test:app/src/main/res/layout/item_task.xml)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" show origin/test:app/src/main/res/layout/activity_eisenhower.xml)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" show origin/test:app/src/main/res/values-night/colors.xml)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" show origin/test:app/src/main/res/layout/bottom_sheet_add_task.xml)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" show origin/test:app/src/main/res/layout/activity_countdown.xml)",
+      "Read(//c/Users/Admin/AndroidStudioProjects/TickTickToDo/**)",
+      "Bash(./gradlew :app:compileDebugJavaWithJavac)",
+      "Bash(./gradlew :app:assembleDebug)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" checkout test)",
+      "Bash(git -C \"C:\\\\Users\\\\Admin\\\\AndroidStudioProjects\\\\TickTickToDo\" checkout -b ui-ux-batch-polish)"
+    ]
+  }
+}
