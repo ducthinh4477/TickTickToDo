@@ -62,7 +62,7 @@ import hcmute.edu.vn.tickticktodo.data.model.ScheduleProposalEntity;
     ScheduleProposalEntity.class,
     ScheduleBlockEntity.class,
     AgentDecisionLogEntity.class
-}, version = 16, exportSchema = false)
+}, version = 17, exportSchema = false)
 public abstract class TaskDatabase extends RoomDatabase {
 
     private static volatile TaskDatabase INSTANCE;
@@ -352,6 +352,20 @@ public abstract class TaskDatabase extends RoomDatabase {
         }
     };
 
+    // ─── Migration v16 → v17 ──────────────────────────────────────────────────────
+    // Thêm cột reminder_hour và reminder_minute vào bảng habits cho tính năng nhắc nhở thói quen.
+    static final Migration MIGRATION_16_17 = new Migration(16, 17) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                "ALTER TABLE habits ADD COLUMN reminder_hour INTEGER NOT NULL DEFAULT -1"
+            );
+            database.execSQL(
+                "ALTER TABLE habits ADD COLUMN reminder_minute INTEGER NOT NULL DEFAULT 0"
+            );
+        }
+    };
+
     static final Migration MIGRATION_7_8 = new Migration(7, 8) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -384,7 +398,8 @@ public abstract class TaskDatabase extends RoomDatabase {
                             MIGRATION_12_13,
                             MIGRATION_13_14,
                             MIGRATION_14_15,
-                            MIGRATION_15_16
+                            MIGRATION_15_16,
+                            MIGRATION_16_17
                         ) // Migration an toàn (giữ data)
                     .fallbackToDestructiveMigration()   // Fallback nếu schema không khớp
                     .build();

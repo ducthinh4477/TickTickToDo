@@ -17,6 +17,10 @@ public final class AgentToolNames {
     public static final String GET_ALL_EVENTS_TOOL = "GET_ALL_EVENTS_TOOL";
     public static final String SYNC_NEW_DEADLINES_TOOL = "SYNC_NEW_DEADLINES_TOOL";
     public static final String GET_HEALTH_SUMMARY_TOOL = "GET_HEALTH_SUMMARY_TOOL";
+    public static final String CREATE_MULTIPLE_TASKS = "CREATE_MULTIPLE_TASKS";
+    public static final String CREATE_HABIT = "CREATE_HABIT";
+    public static final String LIST_HABITS = "LIST_HABITS";
+    public static final String CHECKIN_HABIT = "CHECKIN_HABIT";
 
     private AgentToolNames() {
     }

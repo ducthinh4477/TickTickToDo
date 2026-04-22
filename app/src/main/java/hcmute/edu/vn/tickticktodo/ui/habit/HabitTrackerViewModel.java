@@ -82,8 +82,22 @@ public class HabitTrackerViewModel extends AndroidViewModel {
     }
 
     public void addHabit(String name, String icon) {
+        addHabit(name, icon, -1, 0);
+    }
+
+    public void addHabit(String name, String icon, int reminderHour, int reminderMinute) {
         Habit habit = new Habit(name, icon);
-        repository.insertHabit(habit, this::selectHabit);
+        habit.setReminderHour(reminderHour);
+        habit.setReminderMinute(reminderMinute);
+        repository.insertHabit(habit, insertedId -> {
+            selectHabit(insertedId);
+            // Schedule alarm if reminder time is set
+            if (reminderHour >= 0) {
+                habit.setId(insertedId);
+                hcmute.edu.vn.tickticktodo.helper.HabitAlarmManager
+                        .scheduleHabitReminder(getApplication(), habit);
+            }
+        });
     }
 
     public void checkInHabit(long habitId) {
