@@ -9,6 +9,8 @@ import android.provider.Settings;
 import android.content.SharedPreferences;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -24,9 +26,11 @@ import android.widget.Toast;
 import androidx.core.graphics.Insets;
 import androidx.core.content.ContextCompat;
 import androidx.core.splashscreen.SplashScreen;
+import androidx.core.view.GestureDetectorCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -82,10 +86,15 @@ public class MainActivity extends BaseActivity {
     private MainViewModel mainStateViewModel;
     private TaskViewModel taskViewModel;
 
-    // UI — Menu overlay
+    // UI — Menu overlay (left drawer)
     private FrameLayout menuOverlay;
     private View menuBackdrop;
     private LinearLayout menuBoxContainer;
+
+    // UI — More nav popup
+    private FrameLayout moreNavOverlay;
+    private View moreNavBackdrop;
+    private View moreNavPopup;
     private RecyclerView rvListsPanel;
     private ListPanelAdapter listPanelAdapter;
     private ImageButton btnAddList;
@@ -146,10 +155,11 @@ public class MainActivity extends BaseActivity {
         mainStateViewModel = new ViewModelProvider(this).get(MainViewModel.class);
 
         initViews();
-        setupNavRailInsets();   // ← xử lý paddingTop theo status bar
+        setupWindowInsets();    // ← xử lý status bar + navigation bar insets
         setupHeader();
         taskViewModel = new ViewModelProvider(this).get(TaskViewModel.class);
         setupMenuPanel();
+        setupMoreNavPopup();
         setupNavRail();
         initAdapters();
         setupRecyclerView();
@@ -206,6 +216,10 @@ public class MainActivity extends BaseActivity {
         menuOverlay      = findViewById(R.id.menu_overlay);
         menuBackdrop     = findViewById(R.id.menu_backdrop);
         menuBoxContainer = findViewById(R.id.menuBoxContainer);
+
+        moreNavOverlay   = findViewById(R.id.more_nav_overlay);
+        moreNavBackdrop  = findViewById(R.id.more_nav_backdrop);
+        moreNavPopup     = findViewById(R.id.more_nav_popup);
         rvListsPanel     = findViewById(R.id.rv_lists_panel);
         btnAddList       = findViewById(R.id.btn_add_list);
         tvUserSub        = findViewById(R.id.tv_user_sub);
@@ -228,31 +242,34 @@ public class MainActivity extends BaseActivity {
         btnSendTask      = findViewById(R.id.btn_send_task);
         fabAddTask       = findViewById(R.id.fab_add_task);
 
-        // Nav Rail items
-        navItemHome     = findViewById(R.id.nav_item_home);
-        navItemCalendar = findViewById(R.id.nav_item_calendar);
-        navItemFocus    = findViewById(R.id.nav_item_focus);
-        navItemSchool   = findViewById(R.id.nav_item_school);
-        navItemHabits   = findViewById(R.id.nav_item_habits);
-        navItemSettings  = findViewById(R.id.nav_item_settings);
-        navItemMore     = findViewById(R.id.nav_item_more);
-        navIconHome     = findViewById(R.id.nav_icon_home);
-        navIconCalendar = findViewById(R.id.nav_icon_calendar);
-        navIconFocus    = findViewById(R.id.nav_icon_focus);
-        navIconSchool   = findViewById(R.id.nav_icon_school);
-        navIconHabits   = findViewById(R.id.nav_icon_habits);
-        navIconSettings  = findViewById(R.id.nav_icon_settings);
-        navIconAiAssistant = findViewById(R.id.nav_icon_ai_assistant);
-        navIconMore     = findViewById(R.id.nav_icon_more);
-        navLabelHome    = findViewById(R.id.nav_label_home);
-        navLabelCalendar= findViewById(R.id.nav_label_calendar);
-        navLabelFocus   = findViewById(R.id.nav_label_focus);
-        navLabelSchool  = findViewById(R.id.nav_label_school);
-        navLabelHabits  = findViewById(R.id.nav_label_habits);
-        if (findViewById(R.id.nav_label_settings) != null) navLabelSettings = findViewById(R.id.nav_label_settings);
-        navLabelAiAssistant = findViewById(R.id.nav_label_ai_assistant);
-        navLabelMore    = findViewById(R.id.nav_label_more);
+        // Bottom nav items (5 visible items)
+        navItemHome        = findViewById(R.id.nav_item_home);
+        navItemCalendar    = findViewById(R.id.nav_item_calendar);
+        navItemFocus       = findViewById(R.id.nav_item_focus);
         navItemAiAssistant = findViewById(R.id.nav_item_ai_assistant);
+        navItemMore        = findViewById(R.id.nav_item_more);
+        // Removed nav items (school/habits/settings/eisenhower/countdown → More popup)
+        navItemSchool   = null;
+        navItemHabits   = null;
+        navItemSettings = null;
+
+        navIconHome        = findViewById(R.id.nav_icon_home);
+        navIconCalendar    = findViewById(R.id.nav_icon_calendar);
+        navIconFocus       = findViewById(R.id.nav_icon_focus);
+        navIconAiAssistant = findViewById(R.id.nav_icon_ai_assistant);
+        navIconMore        = findViewById(R.id.nav_icon_more);
+        navIconSchool      = null;
+        navIconHabits      = null;
+        navIconSettings    = null;
+
+        navLabelHome        = findViewById(R.id.nav_label_home);
+        navLabelCalendar    = findViewById(R.id.nav_label_calendar);
+        navLabelFocus       = findViewById(R.id.nav_label_focus);
+        navLabelAiAssistant = findViewById(R.id.nav_label_ai_assistant);
+        navLabelMore        = findViewById(R.id.nav_label_more);
+        navLabelSchool      = null;
+        navLabelHabits      = null;
+        navLabelSettings    = null;
 
         // Đặt chiều rộng drawer = 2/3 content_frame sau khi layout được đo xong
         FrameLayout contentFrame = findViewById(R.id.content_frame);
@@ -427,14 +444,7 @@ public class MainActivity extends BaseActivity {
             updateIncompleteList(taskViewModel.getNext7DaysTasks().getValue());
         });
         setClickListenerIfPresent(R.id.panel_item_inbox, v -> showDeveloperMessageDialog());
-        setClickListenerIfPresent(R.id.nav_item_eisenhower, v -> {
-            closeMenu();
-            startActivity(new Intent(MainActivity.this, EisenhowerActivity.class));
-        });
-        setClickListenerIfPresent(R.id.nav_item_countdown, v -> {
-            closeMenu();
-            startActivity(new Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.countdown.EventCountdownActivity.class));
-        });
+        // nav_item_eisenhower / nav_item_countdown are now in the More popup (see setupMoreNavPopup)
         setClickListenerIfPresent(R.id.panel_item_completed, v -> showHistoryDialog("Nhật ký: Đã hoàn thành", taskViewModel.getAllCompletedTasksLog()));
         setClickListenerIfPresent(R.id.panel_item_trash, v -> showHistoryDialog("Nhật ký: Quá hạn", taskViewModel.getAllOverdueTasksLog()));
         setClickListenerIfPresent(R.id.panel_item_notifications, v -> {
@@ -555,26 +565,37 @@ public class MainActivity extends BaseActivity {
         popup.show();
     }
 
-    // ─── Nav Rail ───────────────────────────────────────────────────────────
+    // ─── Bottom Navigation ──────────────────────────────────────────────────
 
     /**
-     * Áp dụng paddingTop cho nav_rail = status bar height + 16dp khoảng an toàn,
-     * đảm bảo btn_hamburger không bị che bởi tai thỏ / camera / đồng hồ.
+     * Apply system bar insets:
+     *   - status bar height → header paddingTop (keeps content below notch)
+     *   - navigation bar height → bottom_nav_container paddingBottom (avoids gesture area)
      */
-    private void setupNavRailInsets() {
-        LinearLayout navRail = findViewById(R.id.nav_rail);
-        if (navRail == null) return;
-        ViewCompat.setOnApplyWindowInsetsListener(navRail, (view, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            int extraDp = (int) (16 * view.getResources().getDisplayMetrics().density);
-            view.setPadding(
-                    view.getPaddingLeft(),
-                    insets.top + extraDp,   // status bar + 16dp khoảng an toàn
-                    view.getPaddingRight(),
-                    view.getPaddingBottom()
-            );
-            return WindowInsetsCompat.CONSUMED;
-        });
+    private void setupWindowInsets() {
+        LinearLayout header = findViewById(R.id.header);
+        if (header != null) {
+            final int[] originalTopPad = {header.getPaddingTop()};
+            ViewCompat.setOnApplyWindowInsetsListener(header, (view, windowInsets) -> {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                view.setPadding(
+                        view.getPaddingLeft(),
+                        insets.top + originalTopPad[0],
+                        view.getPaddingRight(),
+                        view.getPaddingBottom()
+                );
+                return WindowInsetsCompat.CONSUMED;
+            });
+        }
+
+        FrameLayout bottomContainer = findViewById(R.id.bottom_nav_container);
+        if (bottomContainer != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(bottomContainer, (view, windowInsets) -> {
+                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                view.setPadding(0, 0, 0, insets.bottom);
+                return WindowInsetsCompat.CONSUMED;
+            });
+        }
     }
 
     private void setupNavRail() {
@@ -600,43 +621,77 @@ public class MainActivity extends BaseActivity {
         );
 
         if (navItemMore != null) {
-            navItemMore.setOnClickListener(this::showNavMoreMenu);
+            navItemMore.setOnClickListener(v -> toggleMoreNavPopup());
         }
 
         Integer selectedNavId = mainStateViewModel.getSelectedNavItem().getValue();
         selectNavItem(selectedNavId == null || selectedNavId == 0 ? R.id.nav_item_home : selectedNavId);
     }
 
-    private void showNavMoreMenu(View anchor) {
-        PopupMenu popupMenu = new PopupMenu(this, anchor);
-        popupMenu.getMenu().add(0, 1, 0, getString(R.string.nav_school));
-        popupMenu.getMenu().add(0, 2, 1, getString(R.string.nav_habits));
-        popupMenu.getMenu().add(0, 3, 2, getString(R.string.nav_matrix));
-        popupMenu.getMenu().add(0, 4, 3, getString(R.string.nav_countdown));
+    // ─── More nav popup ─────────────────────────────────────────────────────
 
-        popupMenu.setOnMenuItemClickListener(item -> {
+    private void setupMoreNavPopup() {
+        if (moreNavBackdrop != null) {
+            moreNavBackdrop.setOnClickListener(v -> closeMoreNavPopup());
+        }
+        setClickListenerIfPresent(R.id.nav_more_school, v -> {
+            closeMoreNavPopup();
             selectNavItem(R.id.nav_item_more);
-            int id = item.getItemId();
-            if (id == 1) {
-                startActivity(new Intent(MainActivity.this, MoodleActivity.class));
-                return true;
-            }
-            if (id == 2) {
-                startActivity(HabitTrackerActivity.newIntent(this));
-                return true;
-            }
-            if (id == 3) {
-                startActivity(new Intent(MainActivity.this, EisenhowerActivity.class));
-                return true;
-            }
-            if (id == 4) {
-                startActivity(new Intent(MainActivity.this, hcmute.edu.vn.tickticktodo.ui.countdown.EventCountdownActivity.class));
-                return true;
-            }
-            return false;
+            startActivity(new Intent(this, MoodleActivity.class));
         });
+        setClickListenerIfPresent(R.id.nav_more_habits, v -> {
+            closeMoreNavPopup();
+            selectNavItem(R.id.nav_item_more);
+            startActivity(HabitTrackerActivity.newIntent(this));
+        });
+        setClickListenerIfPresent(R.id.nav_more_matrix, v -> {
+            closeMoreNavPopup();
+            selectNavItem(R.id.nav_item_more);
+            startActivity(new Intent(this, EisenhowerActivity.class));
+        });
+        setClickListenerIfPresent(R.id.nav_more_countdown, v -> {
+            closeMoreNavPopup();
+            selectNavItem(R.id.nav_item_more);
+            startActivity(new Intent(this, hcmute.edu.vn.tickticktodo.ui.countdown.EventCountdownActivity.class));
+        });
+    }
 
-        popupMenu.show();
+    private void toggleMoreNavPopup() {
+        if (moreNavOverlay != null && moreNavOverlay.getVisibility() == View.VISIBLE) {
+            closeMoreNavPopup();
+        } else {
+            openMoreNavPopup();
+        }
+    }
+
+    private void openMoreNavPopup() {
+        if (moreNavOverlay == null) return;
+        selectNavItem(R.id.nav_item_more);
+        moreNavOverlay.setVisibility(View.VISIBLE);
+        moreNavBackdrop.setAlpha(0f);
+        moreNavBackdrop.animate().alpha(1f).setDuration(220).start();
+        // Slide card up from below
+        moreNavPopup.post(() -> {
+            float startY = moreNavPopup.getHeight() + 80f;
+            moreNavPopup.setTranslationY(startY);
+            moreNavPopup.animate()
+                    .translationY(0f)
+                    .setDuration(320)
+                    .setInterpolator(new FastOutSlowInInterpolator())
+                    .start();
+        });
+    }
+
+    private void closeMoreNavPopup() {
+        if (moreNavOverlay == null || moreNavOverlay.getVisibility() != View.VISIBLE) return;
+        float endY = moreNavPopup.getHeight() + 80f;
+        moreNavBackdrop.animate().alpha(0f).setDuration(180).start();
+        moreNavPopup.animate()
+                .translationY(endY)
+                .setDuration(220)
+                .setInterpolator(new FastOutSlowInInterpolator())
+                .withEndAction(() -> moreNavOverlay.setVisibility(View.GONE))
+                .start();
     }
 
     private void showSettingsDialog() {
@@ -689,9 +744,10 @@ public class MainActivity extends BaseActivity {
 
     private void selectNavItem(int selectedId) {
         mainStateViewModel.setSelectedNavItem(selectedId);
-        int[] ids     = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_focus, R.id.nav_item_school, R.id.nav_item_habits, R.id.nav_item_settings, R.id.nav_item_ai_assistant, R.id.nav_item_more};
-        ImageView[] icons  = {navIconHome, navIconCalendar, navIconFocus, navIconSchool, navIconHabits, navIconSettings, navIconAiAssistant, navIconMore};
-        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelFocus, navLabelSchool, navLabelHabits, navLabelSettings, navLabelAiAssistant, navLabelMore};
+        // Only the 5 visible bottom nav items
+        int[] ids      = {R.id.nav_item_home, R.id.nav_item_calendar, R.id.nav_item_ai_assistant, R.id.nav_item_focus, R.id.nav_item_more};
+        ImageView[] icons  = {navIconHome, navIconCalendar, navIconAiAssistant, navIconFocus, navIconMore};
+        TextView[]  labels = {navLabelHome, navLabelCalendar, navLabelAiAssistant, navLabelFocus, navLabelMore};
         mainNavigationHelper.selectNavItem(selectedId, ids, icons, labels);
     }
 
@@ -749,6 +805,26 @@ public class MainActivity extends BaseActivity {
 
         SwipeToDeleteCallback swipeCallback = new SwipeToDeleteCallback(this, this::handleSwipeDelete);
         new ItemTouchHelper(swipeCallback).attachToRecyclerView(rvTasks);
+
+        // Swipe right on task list → open the left drawer
+        GestureDetectorCompat swipeOpenDetector = new GestureDetectorCompat(this,
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onFling(MotionEvent e1, MotionEvent e2, float vX, float vY) {
+                        if (e1 == null || e2 == null) return false;
+                        float dX = e2.getX() - e1.getX();
+                        float dY = Math.abs(e2.getY() - e1.getY());
+                        if (dX > 80 && Math.abs(vX) > 200 && dY < Math.abs(dX)) {
+                            openMenu();
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+        rvTasks.setOnTouchListener((v, event) -> {
+            swipeOpenDetector.onTouchEvent(event);
+            return false; // let RecyclerView handle scrolling/clicks normally
+        });
     }
 
     private void handleSwipeDelete(int position) {
@@ -951,7 +1027,9 @@ public class MainActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
-        if (menuOverlay.getVisibility() == View.VISIBLE) {
+        if (moreNavOverlay != null && moreNavOverlay.getVisibility() == View.VISIBLE) {
+            closeMoreNavPopup();
+        } else if (menuOverlay != null && menuOverlay.getVisibility() == View.VISIBLE) {
             closeMenu();
         } else {
             super.onBackPressed();
