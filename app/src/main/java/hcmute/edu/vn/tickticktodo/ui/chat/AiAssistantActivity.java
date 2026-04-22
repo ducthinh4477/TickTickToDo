@@ -488,6 +488,8 @@ public class AiAssistantActivity extends BaseActivity {
                     chip.setOnCheckedChangeListener((c, checked) -> {
                         if (checked) {
                             securePreferencesHelper.saveAiModel(modelName);
+                            String keyForThisModel = securePreferencesHelper.getApiKeyForModel(modelName);
+                            securePreferencesHelper.saveApiKey(keyForThisModel);
                             GeminiManager.getInstance().reloadConfiguration();
                             tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
                             updateModelNameIndicator();
@@ -869,7 +871,8 @@ public class AiAssistantActivity extends BaseActivity {
             try {
                 securePreferencesHelper.addAiModel(modelName);
                 securePreferencesHelper.saveAiModel(modelName);
-                securePreferencesHelper.saveApiKey(apiKey);
+                securePreferencesHelper.saveApiKeyForModel(modelName, apiKey);
+                
 
                 GeminiManager manager = GeminiManager.getInstance();
                 manager.reloadConfiguration();

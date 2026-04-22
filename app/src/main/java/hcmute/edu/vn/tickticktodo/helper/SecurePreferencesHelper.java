@@ -37,6 +37,21 @@ public class SecurePreferencesHelper {
         this.preferences = createPreferences(appContext);
     }
 
+    public synchronized void saveApiKeyForModel(String modelName, String apiKey) {
+        String key = KEY_API_KEY + "_" + modelName.trim().toLowerCase().replaceAll("[^a-z0-9]", "_");
+        preferences.edit().putString(key, apiKey.trim()).apply();
+        saveApiKey(apiKey);
+    }
+
+    public synchronized String getApiKeyForModel(String modelName) {
+        String key = KEY_API_KEY + "_" + modelName.trim().toLowerCase().replaceAll("[^a-z0-9]", "_");
+        String modelKey = preferences.getString(key, "");
+        if (modelKey != null && !modelKey.isEmpty()) {
+            return modelKey.trim();
+        }
+        return getApiKey();
+    }
+
     public static SecurePreferencesHelper getInstance(Context context) {
         if (context == null) {
             throw new IllegalArgumentException("Context must not be null.");

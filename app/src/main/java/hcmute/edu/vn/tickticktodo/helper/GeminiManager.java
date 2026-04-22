@@ -613,32 +613,45 @@ public class GeminiManager implements LlmProvider {
     }
 
     private void reloadConfigurationInternal() {
-        String apiKey = resolveApiKey();
-        String modelName = resolveModelName();
+        Context context = appContext;
+        if (context == null) {
+            synchronized (modelLock) {
+                modelFutures = null;
+                currentApiKey = "";
+                activeModelName = DEFAULT_MODEL_NAME;
+                currentProviderType = ProviderType.GEMINI;
+                quotaCooldownUntilMillis = 0L;
+            }
+            return;
+        }
+
+        SecurePreferencesHelper prefs = SecurePreferencesHelper.getInstance(context);
+        String selectedModel = prefs.getAiModel();
+        String apiKey = prefs.getApiKeyForModel(selectedModel);
 
         synchronized (modelLock) {
-            activeModelName = modelName;
-            currentApiKey = apiKey;
+            activeModelName = TextUtils.isEmpty(selectedModel) ? DEFAULT_MODEL_NAME : selectedModel;
+            currentApiKey = TextUtils.isEmpty(apiKey) ? "" : apiKey.trim();
             quotaCooldownUntilMillis = 0L;
 
-            if (TextUtils.isEmpty(apiKey) || TextUtils.isEmpty(modelName)) {
+            if (TextUtils.isEmpty(currentApiKey) || TextUtils.isEmpty(activeModelName)) {
                 modelFutures = null;
                 currentProviderType = ProviderType.GEMINI;
                 return;
             }
 
-            currentProviderType = detectProvider(apiKey);
+            currentProviderType = detectProvider(currentApiKey);
 
             if (currentProviderType == ProviderType.GEMINI) {
                 try {
-                    GenerativeModel model = new GenerativeModel(modelName, apiKey);
+                    GenerativeModel model = new GenerativeModel(activeModelName, currentApiKey);
                     modelFutures = GenerativeModelFutures.from(model);
                 } catch (Exception exception) {
                     Log.e(TAG, "Failed to initialize Gemini model", exception);
                     modelFutures = null;
                 }
             } else {
-                modelFutures = null; // OpenAI/Anthropic use direct HTTP, no SDK instance needed
+                modelFutures = null;
             }
         }
     }
