@@ -243,7 +243,6 @@ public class FloatingAssistantService extends Service {
     private OverlayInteractionMode overlayInteractionMode = OverlayInteractionMode.CHAT_ONLY;
     private EditText floatingInputField;
     private View floatingSendButton;
-    private TextView floatingModeText;
     private final ArrayList<Long> pendingCarryOverTaskIds = new ArrayList<>();
     private volatile String lastSurfacedSuggestionId;
     private volatile String pendingPlanApplyKey;
@@ -1461,7 +1460,6 @@ public class FloatingAssistantService extends Service {
         EditText etInput = floatingChatView.findViewById(R.id.et_message_floating);
         View btnSend = floatingChatView.findViewById(R.id.btn_send_floating);
         View btnMic = floatingChatView.findViewById(R.id.btn_mic_floating);
-        floatingModeText = floatingChatView.findViewById(R.id.tv_floating_chat_mode);
         dailyReviewLayout = floatingChatView.findViewById(R.id.layout_daily_review_action);
         dailyReviewContent = floatingChatView.findViewById(R.id.tv_daily_review_content);
         moveUnfinishedButton = floatingChatView.findViewById(R.id.btn_move_unfinished_tasks);
@@ -1669,14 +1667,6 @@ public class FloatingAssistantService extends Service {
             boolean voiceOnly = overlayInteractionMode == OverlayInteractionMode.VOICE_ONLY;
             voiceMicButton.setEnabled(voiceOnly);
             voiceMicButton.setVisibility(voiceOnly ? View.VISIBLE : View.GONE);
-        }
-
-        if (floatingModeText != null) {
-            floatingModeText.setText(
-                FloatingOverlayStatusFormatter.resolveModeLabelResId(
-                    overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY
-                )
-            );
         }
 
         if (overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY) {

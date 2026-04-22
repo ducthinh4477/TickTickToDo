@@ -176,7 +176,7 @@
                 <!-- Task list -->
                 <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="0dp"
+                    android:layout_height="466dp"
                     android:layout_weight="1">
 
                     <androidx.recyclerview.widget.RecyclerView
@@ -198,12 +198,14 @@
                         android:gravity="center"
                         android:orientation="vertical"
                         android:visibility="gone">
+
                         <ImageView
                             android:layout_width="120dp"
                             android:layout_height="120dp"
                             android:alpha="0.5"
                             android:contentDescription="@string/empty_title"
                             android:src="@drawable/ic_empty_tasks" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -213,6 +215,7 @@
                             android:textColor="@color/text_primary"
                             android:textSize="17sp"
                             android:textStyle="bold" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -700,35 +703,40 @@
     <FrameLayout
         android:id="@+id/bottom_nav_container"
         android:layout_width="match_parent"
-        android:layout_height="60dp">
+        android:layout_height="80dp">
 
         <!-- Navigation bar surface -->
         <LinearLayout
             android:id="@+id/bottom_nav_bar"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/background_surface"
+            android:background="@color/background_navmain"
             android:elevation="8dp"
             android:orientation="horizontal">
 
             <!-- Trang chủ -->
+
+            <!-- Lịch -->
             <LinearLayout
                 android:id="@+id/nav_item_home"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:background="@null"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?attr/selectableItemBackground"
                 android:gravity="center"
                 android:orientation="vertical">
+
                 <ImageView
                     android:id="@+id/nav_icon_home"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
+                    android:contentDescription="@string/nav_home"
                     android:src="@drawable/ic_home"
-                    app:tint="@color/accent_primary"
-                    android:contentDescription="@string/nav_home" />
+                    app:tint="@color/accent_primary" />
+
                 <TextView
                     android:id="@+id/nav_label_home"
                     android:layout_width="wrap_content"
@@ -740,7 +748,6 @@
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- Lịch -->
             <LinearLayout
                 android:id="@+id/nav_item_calendar"
                 android:layout_width="0dp"
@@ -748,13 +755,14 @@
                 android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?attr/selectableItemBackground"
+                android:background="@null"
                 android:gravity="center"
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/nav_icon_calendar"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
                     android:src="@drawable/ic_calendar"
                     app:tint="@color/text_secondary"
                     android:contentDescription="@string/nav_calendar_desc" />
@@ -776,13 +784,14 @@
                 android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?attr/selectableItemBackground"
+                android:background="@null"
                 android:gravity="center"
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/nav_icon_ai_assistant"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
                     android:src="@drawable/ic_ai_spark"
                     app:tint="@color/text_secondary"
                     android:contentDescription="Trợ lý AI" />
@@ -804,13 +813,14 @@
                 android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?attr/selectableItemBackground"
+                android:background="@null"
                 android:gravity="center"
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/nav_icon_focus"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
                     android:src="@drawable/ic_timer"
                     app:tint="@color/text_secondary"
                     android:contentDescription="@string/nav_focus" />
@@ -832,13 +842,14 @@
                 android:layout_weight="1"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?attr/selectableItemBackground"
+                android:background="@null"
                 android:gravity="center"
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/nav_icon_more"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
                     android:src="@drawable/ic_more_horiz"
                     app:tint="@color/text_secondary"
                     android:contentDescription="@string/nav_more" />

@@ -8,6 +8,7 @@
     <!-- Core backgrounds -->
     <color name="background_primary">#FF121212</color>
     <color name="background_surface">#FF1D1D1D</color>
+    <color name="background_navmain">#001D1D1D</color>
     <color name="background_card">#FF363636</color>
     <color name="background_elevated">#FF272727</color>
     <color name="background_input">#FF1D1D1D</color>
