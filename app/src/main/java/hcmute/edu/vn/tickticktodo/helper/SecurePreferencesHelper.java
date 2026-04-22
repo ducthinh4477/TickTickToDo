@@ -10,6 +10,7 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import androidx.security.crypto.EncryptedSharedPreferences;
@@ -38,18 +39,40 @@ public class SecurePreferencesHelper {
     }
 
     public synchronized void saveApiKeyForModel(String modelName, String apiKey) {
-        String key = KEY_API_KEY + "_" + modelName.trim().toLowerCase().replaceAll("[^a-z0-9]", "_");
-        preferences.edit().putString(key, apiKey.trim()).apply();
-        saveApiKey(apiKey);
+        String modelPreferenceKey = buildModelApiKeyPreferenceKey(modelName);
+        String normalizedApiKey = normalizeKeyForStorage(apiKey);
+
+        if (!TextUtils.isEmpty(modelPreferenceKey)) {
+            preferences.edit().putString(modelPreferenceKey, normalizedApiKey).apply();
+        }
+
+        saveApiKey(normalizedApiKey);
     }
 
     public synchronized String getApiKeyForModel(String modelName) {
-        String key = KEY_API_KEY + "_" + modelName.trim().toLowerCase().replaceAll("[^a-z0-9]", "_");
-        String modelKey = preferences.getString(key, "");
-        if (modelKey != null && !modelKey.isEmpty()) {
+        String keyForModel = buildModelApiKeyPreferenceKey(modelName);
+        if (TextUtils.isEmpty(keyForModel)) {
+            return "";
+        }
+
+        String modelKey = preferences.getString(keyForModel, "");
+        if (!TextUtils.isEmpty(modelKey)) {
             return modelKey.trim();
         }
-        return getApiKey();
+
+        // Backward-compat for older builds that used raw model text in preference key.
+        String legacyKeyForModel = KEY_API_KEY + "_" + normalizeModel(modelName);
+        String legacyModelKey = preferences.getString(legacyKeyForModel, "");
+        if (!TextUtils.isEmpty(legacyModelKey)) {
+            String normalizedLegacyModelKey = legacyModelKey.trim();
+            preferences.edit()
+                    .putString(keyForModel, normalizedLegacyModelKey)
+                    .remove(legacyKeyForModel)
+                    .apply();
+            return normalizedLegacyModelKey;
+        }
+
+        return modelKey == null ? "" : modelKey.trim();
     }
 
     public static SecurePreferencesHelper getInstance(Context context) {
@@ -120,11 +143,13 @@ public class SecurePreferencesHelper {
         String normalized = normalizeModel(modelName);
         if (TextUtils.isEmpty(normalized)) {
             preferences.edit().remove(KEY_AI_MODEL).apply();
+            saveApiKey("");
             return;
         }
 
         addAiModel(normalized);
         preferences.edit().putString(KEY_AI_MODEL, normalized).apply();
+        saveApiKey(getApiKeyForModel(normalized));
     }
 
     public synchronized String getAiModel() {
@@ -192,6 +217,24 @@ public class SecurePreferencesHelper {
             return DEFAULT_MODEL;
         }
         return modelName.trim();
+    }
+
+    private String buildModelApiKeyPreferenceKey(String modelName) {
+        String normalizedModelPreferenceKey = normalizeModelPreferenceKey(modelName);
+        if (TextUtils.isEmpty(normalizedModelPreferenceKey)) {
+            return "";
+        }
+        return KEY_API_KEY + "_" + normalizedModelPreferenceKey;
+    }
+
+    private String normalizeModelPreferenceKey(String modelName) {
+        String normalizedModel = normalizeModel(modelName);
+        if (TextUtils.isEmpty(normalizedModel)) {
+            return "";
+        }
+        return normalizedModel
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "_");
     }
 
     private Set<String> getModelSetInternal() {

@@ -537,6 +537,7 @@ public class GeminiManager implements LlmProvider {
             String responseStr = readStream(is);
 
             if (code >= 400) {
+                // If it's a 400/404/etc, the error body often contains more detail than just the HTTP code
                 throw new java.io.IOException("Groq API error " + code + ": " + responseStr);
             }
 
@@ -568,6 +569,15 @@ public class GeminiManager implements LlmProvider {
         String msg = e.getMessage();
         if (msg == null) return GENERIC_ERROR_MESSAGE;
         String lower = msg.toLowerCase();
+
+        // Specific handling for common LLM API errors to give better feedback
+        if (lower.contains("model_decommissioned")) {
+            return "Mô hình này đã bị Groq ngừng hỗ trợ (decommissioned). Vui lòng đổi sang Llama-3.3-70b-versatile hoặc mô hình mới hơn.";
+        }
+        if (lower.contains("model_not_found")) {
+            return "Không tìm thấy mô hình. Vui lòng kiểm tra lại ID mô hình trong cài đặt.";
+        }
+
         if (lower.contains("401") || lower.contains("403") || lower.contains("unauthorized")
                 || lower.contains("invalid api") || lower.contains("authentication")) {
             return CONFIG_ERROR_MESSAGE;

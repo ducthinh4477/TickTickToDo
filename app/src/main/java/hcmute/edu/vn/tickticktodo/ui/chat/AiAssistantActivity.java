@@ -11,7 +11,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -488,9 +490,9 @@ public class AiAssistantActivity extends BaseActivity {
                     chip.setOnCheckedChangeListener((c, checked) -> {
                         if (checked) {
                             securePreferencesHelper.saveAiModel(modelName);
-                            String keyForThisModel = securePreferencesHelper.getApiKeyForModel(modelName);
-                            securePreferencesHelper.saveApiKey(keyForThisModel);
-                            GeminiManager.getInstance().reloadConfiguration();
+                            GeminiManager manager = GeminiManager.getInstance();
+                            manager.reloadConfiguration();
+                            geminiManager = manager;
                             tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
                             updateModelNameIndicator();
                         }
@@ -781,8 +783,6 @@ public class AiAssistantActivity extends BaseActivity {
         EditText editPopupModelName = popupView.findViewById(R.id.editPopupModelName);
         EditText editPopupApiKey = popupView.findViewById(R.id.editPopupApiKey);
         Button btnSaveAiModelPopup = popupView.findViewById(R.id.btnSaveAiModelPopup);
-        LinearLayout layoutSavedKeys = popupView.findViewById(R.id.layoutSavedKeys);
-        ChipGroup chipGroupSavedKeys = popupView.findViewById(R.id.chipGroupSavedKeys);
 
         if (tvModelDialogTitle == null
                 || editPopupModelName == null
@@ -793,55 +793,51 @@ public class AiAssistantActivity extends BaseActivity {
             return;
         }
 
-        // Populate saved key chips
-        if (chipGroupSavedKeys != null && layoutSavedKeys != null) {
-            List<String> savedKeys = securePreferencesHelper.getSavedApiKeys();
-            if (!savedKeys.isEmpty()) {
-                layoutSavedKeys.setVisibility(View.VISIBLE);
-                chipGroupSavedKeys.removeAllViews();
-                // Show newest-first (reverse iteration)
-                for (int i = savedKeys.size() - 1; i >= 0; i--) {
-                    final String fullKey = savedKeys.get(i);
-                    String label = fullKey.length() > 12
-                            ? fullKey.substring(0, 8) + "…" + fullKey.substring(fullKey.length() - 4)
-                            : fullKey;
-                    Chip chip = new Chip(this);
-                    chip.setText(label);
-                    chip.setCheckable(false);
-                    chip.setOnClickListener(cv -> {
-                        editPopupApiKey.setText(fullKey);
-                        editPopupApiKey.setSelection(fullKey.length());
-                        // Deselect all chips visually
-                        for (int j = 0; j < chipGroupSavedKeys.getChildCount(); j++) {
-                            chipGroupSavedKeys.getChildAt(j).setAlpha(0.55f);
-                        }
-                        cv.setAlpha(1f);
-                    });
-                    chipGroupSavedKeys.addView(chip);
-                }
-            } else {
-                layoutSavedKeys.setVisibility(View.GONE);
-            }
-        }
-
         if (detailMode) {
             tvModelDialogTitle.setText(R.string.assistant_model_detail_popup_title);
             btnSaveAiModelPopup.setText(R.string.assistant_update_model_button);
 
             String currentModelName = securePreferencesHelper.getAiModel();
-            String currentApiKey = securePreferencesHelper.getApiKey();
+            String currentApiKey = securePreferencesHelper.getApiKeyForModel(currentModelName);
+
             if (!TextUtils.isEmpty(currentModelName)) {
                 editPopupModelName.setText(currentModelName);
                 editPopupModelName.setSelection(currentModelName.length());
             }
-            if (!TextUtils.isEmpty(currentApiKey)) {
-                editPopupApiKey.setText(currentApiKey);
-                editPopupApiKey.setSelection(currentApiKey.length());
-            }
+            editPopupApiKey.setText(currentApiKey);
+            editPopupApiKey.setSelection(currentApiKey.length());
+
         } else {
             tvModelDialogTitle.setText(R.string.assistant_add_model_popup_title);
             btnSaveAiModelPopup.setText(R.string.assistant_save_model_button);
         }
+
+        editPopupModelName.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                String resolvedApiKey = resolveStoredApiKeyForModelInput(
+                        editable == null ? "" : editable.toString());
+                if (resolvedApiKey == null) {
+                    return;
+                }
+
+                String currentApiKey = editPopupApiKey.getText() == null
+                        ? ""
+                        : editPopupApiKey.getText().toString();
+                if (!TextUtils.equals(currentApiKey, resolvedApiKey)) {
+                    editPopupApiKey.setText(resolvedApiKey);
+                    editPopupApiKey.setSelection(resolvedApiKey.length());
+                }
+            }
+        });
 
         btnSaveAiModelPopup.setOnClickListener(v -> {
             String modelName = editPopupModelName.getText() == null
@@ -888,6 +884,26 @@ public class AiAssistantActivity extends BaseActivity {
         });
 
         popupDialog.show();
+    }
+
+    private String resolveStoredApiKeyForModelInput(String modelNameInput) {
+        if (securePreferencesHelper == null || TextUtils.isEmpty(modelNameInput)) {
+            return null;
+        }
+
+        String normalizedInput = modelNameInput.trim();
+        if (TextUtils.isEmpty(normalizedInput)) {
+            return null;
+        }
+
+        List<String> savedModels = securePreferencesHelper.getAiModelOptions();
+        for (String savedModel : savedModels) {
+            if (!TextUtils.isEmpty(savedModel) && savedModel.equalsIgnoreCase(normalizedInput)) {
+                return securePreferencesHelper.getApiKeyForModel(savedModel);
+            }
+        }
+
+        return null;
     }
 
     private void sendMessage(String userText) {
