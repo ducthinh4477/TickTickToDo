@@ -82,6 +82,13 @@ public class AiAssistantActivity extends BaseActivity {
     private static final String PREFS_NAME = "TickTickPrefs";
     private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
     private static final String CHAT_SOURCE_MAIN = "ai_assistant";
+
+    /**
+     * True once a session has been created in the current process lifetime.
+     * Reset to false when the process is killed, so the next cold launch always
+     * starts with a brand-new conversation.
+     */
+    private static volatile boolean sProcessSessionCreated = false;
     private static final String ACTION_APPLY_PLAN_OPTION = "APPLY_PLAN_OPTION";
     private static final String ACTION_DATA_SEPARATOR = "::";
     private static final int MAX_MEMORY_LINES = 10;
@@ -296,6 +303,11 @@ public class AiAssistantActivity extends BaseActivity {
         final boolean shouldCreateNew = intent != null && intent.getBooleanExtra(EXTRA_CREATE_NEW_SESSION, false);
         final long requestedSessionId = intent != null ? intent.getLongExtra(EXTRA_SESSION_ID, -1L) : -1L;
 
+        // Detect a cold process start: the static flag is false only when the OS has
+        // killed and restarted the process (i.e. the user "reset" / force-quit the app).
+        final boolean isColdStart = !sProcessSessionCreated;
+        if (isColdStart) sProcessSessionCreated = true;
+
         if (intent != null) {
             intent.removeExtra(EXTRA_CREATE_NEW_SESSION);
             intent.removeExtra(EXTRA_SESSION_ID);
@@ -305,12 +317,16 @@ public class AiAssistantActivity extends BaseActivity {
             ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
             long resolvedSessionId;
 
-            if (shouldCreateNew) {
+            if (shouldCreateNew || isColdStart) {
+                // Explicit "new session" request OR first launch after app restart →
+                // always begin with a fresh conversation.
                 resolvedSessionId = createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
             } else if (requestedSessionId > 0L && dao.getSessionByIdSync(requestedSessionId) != null) {
                 resolvedSessionId = requestedSessionId;
             } else {
-                ChatSession latest = dao.getLatestSessionSync();
+                // Within the same process (user navigated away and came back):
+                // resume the most recent ai_assistant session.
+                ChatSession latest = dao.getLatestSessionBySourceSync(CHAT_SOURCE_MAIN);
                 resolvedSessionId = latest != null
                         ? latest.id
                         : createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
@@ -1455,7 +1471,9 @@ public class AiAssistantActivity extends BaseActivity {
             return currentSessionId;
         }
 
-        ChatSession latest = dao.getLatestSessionSync();
+        // Only look for an existing session from the same source (avoids picking up
+        // floating or voice sessions when the main assistant needs a session).
+        ChatSession latest = dao.getLatestSessionBySourceSync(source);
         if (latest != null) {
             currentSessionId = latest.id;
             return currentSessionId;

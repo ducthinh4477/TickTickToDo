@@ -1400,70 +1400,25 @@ public class FloatingAssistantService extends Service {
     }
 
     private void activateTemporaryVoiceSession() {
-        runWorkerSafely(() -> {
-            try {
-                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-                long previousSessionId = currentSessionId;
-
-                if (tempVoiceSessionActive && tempVoiceSessionId > 0L) {
-                    dao.deleteSessionById(tempVoiceSessionId);
-                }
-
-                long newTempSessionId = createHistorySessionSync(dao, CHAT_SOURCE_FLOATING_TEMP_VOICE, "Voice tạm thời");
-                tempVoiceSessionActive = true;
-                tempVoiceSessionId = newTempSessionId;
-                previousPersistentSessionId = (previousSessionId > 0L && previousSessionId != newTempSessionId)
-                        ? previousSessionId
-                        : -1L;
-                currentSessionId = newTempSessionId;
-
-                safePostMain(() -> {
-                    conversationMemory.clear();
-                    if (floatingChatAdapter != null) {
-                        floatingChatAdapter.clearMessages();
-                    }
-                    showAssistantMessage("Đã mở phiên voice tạm thời. Đóng popup để tự xóa phiên này.", false, false);
-                    startVoiceListening(false);
-                });
-            } catch (Exception e) {
-                Log.w(TAG, "Unable to activate temporary voice session", e);
-                safePostMain(() -> Toast.makeText(
-                        this,
-                        "Không thể bật phiên voice tạm thời lúc này.",
-                        Toast.LENGTH_SHORT
-                ).show());
-            }
+        // Voice sessions in the floating assistant are fully ephemeral — no DB writes needed.
+        tempVoiceSessionActive = true;
+        tempVoiceSessionId = -1L;
+        conversationMemory.clear();
+        safePostMain(() -> {
+            if (floatingChatAdapter != null) floatingChatAdapter.clearMessages();
+            showAssistantMessage("Đã mở phiên voice tạm thời. Đóng popup để kết thúc.", false, false);
+            startVoiceListening(false);
         });
     }
 
     private void cleanupTemporaryVoiceSessionIfNeeded() {
-        if (!tempVoiceSessionActive || tempVoiceSessionId <= 0L) {
-            return;
-        }
-
-        long deleteSessionId = tempVoiceSessionId;
-        long restoreSessionId = previousPersistentSessionId;
+        if (!tempVoiceSessionActive) return;
+        // Ephemeral voice session — just reset in-memory flags, nothing to delete from DB.
         tempVoiceSessionActive = false;
         tempVoiceSessionId = -1L;
         previousPersistentSessionId = -1L;
-        currentSessionId = restoreSessionId > 0L ? restoreSessionId : -1L;
+        currentSessionId = -1L;
         conversationMemory.clear();
-
-        runWorkerSafely(() -> {
-            try {
-                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-                dao.deleteSessionById(deleteSessionId);
-
-                if (restoreSessionId > 0L && dao.getSessionByIdSync(restoreSessionId) != null) {
-                    currentSessionId = restoreSessionId;
-                } else {
-                    ChatSession latest = dao.getLatestSessionSync();
-                    currentSessionId = latest != null ? latest.id : -1L;
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Unable to cleanup temporary voice session", e);
-            }
-        });
     }
 
     private long createHistorySessionSync(ChatHistoryDao dao, String source, String title) {
@@ -2991,69 +2946,27 @@ public class FloatingAssistantService extends Service {
         }
     }
 
+    /**
+     * Floating assistant conversations are fully ephemeral — no DB reads/writes.
+     * Each time the chat panel opens it starts with a clean slate and a greeting.
+     */
     private void restoreFloatingHistory() {
-        try {
-            ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-            long sessionId = ensureHistorySessionSync(dao);
-            List<ChatHistoryMessage> rows = dao.getMessagesForSessionSync(sessionId);
-
-            if (rows == null || rows.isEmpty()) {
-                showAssistantMessage("Xin chào, mình là trợ lý nổi. Bạn có thể nói hoặc nhập lệnh tạo/hoàn thành task.", true, false);
-                return;
-            }
-
-            List<ChatMessage> restored = new ArrayList<>();
-            conversationMemory.clear();
-            for (ChatHistoryMessage row : rows) {
-                boolean isUser = "user".equalsIgnoreCase(row.role);
-                String content = row.content == null ? "" : row.content;
-                restored.add(new ChatMessage(content, isUser));
-                rememberTurn(isUser ? "user" : "assistant", content);
-            }
-
-            safePostMain(() -> {
-                if (floatingChatAdapter != null) {
-                    floatingChatAdapter.setMessages(restored);
-                    if (floatingChatRecyclerView != null && !restored.isEmpty()) {
-                        floatingChatRecyclerView.scrollToPosition(restored.size() - 1);
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Unable to restore floating chat history", e);
-        }
+        conversationMemory.clear();
+        safePostMain(() -> {
+            if (floatingChatAdapter != null) floatingChatAdapter.clearMessages();
+        });
+        showAssistantMessage(
+                "Xin chào, mình là trợ lý nổi. Bạn có thể nói hoặc nhập lệnh tạo/hoàn thành task.",
+                false, false);
     }
 
+    /**
+     * Floating assistant messages are NOT persisted — all conversations are temporary.
+     * This method is intentionally a no-op; the signature is kept so call sites
+     * that pass {@code persist = true} remain compilable.
+     */
     private void persistChatMessageAsync(String role, String message) {
-        if (TextUtils.isEmpty(message) || workerExecutor == null || workerExecutor.isShutdown()) {
-            return;
-        }
-
-        runWorkerSafely(() -> {
-            try {
-                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-                long sessionId = ensureHistorySessionSync(dao);
-                long now = System.currentTimeMillis();
-
-                ChatHistoryMessage row = new ChatHistoryMessage();
-                row.sessionId = sessionId;
-                row.role = role;
-                row.content = message;
-                row.source = tempVoiceSessionActive
-                    ? CHAT_SOURCE_FLOATING_TEMP_VOICE
-                    : CHAT_SOURCE_FLOATING;
-                row.createdAt = now;
-                dao.insertMessage(row);
-
-                String preview = abbreviateForPreview(message);
-                dao.updateSessionAfterMessage(sessionId, now, preview);
-                if ("user".equals(role)) {
-                    dao.updateSessionTitleIfEmpty(sessionId, preview);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Unable to persist floating message", e);
-            }
-        });
+        // Ephemeral: no database writes for the floating assistant.
     }
 
     private long ensureHistorySessionSync(ChatHistoryDao dao) {
