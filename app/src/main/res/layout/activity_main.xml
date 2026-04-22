@@ -228,6 +228,22 @@
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+        <!-- ─── FAB — floating over content, bottom-end ─── -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab_add_task"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            android:contentDescription="@string/fab_add_desc"
+            android:src="@drawable/ic_add"
+            app:backgroundTint="@color/accent_primary"
+            app:elevation="8dp"
+            app:fabSize="normal"
+            app:tint="@color/white"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.FAB.Rounded" />
+
         <!-- ─── Drawer overlay ─── -->
         <FrameLayout
             android:id="@+id/menu_overlay"
@@ -681,18 +697,16 @@
     </FrameLayout>
 
     <!-- ═══════════════ BOTTOM NAV CONTAINER ═══════════════ -->
-    <!-- Height: 80dp = nav bar (60dp) + FAB protrusion (~20dp above nav bar) -->
     <FrameLayout
         android:id="@+id/bottom_nav_container"
         android:layout_width="match_parent"
-        android:layout_height="80dp">
+        android:layout_height="60dp">
 
-        <!-- Navigation bar surface (60dp, sits at bottom of the 80dp frame) -->
+        <!-- Navigation bar surface -->
         <LinearLayout
             android:id="@+id/bottom_nav_bar"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_gravity="bottom"
+            android:layout_height="match_parent"
             android:background="@color/background_surface"
             android:elevation="8dp"
             android:orientation="horizontal">
@@ -719,11 +733,11 @@
                     android:id="@+id/nav_label_home"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
                     android:text="@string/nav_home"
                     android:textColor="@color/accent_primary"
                     android:textSize="10sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <!-- Lịch -->
@@ -748,16 +762,11 @@
                     android:id="@+id/nav_label_calendar"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
                     android:text="@string/nav_calendar_desc"
                     android:textColor="@color/text_secondary"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:visibility="gone" />
             </LinearLayout>
-
-            <!-- Center spacer — FAB floats here via the FrameLayout z-order -->
-            <View
-                android:layout_width="68dp"
-                android:layout_height="match_parent" />
 
             <!-- Trợ lý AI -->
             <LinearLayout
@@ -781,10 +790,10 @@
                     android:id="@+id/nav_label_ai_assistant"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
                     android:text="Trợ lý"
                     android:textColor="@color/text_secondary"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <!-- Tập trung -->
@@ -809,10 +818,10 @@
                     android:id="@+id/nav_label_focus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
                     android:text="@string/nav_focus"
                     android:textColor="@color/text_secondary"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <!-- Thêm nữa -->
@@ -837,28 +846,13 @@
                     android:id="@+id/nav_label_more"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
                     android:text="@string/nav_more"
                     android:textColor="@color/text_secondary"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
         </LinearLayout>
-
-        <!-- FAB — floats above the nav bar center, drawn on top via z-order -->
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fab_add_task"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|center_horizontal"
-            android:layout_marginTop="0dp"
-            android:contentDescription="@string/fab_add_desc"
-            android:src="@drawable/ic_add"
-            app:backgroundTint="@color/accent_primary"
-            app:elevation="12dp"
-            app:fabSize="normal"
-            app:tint="@color/white"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.FAB.Rounded" />
 
     </FrameLayout>
 
