@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TickTickToDo</string>
+    <string name="app_name">DoinBot</string>
     <string name="splash_tagline">Sắp xếp ngày của bạn, từng bước một.</string>
     <string name="priority_flag_desc">Mức độ ưu tiên</string>
     <string name="quick_add_hint">Thêm công việc mới…</string>
