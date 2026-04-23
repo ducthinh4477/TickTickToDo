@@ -6,13 +6,19 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import hcmute.edu.vn.tickticktodo.agent.context.ContextAgent;
+import hcmute.edu.vn.tickticktodo.agent.context.ContextSnapshot;
+import hcmute.edu.vn.tickticktodo.agent.integration.IntegrationFacade;
+import hcmute.edu.vn.tickticktodo.agent.profile.ProfileAgent;
 import hcmute.edu.vn.tickticktodo.helper.AppRuntimeState;
 import hcmute.edu.vn.tickticktodo.helper.UserStatsManager;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
@@ -46,10 +52,16 @@ public class AgentContextAssembler {
 
     private final Application application;
     private final TaskDatabase database;
+    private final ContextAgent contextAgent;
+    private final ProfileAgent profileAgent;
+    private final IntegrationFacade integrationFacade;
 
     public AgentContextAssembler(Application application) {
         this.application = application;
         this.database = TaskDatabase.getInstance(application);
+        this.contextAgent = ContextAgent.getInstance(application);
+        this.profileAgent = ProfileAgent.getInstance(application);
+        this.integrationFacade = IntegrationFacade.getInstance(application);
     }
 
     public String buildTieredContextBlock(String userMessage) {
@@ -75,14 +87,42 @@ public class AgentContextAssembler {
 
         safePut(tier0, "nowMillis", now);
         safePut(tier0, "timezone", TimeZone.getDefault().getID());
+        safePut(tier0, "currentDateTime", buildCurrentDateTimeContext(now));
         safePut(tier0, "appState", buildAppStateSnapshot(now));
         safePut(tier0, "todayIncompleteCount", todayIncomplete.size());
         safePut(tier0, "overdueCount", overdue.size());
         safePut(tier0, "activeFocusSession", isFocusRunning);
         safePut(tier0, "topHighPriorityToday", toTaskArray(limitByPriority(todayIncomplete, MAX_TOP_PRIORITY_TODAY)));
         safePut(tier0, "statsSnapshot", buildStatsSnapshot());
+        safePut(tier0, "contextSnapshot", buildCompactContextSnapshot());
+        safePut(tier0, "personaSummary", buildPersonaSummary());
+        safePut(tier0, "integrationSummary", buildIntegrationSummary(now));
 
         return tier0;
+    }
+
+    private JSONObject buildIntegrationSummary(long nowMillis) {
+        try {
+            return integrationFacade.buildQuickSummaryJson(nowMillis);
+        } catch (Exception ignored) {
+            return new JSONObject();
+        }
+    }
+
+    private JSONObject buildCompactContextSnapshot() {
+        ContextSnapshot snapshot = contextAgent.getLatestSnapshot();
+        if (snapshot == null) {
+            return new JSONObject();
+        }
+        return snapshot.toCompactJson();
+    }
+
+    private String buildPersonaSummary() {
+        try {
+            return profileAgent.buildPersonaSummary();
+        } catch (Exception ignored) {
+            return "Profile not ready";
+        }
     }
 
     private JSONObject buildTier1Snapshot(String userMessage) {
@@ -365,6 +405,87 @@ public class AgentContextAssembler {
         try {
             target.put(key, value);
         } catch (JSONException ignored) {
+        }
+    }
+
+    /** Builds a rich datetime context object so the LLM can compute dueDate timestamps. */
+    private JSONObject buildCurrentDateTimeContext(long nowMillis) {
+        JSONObject dt = new JSONObject();
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(nowMillis);
+        SimpleDateFormat isoDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        SimpleDateFormat hhmm = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+        safePut(dt, "dateISO", isoDate.format(cal.getTime()));
+        safePut(dt, "timeHHmm", hhmm.format(cal.getTime()));
+        safePut(dt, "dayOfWeek", getDayOfWeekVN(cal.get(Calendar.DAY_OF_WEEK)));
+        safePut(dt, "hour", cal.get(Calendar.HOUR_OF_DAY));
+        safePut(dt, "minute", cal.get(Calendar.MINUTE));
+
+        // Precompute common reference timestamps (millis) for the LLM
+        // Today at common times
+        safePut(dt, "todayMorning", atTime(cal, 0, 9, 0));
+        safePut(dt, "todayNoon", atTime(cal, 0, 12, 0));
+        safePut(dt, "todayAfternoon", atTime(cal, 0, 17, 0));
+        safePut(dt, "todayEvening", atTime(cal, 0, 20, 0));
+
+        // Tomorrow at common times
+        safePut(dt, "tomorrowDateISO", isoDate.format(new Date(atTime(cal, 1, 0, 0))));
+        safePut(dt, "tomorrowMorning", atTime(cal, 1, 8, 0));
+        safePut(dt, "tomorrowNoon", atTime(cal, 1, 12, 0));
+        safePut(dt, "tomorrowAfternoon", atTime(cal, 1, 17, 0));
+        safePut(dt, "tomorrowEvening", atTime(cal, 1, 20, 0));
+
+        // Next week days (thứ 2 tuần tới, thứ 3, ...)
+        int todayDow = cal.get(Calendar.DAY_OF_WEEK); // 1=Sun,2=Mon,...,7=Sat
+        JSONObject nextWeekDays = new JSONObject();
+        String[] dayNames = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
+        for (int dow = Calendar.MONDAY; dow <= Calendar.SATURDAY; dow++) {
+            int daysAhead = ((dow - todayDow) + 7) % 7;
+            if (daysAhead == 0) daysAhead = 7; // always next week
+            String key = dayNames[dow - 1]; // T2..T7
+            safePut(nextWeekDays, key + "_morning", atTime(cal, daysAhead, 8, 0));
+            safePut(nextWeekDays, key + "_afternoon", atTime(cal, daysAhead, 17, 0));
+            safePut(nextWeekDays, key + "_date", isoDate.format(new Date(atTime(cal, daysAhead, 0, 0))));
+        }
+        safePut(dt, "nextWeekDays", nextWeekDays);
+
+        // This week remaining days
+        JSONObject thisWeekDays = new JSONObject();
+        for (int dow = Calendar.MONDAY; dow <= Calendar.SATURDAY; dow++) {
+            int daysAhead = ((dow - todayDow) + 7) % 7;
+            if (daysAhead > 0 && daysAhead < 7) {
+                String key = dayNames[dow - 1];
+                safePut(thisWeekDays, key + "_morning", atTime(cal, daysAhead, 8, 0));
+                safePut(thisWeekDays, key + "_afternoon", atTime(cal, daysAhead, 17, 0));
+                safePut(thisWeekDays, key + "_date", isoDate.format(new Date(atTime(cal, daysAhead, 0, 0))));
+            }
+        }
+        safePut(dt, "thisWeekRemainingDays", thisWeekDays);
+        return dt;
+    }
+
+    /** Returns millis for today+daysOffset at the given hour:minute:00.000. */
+    private long atTime(Calendar base, int daysOffset, int hour, int minute) {
+        Calendar c = (Calendar) base.clone();
+        c.add(Calendar.DAY_OF_YEAR, daysOffset);
+        c.set(Calendar.HOUR_OF_DAY, hour);
+        c.set(Calendar.MINUTE, minute);
+        c.set(Calendar.SECOND, 0);
+        c.set(Calendar.MILLISECOND, 0);
+        return c.getTimeInMillis();
+    }
+
+    private String getDayOfWeekVN(int calDayOfWeek) {
+        switch (calDayOfWeek) {
+            case Calendar.MONDAY: return "Thứ Hai";
+            case Calendar.TUESDAY: return "Thứ Ba";
+            case Calendar.WEDNESDAY: return "Thứ Tư";
+            case Calendar.THURSDAY: return "Thứ Năm";
+            case Calendar.FRIDAY: return "Thứ Sáu";
+            case Calendar.SATURDAY: return "Thứ Bảy";
+            case Calendar.SUNDAY: return "Chủ Nhật";
+            default: return "N/A";
         }
     }
 

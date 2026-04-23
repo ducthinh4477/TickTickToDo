@@ -6,13 +6,11 @@ import android.os.Looper;
 import android.text.TextUtils;
 
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import hcmute.edu.vn.tickticktodo.agent.AgentAction;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentAction;
 import hcmute.edu.vn.tickticktodo.agent.AgentContextAssembler;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
@@ -23,8 +21,6 @@ import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 
 public class AgentOrchestrator {
-
-    private static final int MAX_TRACE_CHARS = 2500;
 
     public interface Callback {
         void onAssistantReply(String replyText);
@@ -42,8 +38,11 @@ public class AgentOrchestrator {
     private final AgentResponseParser responseParser;
     private final PromptTemplateManager promptTemplateManager;
     private final ToolExecutionBridge toolExecutionBridge;
+    private final AgentTraceFormatter traceFormatter;
+    private final AgentCallbackDispatcher callbackDispatcher;
+    private final AgentRequestAssemblyHelper requestAssemblyHelper;
+    private final AgentModelReplyComposer modelReplyComposer;
     private final ExecutorService workerExecutor;
-    private final Handler mainHandler;
 
     public AgentOrchestrator(Application application) {
         this(
@@ -65,8 +64,15 @@ public class AgentOrchestrator {
         this.responseParser = responseParser;
         this.promptTemplateManager = new PromptTemplateManager();
         this.toolExecutionBridge = new ToolExecutionBridge(application, toolRegistry);
+        this.traceFormatter = new AgentTraceFormatter();
+        this.callbackDispatcher = new AgentCallbackDispatcher(new Handler(Looper.getMainLooper()));
+        this.requestAssemblyHelper = new AgentRequestAssemblyHelper(
+            contextAssembler,
+            toolExecutionBridge,
+            promptTemplateManager
+        );
+        this.modelReplyComposer = new AgentModelReplyComposer();
         this.workerExecutor = Executors.newSingleThreadExecutor();
-        this.mainHandler = new Handler(Looper.getMainLooper());
     }
 
     public void handleUserMessage(String userMessage, Callback callback) {
@@ -82,15 +88,14 @@ public class AgentOrchestrator {
 
         workerExecutor.execute(() -> {
             try {
-                String contextBlock = contextAssembler.buildTieredContextBlock(userMessage);
-                String toolSchemas = toolExecutionBridge.getToolSchemas().toString();
-                String prompt = buildPrompt(userMessage, contextBlock, toolSchemas);
+                AgentRequestAssemblyHelper.PreparedRequest preparedRequest =
+                        requestAssemblyHelper.assemble(userMessage);
 
-                postDebugTrace(callback, "CONTEXT", contextBlock);
-                postDebugTrace(callback, "TOOL_SCHEMAS", toolSchemas);
-                postDebugTrace(callback, "PROMPT", prompt);
+                postDebugTrace(callback, "CONTEXT", preparedRequest.getContextBlock());
+                postDebugTrace(callback, "TOOL_SCHEMAS", preparedRequest.getToolSchemas());
+                postDebugTrace(callback, "PROMPT", preparedRequest.getPrompt());
 
-                llmProvider.generateResponse(prompt, new LlmProvider.ResponseCallback() {
+                llmProvider.generateResponse(preparedRequest.getPrompt(), new LlmProvider.ResponseCallback() {
                     @Override
                     public void onSuccess(String responseText) {
                         postDebugTrace(callback, "MODEL_RAW", responseText);
@@ -116,13 +121,10 @@ public class AgentOrchestrator {
 
     private void processModelResponse(String modelText, Callback callback) {
         AgentResponseEnvelope envelope = responseParser.parse(modelText);
-        postDebugTrace(callback, "PARSED_ENVELOPE", envelopeToTraceJson(envelope).toString());
+        postDebugTrace(callback, "PARSED_ENVELOPE", traceFormatter.envelopeToTraceJson(envelope).toString());
 
         if (AgentAction.CHAT.equals(envelope.getAction())) {
-            String reply = TextUtils.isEmpty(envelope.getReply())
-                    ? envelope.getRawText()
-                    : envelope.getReply();
-            postAssistantReply(callback, reply);
+            postAssistantReply(callback, modelReplyComposer.composeChatReply(envelope));
             return;
         }
 
@@ -132,10 +134,11 @@ public class AgentOrchestrator {
         postDebugTrace(callback, "TOOL_RESULT", result.toJson().toString());
         postToolResult(callback, result);
 
-        if (!TextUtils.isEmpty(envelope.getReply())) {
-            String reply = envelope.getReply().trim();
-            if (result != null && result.isSuccess() && reply.length() < 24) {
-                postAssistantReply(callback, reply + "\n" + renderToolResultSummary(result));
+        String reply = modelReplyComposer.resolveToolFlowReplyOrNull(envelope);
+        if (reply != null) {
+            if (modelReplyComposer.shouldAppendToolResultSummary(reply, result)) {
+                postAssistantReply(callback,
+                        modelReplyComposer.appendToolResultSummary(reply, renderToolResultSummary(result)));
             } else {
                 postAssistantReply(callback, reply);
             }
@@ -148,54 +151,23 @@ public class AgentOrchestrator {
         return toolExecutionBridge.dispatchToolCall(call);
     }
 
-    private String buildPrompt(String userMessage, String contextBlock, String toolsBlock) {
-        return promptTemplateManager.buildPrompt(userMessage, contextBlock, toolsBlock);
-    }
-
-    private JSONObject envelopeToTraceJson(AgentResponseEnvelope envelope) {
-        JSONObject json = new JSONObject();
-        safePut(json, "action", envelope == null ? "" : envelope.getAction());
-        safePut(json, "payload", envelope == null ? new JSONObject() : envelope.getPayload());
-        safePut(json, "reply", envelope == null ? "" : envelope.getReply());
-        safePut(json, "structured", envelope != null && envelope.isStructured());
-        safePut(json, "rawText", envelope == null ? "" : envelope.getRawText());
-        return json;
-    }
-
     private String renderToolResultSummary(ToolResult result) {
         return toolExecutionBridge.renderToolResultSummary(result);
     }
 
     private void postAssistantReply(Callback callback, String replyText) {
-        mainHandler.post(() -> callback.onAssistantReply(replyText));
+        callbackDispatcher.postAssistantReply(callback, replyText);
     }
 
     private void postToolResult(Callback callback, ToolResult toolResult) {
-        mainHandler.post(() -> callback.onToolResult(toolResult));
+        callbackDispatcher.postToolResult(callback, toolResult);
     }
 
     private void postError(Callback callback, String errorMessage) {
-        mainHandler.post(() -> callback.onError(errorMessage));
+        callbackDispatcher.postError(callback, errorMessage);
     }
 
     private void postDebugTrace(Callback callback, String stage, String payload) {
-        mainHandler.post(() -> callback.onDebugTrace(stage, trimTrace(payload)));
-    }
-
-    private String trimTrace(String text) {
-        if (text == null) {
-            return "";
-        }
-        if (text.length() <= MAX_TRACE_CHARS) {
-            return text;
-        }
-        return text.substring(0, MAX_TRACE_CHARS) + "\n...(trace truncated)";
-    }
-
-    private void safePut(JSONObject target, String key, Object value) {
-        try {
-            target.put(key, value);
-        } catch (JSONException ignored) {
-        }
+        callbackDispatcher.postDebugTrace(callback, stage, traceFormatter.trimTrace(payload));
     }
 }

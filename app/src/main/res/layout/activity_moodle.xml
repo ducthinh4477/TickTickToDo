@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- activity_moodle.xml — Màn hình Moodle UteX (School). Material3 redesign. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -8,33 +9,54 @@
     android:background="@color/background_primary"
     android:fitsSystemWindows="true">
 
+    <!-- ── Toolbar ── -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/background_surface"
+        android:elevation="0dp"
         app:title="Moodle UteX"
+        app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
         app:titleTextColor="@color/text_primary"
-        app:navigationIcon="@drawable/ic_back" />
+        app:navigationIcon="@drawable/ic_back"
+        app:navigationIconTint="@color/text_primary" />
 
+    <!-- Bottom hairline divider under toolbar -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
+    <!-- ── Warning banner (visibility toggled by Java) ── -->
     <TextView
         android:id="@+id/tvNewTaskWarning"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFCDD2"
-        android:textColor="#B71C1C"
-        android:padding="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@color/background_surface"
+        android:drawablePadding="10dp"
+        android:gravity="center_vertical"
+        android:padding="14dp"
+        android:text="Có bài tập Moodle mới!"
+        android:textColor="@color/priority_high"
         android:textStyle="bold"
-        android:visibility="gone"
-        android:text="Có bài tập Moodle mới!" />
+        android:textSize="14sp"
+        android:visibility="gone" />
 
+    <!-- ── Section header: title + settings button ── -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
+        android:layout_height="60dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="@color/background_surface">
+        android:paddingStart="20dp"
+        android:paddingEnd="12dp"
+        android:background="@color/background_surface"
+        android:layout_marginTop="2dp">
+
         <TextView
             android:layout_width="0dp"
             android:layout_weight="1"
@@ -43,16 +65,24 @@
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
-        
-        <ImageView
+
+        <ImageButton
             android:id="@+id/btnSettings"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_settings"
-            android:contentDescription="Settings"
+            android:contentDescription="Cài đặt Moodle"
+            android:background="?attr/selectableItemBackgroundBorderless"
             app:tint="@color/text_secondary" />
     </LinearLayout>
 
+    <!-- Bottom hairline divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
+    <!-- ── Content: list + empty state ── -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefreshMoodle"
         android:layout_width="match_parent"
@@ -61,7 +91,8 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
-            
+
+            <!-- Task list -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerViewMoodle"
                 android:layout_width="match_parent"
@@ -69,6 +100,7 @@
                 android:padding="16dp"
                 android:clipToPadding="false" />
 
+            <!-- Empty state -->
             <LinearLayout
                 android:id="@+id/emptyStateLayout"
                 android:layout_width="wrap_content"
@@ -76,26 +108,47 @@
                 android:layout_gravity="center"
                 android:orientation="vertical"
                 android:gravity="center"
+                android:padding="32dp"
                 android:visibility="gone">
+
                 <ImageView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_marginTop="24dp"
                     android:src="@drawable/ic_study"
-                    app:tint="@color/divider" />
+                    app:tint="@color/text_hint" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="Hiện tại không có bài tập"
-                    android:textColor="@color/text_hint" />
-                
-                <Button
-                    android:id="@+id/btnConnectMoodle"
+                    android:layout_marginTop="20dp"
+                    android:text="Chưa có dữ liệu"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="8dp"
+                    android:text="Hiện tại không có bài tập"
+                    android:textColor="@color/text_hint"
+                    android:textSize="14sp"
+                    android:gravity="center" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnConnectMoodle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="24dp"
                     android:text="Đồng bộ Moodle"
-                    style="@style/Widget.MaterialComponents.Button" />
+                    android:textAllCaps="false"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    app:backgroundTint="@color/accent_primary"
+                    app:cornerRadius="24dp" />
+
             </LinearLayout>
         </FrameLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

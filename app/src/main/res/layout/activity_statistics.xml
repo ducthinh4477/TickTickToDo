@@ -50,12 +50,19 @@
                 android:layout_width="match_parent"
                 android:layout_height="12dp" />
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
             <!-- ════════════════════════════════════════════════════════════════════
                  Card 1: Total Completed
                  ════════════════════════════════════════════════════════════════════ -->
             <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
                 android:layout_marginBottom="12dp"
                 app:cardBackgroundColor="@color/background_surface"
                 app:cardCornerRadius="12dp"
@@ -124,8 +131,10 @@
                  Card 2: Completion Rate Today
                  ════════════════════════════════════════════════════════════════════ -->
             <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
                 android:layout_marginBottom="12dp"
                 app:cardBackgroundColor="@color/background_surface"
                 app:cardCornerRadius="12dp"
@@ -213,12 +222,21 @@
 
             </com.google.android.material.card.MaterialCardView>
 
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
             <!-- ════════════════════════════════════════════════════════════════════
                  Card 3: Completed in Last 7 Days
                  ════════════════════════════════════════════════════════════════════ -->
             <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
                 android:layout_marginBottom="12dp"
                 app:cardBackgroundColor="@color/background_surface"
                 app:cardCornerRadius="12dp"
@@ -284,8 +302,10 @@
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
                 android:layout_marginBottom="12dp"
                 app:cardBackgroundColor="@color/background_surface"
                 app:cardCornerRadius="12dp"
@@ -346,6 +366,8 @@
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
 
         </LinearLayout>
 

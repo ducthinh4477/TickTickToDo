@@ -20,4 +20,20 @@
         android:textSize="15sp"
         android:lineSpacingExtra="2dp" />
 
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnMessageAction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_chat_action_button"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="Áp dụng kế hoạch này"
+        android:textAllCaps="false"
+        android:textColor="@color/text_primary"
+        android:visibility="gone"
+        android:textSize="13sp" />
+
 </LinearLayout>

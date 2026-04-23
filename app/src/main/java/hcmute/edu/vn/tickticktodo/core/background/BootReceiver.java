@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.Executors;
 
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.helper.HabitAlarmManager;
 import hcmute.edu.vn.tickticktodo.helper.ReminderScheduler;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.ui.moodle.SchoolSyncReceiver;
@@ -46,6 +47,9 @@ public class BootReceiver extends BroadcastReceiver {
                 
                 // Khôi phục lại quá trình theo dõi background (Moodle) khi khởi động lại máy
                 SchoolSyncReceiver.scheduleExact(context);
+
+                // Khôi phục alarm nhắc nhở thói quen
+                HabitAlarmManager.rescheduleAll(context);
                 
             } finally {
                 pendingResult.finish();

@@ -8,7 +8,7 @@ import org.json.JSONObject;
 
 import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentTool;
-import hcmute.edu.vn.tickticktodo.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
 import hcmute.edu.vn.tickticktodo.agent.AgentToolRegistry;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
@@ -70,6 +70,27 @@ public class ToolExecutionBridge {
 
         JSONObject data = result.getData();
         String toolName = result.getToolName();
+        String renderType = data == null ? "" : data.optString("renderType", "");
+
+        if ("PLAN_PROPOSAL".equalsIgnoreCase(renderType)
+                || AgentToolNames.PROPOSE_DAILY_PLAN_TOOL.equals(toolName)
+                || AgentToolNames.PROPOSE_WEEKLY_PLAN_TOOL.equals(toolName)) {
+            return renderPlanProposalSummary(data);
+        }
+
+        if ("PLAN_APPLY_RESULT".equalsIgnoreCase(renderType)
+                || AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolName)) {
+            String optionId = data == null ? "" : data.optString("optionId", "");
+            int appliedTaskCount = data == null ? 0 : data.optInt("appliedTaskCount", 0);
+            String message = data == null ? "" : data.optString("message", "");
+            if (!TextUtils.isEmpty(message)) {
+                return message;
+            }
+            if (!TextUtils.isEmpty(optionId)) {
+                return "Đã áp dụng phương án " + optionId + " cho " + appliedTaskCount + " task.";
+            }
+            return "Đã áp dụng kế hoạch đề xuất.";
+        }
 
         if (AgentToolNames.CREATE_TASK_WITH_SUBTASKS.equals(toolName)) {
             JSONObject parentTask = data == null ? null : data.optJSONObject("parentTask");
@@ -156,6 +177,82 @@ public class ToolExecutionBridge {
             return "Mình đã gợi ý " + suggestedSteps + " bước breakdown. Bạn có thể yêu cầu áp dụng ngay nếu đồng ý.";
         }
 
+        if (AgentToolNames.GET_ALL_EVENTS_TOOL.equals(toolName)) {
+            int count = data == null ? 0 : data.optInt("count", 0);
+            JSONArray events = data == null ? null : data.optJSONArray("events");
+            JSONObject integrationStatus = data == null ? null : data.optJSONObject("integrationStatus");
+            boolean calendarEnabled = integrationStatus == null
+                    || integrationStatus.optBoolean("calendarEnabled", true);
+            boolean calendarPermissionGranted = integrationStatus == null
+                    || integrationStatus.optBoolean("calendarPermissionGranted", true);
+
+            if (!calendarEnabled) {
+                return "Nguồn lịch thiết bị đang tắt trong cài đặt tích hợp, nên chưa có sự kiện để phân tích.";
+            }
+            if (!calendarPermissionGranted) {
+                return "Chưa có quyền đọc lịch thiết bị. Hãy cấp quyền tích hợp để mình lấy sự kiện chính xác hơn.";
+            }
+
+            if (events != null && events.length() > 0) {
+                JSONObject first = events.optJSONObject(0);
+                String title = first == null ? "" : first.optString("title", "").trim();
+                if (!TextUtils.isEmpty(title)) {
+                    return "Mình lấy được " + count + " sự kiện tích hợp. Sự kiện gần nhất: \"" + title + "\".";
+                }
+            }
+            return "Mình chưa thấy sự kiện tích hợp trong khoảng thời gian đang xét.";
+        }
+
+        if (AgentToolNames.SYNC_NEW_DEADLINES_TOOL.equals(toolName)) {
+            JSONObject integrationStatus = data == null ? null : data.optJSONObject("integrationStatus");
+            boolean moodleEnabled = integrationStatus == null
+                    || integrationStatus.optBoolean("moodleEnabled", true);
+            String status = data == null ? "" : data.optString("status", "");
+            if (!moodleEnabled || "DISABLED".equalsIgnoreCase(status)) {
+                return "Nguồn Moodle đang tắt trong cài đặt tích hợp, nên chưa thể đồng bộ deadline mới.";
+            }
+
+            String message = data == null ? "" : data.optString("message", "");
+            if (!TextUtils.isEmpty(message)) {
+                return message;
+            }
+            return "Đã kích hoạt đồng bộ deadline từ nguồn tích hợp.";
+        }
+
+        if (AgentToolNames.GET_HEALTH_SUMMARY_TOOL.equals(toolName)) {
+            JSONObject integrationStatus = data == null ? null : data.optJSONObject("integrationStatus");
+            boolean healthEnabled = integrationStatus == null
+                    || integrationStatus.optBoolean("healthEnabled", true);
+            boolean healthConnectAvailable = integrationStatus == null
+                    || integrationStatus.optBoolean("healthConnectAvailable", true);
+            boolean healthConnectPermissionsGranted = integrationStatus == null
+                    || integrationStatus.optBoolean("healthConnectPermissionsGranted", true);
+
+            if (!healthEnabled) {
+                return "Nguồn sức khỏe đang tắt trong cài đặt tích hợp, nên mình chưa dùng dữ liệu năng lượng cá nhân hóa.";
+            }
+            if (!healthConnectAvailable) {
+                return "Thiết bị hiện chưa có Health Connect khả dụng, nên mình đang dùng tín hiệu sức khỏe dự phòng.";
+            }
+            if (!healthConnectPermissionsGranted) {
+                return "Chưa cấp đủ quyền Health Connect, nên mình chưa đọc được dữ liệu sức khỏe chi tiết.";
+            }
+
+            JSONObject summary = data == null ? null : data.optJSONObject("summary");
+            boolean available = summary != null && summary.optBoolean("available", false);
+            String energy = summary == null ? "MEDIUM" : summary.optString("inferredEnergy", "MEDIUM");
+            String source = summary == null ? "" : summary.optString("source", "");
+
+            if (!available) {
+                return "Nguồn sức khỏe hiện chưa có dữ liệu khả dụng. Mình đang dùng suy luận mức năng lượng mặc định.";
+            }
+
+            if (!TextUtils.isEmpty(source)) {
+                return "Tóm tắt sức khỏe hiện tại: năng lượng " + energy + " (nguồn: " + source + ").";
+            }
+            return "Tóm tắt sức khỏe hiện tại: năng lượng " + energy + ".";
+        }
+
         return "Đã chạy công cụ " + toolName + " thành công.";
     }
 
@@ -176,5 +273,41 @@ public class ToolExecutionBridge {
             default:
                 return quadrant;
         }
+    }
+
+    private String renderPlanProposalSummary(JSONObject data) {
+        if (data == null) {
+            return "Mình đã tạo bản kế hoạch sơ bộ.";
+        }
+
+        String proposalType = data.optString("proposalType", "DAILY");
+        String anchorDate = data.optString("anchorDate", "");
+        JSONArray options = data.optJSONArray("options");
+        int optionCount = options == null ? 0 : options.length();
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("Đã tạo kế hoạch ")
+                .append(proposalType)
+                .append(TextUtils.isEmpty(anchorDate) ? "" : (" cho ngày/tuần " + anchorDate))
+                .append(" với ")
+                .append(optionCount)
+                .append(" phương án.");
+
+        if (options != null && options.length() > 0) {
+            JSONObject first = options.optJSONObject(0);
+            if (first != null) {
+                String label = first.optString("label", "");
+                int scheduled = first.optInt("scheduledMinutes", 0);
+                if (!TextUtils.isEmpty(label)) {
+                    builder.append(" Gợi ý đầu tiên: ")
+                            .append(label)
+                            .append(" (")
+                            .append(scheduled)
+                            .append(" phút được xếp).");
+                }
+            }
+        }
+
+        return builder.toString();
     }
 }

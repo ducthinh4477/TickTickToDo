@@ -8,13 +8,24 @@
     <!-- Core backgrounds -->
     <color name="background_primary">#FF121212</color>
     <color name="background_surface">#FF1D1D1D</color>
+    <color name="background_navmain">#001D1D1D</color>
     <color name="background_card">#FF363636</color>
     <color name="background_elevated">#FF272727</color>
     <color name="background_input">#FF1D1D1D</color>
 
+    <!-- Surface elevation tokens (dark) -->
+    <color name="surface_0">#FF121212</color>
+    <color name="surface_1">#FF1D1D1D</color>
+    <color name="surface_2">#FF252525</color>
+    <color name="surface_3">#FF2E2E2E</color>
+
     <!-- Accent -->
     <color name="accent_primary">#FF8875FF</color>
     <color name="accent_secondary">#FF8687E7</color>
+
+    <!-- AI accent riêng -->
+    <color name="ai_accent">#FF8B83FF</color>
+    <color name="ai_accent_light">#FF1E1A3F</color>
 
     <!-- Text -->
     <color name="text_primary">#FFFFFFFF</color>

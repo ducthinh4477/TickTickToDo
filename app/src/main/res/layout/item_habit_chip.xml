@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_habit_chip.xml — Habit chip trong danh sách ngang.
+  Shows: icon | name (+ reminder time below) | check-in button.
+  Long-press triggers edit reminder dialog.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/layout_habit_item_root"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginEnd="8dp"
+    android:layout_marginEnd="10dp"
     android:background="@drawable/bg_habit_chip_selector"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingTop="9dp"
-    android:paddingEnd="8dp"
-    android:paddingBottom="9dp">
+    android:paddingStart="14dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="12dp">
 
+    <!-- Habit icon -->
     <ImageView
         android:id="@+id/iv_habit_icon"
         android:layout_width="20dp"
@@ -20,20 +26,40 @@
         android:src="@drawable/ic_health"
         app:tint="@color/accent_primary" />
 
-    <TextView
-        android:id="@+id/tv_habit_name"
+    <!-- Name + reminder time stacked vertically -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:layout_marginEnd="4dp"
+        android:orientation="vertical">
 
+        <TextView
+            android:id="@+id/tv_habit_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:maxLines="1" />
+
+        <!-- Reminder time badge (GONE when no reminder set) -->
+        <TextView
+            android:id="@+id/tv_habit_reminder_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/accent_primary"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- Check-in button -->
     <ImageButton
         android:id="@+id/btn_habit_check_in"
         android:layout_width="32dp"
         android:layout_height="32dp"
-        android:layout_marginStart="8dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Check in"
         android:src="@drawable/ic_completed"

@@ -31,6 +31,9 @@ public interface ChatHistoryDao {
     @Query("SELECT * FROM chat_sessions ORDER BY updated_at DESC LIMIT 1")
     ChatSession getLatestSessionSync();
 
+    @Query("SELECT * FROM chat_sessions WHERE source = :source ORDER BY updated_at DESC LIMIT 1")
+    ChatSession getLatestSessionBySourceSync(String source);
+
     @Query("SELECT * FROM chat_sessions WHERE id = :sessionId LIMIT 1")
     ChatSession getSessionByIdSync(long sessionId);
 

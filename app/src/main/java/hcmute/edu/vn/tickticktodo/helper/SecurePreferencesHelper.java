@@ -10,6 +10,7 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import androidx.security.crypto.EncryptedSharedPreferences;
@@ -23,8 +24,10 @@ public class SecurePreferencesHelper {
     private static final String SECURE_PREFS_NAME = "secure_ai_settings";
     private static final String FALLBACK_PREFS_NAME = "ai_settings_fallback";
     private static final String KEY_API_KEY = "ai_api_key";
+    private static final String KEY_API_KEY_HISTORY = "ai_api_key_history";
     private static final String KEY_AI_MODEL = "ai_model";
     private static final String KEY_AI_MODELS = "ai_model_options";
+    private static final int MAX_KEY_HISTORY = 10;
 
     private static volatile SecurePreferencesHelper instance;
 
@@ -33,6 +36,43 @@ public class SecurePreferencesHelper {
     private SecurePreferencesHelper(Context context) {
         Context appContext = context.getApplicationContext();
         this.preferences = createPreferences(appContext);
+    }
+
+    public synchronized void saveApiKeyForModel(String modelName, String apiKey) {
+        String modelPreferenceKey = buildModelApiKeyPreferenceKey(modelName);
+        String normalizedApiKey = normalizeKeyForStorage(apiKey);
+
+        if (!TextUtils.isEmpty(modelPreferenceKey)) {
+            preferences.edit().putString(modelPreferenceKey, normalizedApiKey).apply();
+        }
+
+        saveApiKey(normalizedApiKey);
+    }
+
+    public synchronized String getApiKeyForModel(String modelName) {
+        String keyForModel = buildModelApiKeyPreferenceKey(modelName);
+        if (TextUtils.isEmpty(keyForModel)) {
+            return "";
+        }
+
+        String modelKey = preferences.getString(keyForModel, "");
+        if (!TextUtils.isEmpty(modelKey)) {
+            return modelKey.trim();
+        }
+
+        // Backward-compat for older builds that used raw model text in preference key.
+        String legacyKeyForModel = KEY_API_KEY + "_" + normalizeModel(modelName);
+        String legacyModelKey = preferences.getString(legacyKeyForModel, "");
+        if (!TextUtils.isEmpty(legacyModelKey)) {
+            String normalizedLegacyModelKey = legacyModelKey.trim();
+            preferences.edit()
+                    .putString(keyForModel, normalizedLegacyModelKey)
+                    .remove(legacyKeyForModel)
+                    .apply();
+            return normalizedLegacyModelKey;
+        }
+
+        return modelKey == null ? "" : modelKey.trim();
     }
 
     public static SecurePreferencesHelper getInstance(Context context) {
@@ -52,6 +92,42 @@ public class SecurePreferencesHelper {
     public synchronized void saveApiKey(String key) {
         String normalized = normalizeKeyForStorage(key);
         preferences.edit().putString(KEY_API_KEY, normalized).apply();
+        if (!TextUtils.isEmpty(normalized)) {
+            addApiKeyToHistory(normalized);
+        }
+    }
+
+    /** Adds a key to the saved-key history (max {@value MAX_KEY_HISTORY} entries). */
+    public synchronized void addApiKeyToHistory(String key) {
+        String normalized = normalizeKeyForStorage(key);
+        if (TextUtils.isEmpty(normalized)) return;
+        LinkedHashSet<String> history = new LinkedHashSet<>(getApiKeyHistoryInternal());
+        // Remove then re-add to bump to end (most-recently-used order)
+        history.remove(normalized);
+        history.add(normalized);
+        // Trim to max size from the front (oldest first)
+        while (history.size() > MAX_KEY_HISTORY) {
+            history.remove(history.iterator().next());
+        }
+        preferences.edit().putStringSet(KEY_API_KEY_HISTORY, history).apply();
+    }
+
+    /** Returns all saved API keys, most-recently-used last. */
+    public synchronized List<String> getSavedApiKeys() {
+        return new ArrayList<>(getApiKeyHistoryInternal());
+    }
+
+    private Set<String> getApiKeyHistoryInternal() {
+        Set<String> raw = preferences.getStringSet(KEY_API_KEY_HISTORY, new LinkedHashSet<>());
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        if (raw == null) return result;
+        for (String item : raw) {
+            String normalized = normalizeKeyForStorage(item);
+            if (!TextUtils.isEmpty(normalized)) {
+                result.add(normalized);
+            }
+        }
+        return result;
     }
 
     public synchronized String getApiKey() {
@@ -67,11 +143,13 @@ public class SecurePreferencesHelper {
         String normalized = normalizeModel(modelName);
         if (TextUtils.isEmpty(normalized)) {
             preferences.edit().remove(KEY_AI_MODEL).apply();
+            saveApiKey("");
             return;
         }
 
         addAiModel(normalized);
         preferences.edit().putString(KEY_AI_MODEL, normalized).apply();
+        saveApiKey(getApiKeyForModel(normalized));
     }
 
     public synchronized String getAiModel() {
@@ -139,6 +217,24 @@ public class SecurePreferencesHelper {
             return DEFAULT_MODEL;
         }
         return modelName.trim();
+    }
+
+    private String buildModelApiKeyPreferenceKey(String modelName) {
+        String normalizedModelPreferenceKey = normalizeModelPreferenceKey(modelName);
+        if (TextUtils.isEmpty(normalizedModelPreferenceKey)) {
+            return "";
+        }
+        return KEY_API_KEY + "_" + normalizedModelPreferenceKey;
+    }
+
+    private String normalizeModelPreferenceKey(String modelName) {
+        String normalizedModel = normalizeModel(modelName);
+        if (TextUtils.isEmpty(normalizedModel)) {
+            return "";
+        }
+        return normalizedModel
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "_");
     }
 
     private Set<String> getModelSetInternal() {

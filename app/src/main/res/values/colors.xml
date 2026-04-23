@@ -9,13 +9,24 @@
     <!-- Core backgrounds -->
     <color name="background_primary">#FFF5F5F5</color>
     <color name="background_surface">#FFFFFFFF</color>
+    <color name="background_navmain">#00FFFFFF</color>
     <color name="background_card">#FFE8E8E8</color>
     <color name="background_elevated">#FFFAFAFA</color>
     <color name="background_input">#FFF0F0F0</color>
 
+    <!-- Surface elevation tokens (light) -->
+    <color name="surface_0">#FFFFFFFF</color>
+    <color name="surface_1">#FFF8F8FA</color>
+    <color name="surface_2">#FFF2F2F5</color>
+    <color name="surface_3">#FFEAEAEE</color>
+
     <!-- Accent (giữ nguyên để nhất quán thương hiệu) -->
     <color name="accent_primary">#FF7B61FF</color>
     <color name="accent_secondary">#FF6C6DD4</color>
+
+    <!-- AI accent riêng (tránh dùng accent_primary cho cả app) -->
+    <color name="ai_accent">#FF6C63FF</color>
+    <color name="ai_accent_light">#FFEEF0FF</color>
 
     <!-- Text -->
     <color name="text_primary">#FF1C1C1E</color>

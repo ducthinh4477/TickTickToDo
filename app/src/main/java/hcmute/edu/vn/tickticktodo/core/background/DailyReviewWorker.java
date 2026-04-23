@@ -13,12 +13,18 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import hcmute.edu.vn.tickticktodo.agent.core.AgentEvent;
+import hcmute.edu.vn.tickticktodo.agent.core.AgentEventBus;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
 import hcmute.edu.vn.tickticktodo.data.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
@@ -68,6 +74,14 @@ public class DailyReviewWorker extends Worker {
             intent.putExtra(FloatingAssistantService.EXTRA_DAILY_REVIEW_TEXT, reviewText);
             intent.putExtra(FloatingAssistantService.EXTRA_UNFINISHED_TASK_IDS, unfinishedTaskIds);
             ContextCompat.startForegroundService(getApplicationContext(), intent);
+
+            JSONObject payload = new JSONObject();
+            safePut(payload, "completedCount", completedTasks == null ? 0 : completedTasks.size());
+            safePut(payload, "incompleteCount", incompleteTasks == null ? 0 : incompleteTasks.size());
+            AgentEventBus.getInstance().publish(
+                    AgentEvent.now(AgentEvent.TYPE_DAILY_REVIEW_TRIGGERED, "DailyReviewWorker", payload)
+            );
+            ProactiveEngine.getInstance(getApplicationContext()).evaluateNow("DAILY_REVIEW_WORKER");
 
             return Result.success();
         } catch (Exception e) {
@@ -155,5 +169,12 @@ public class DailyReviewWorker extends Worker {
             ids[i] = tasks.get(i).getId();
         }
         return ids;
+    }
+
+    private void safePut(JSONObject target, String key, Object value) {
+        try {
+            target.put(key, value);
+        } catch (JSONException ignored) {
+        }
     }
 }

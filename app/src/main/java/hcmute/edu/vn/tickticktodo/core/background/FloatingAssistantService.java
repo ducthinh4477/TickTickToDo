@@ -53,28 +53,43 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.ui.main.MainActivity;
+import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveConfig;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
 import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.agent.tools.ApplyPlanOptionTool;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantAiController;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantStateMonitor;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantStateMonitor.AssistantState;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.AssistantSpeechHandler;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.BubbleWindowManager;
 import hcmute.edu.vn.tickticktodo.core.background.assistant.BubbleUiManager;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.model.SuggestionEntity;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.helper.ReminderScheduler;
 import hcmute.edu.vn.tickticktodo.model.ChatHistoryMessage;
@@ -124,6 +139,9 @@ public class FloatingAssistantService extends Service {
     private static final float VOICE_BARGE_IN_RMS_THRESHOLD = 7.0f;
     private static final float VOICE_BARGE_IN_RMS_MIN = 4.0f;
     private static final float VOICE_BARGE_IN_RMS_MAX = 15.0f;
+    private static final int SUGGESTION_BUBBLE_LIMIT = ProactiveConfig.OVERLAY_MAX_SUGGESTIONS;
+    private static final long SUGGESTION_SURFACE_COOLDOWN_MIN_MS = ProactiveConfig.OVERLAY_SURFACE_COOLDOWN_MIN_MILLIS;
+    private static final long SUGGESTION_SURFACE_DECISION_LOG_COOLDOWN_MS = 45_000L;
     private static final long BUBBLE_LONG_PRESS_TRIGGER_MS = 1000L;
     private static final int BUBBLE_COLLAPSED_SIZE_DP = 90;
     private static final int BUBBLE_EXPANDED_SIZE_DP = 248;
@@ -144,8 +162,13 @@ public class FloatingAssistantService extends Service {
     private static final float MAX_CHAT_ALPHA = 1.0f;
     private static final String CHAT_SOURCE_FLOATING = "floating_assistant";
     private static final String CHAT_SOURCE_FLOATING_TEMP_VOICE = "floating_assistant_temp_voice";
+    private static final String ACTION_APPLY_PLAN_OPTION = "APPLY_PLAN_OPTION";
+    private static final String ACTION_DATA_SEPARATOR = "::";
+    private static final long PLAN_APPLY_CONFIRM_WINDOW_MS = 10000L;
     private static final float[] BUBBLE_OPEN_LEFT_ANGLES = new float[]{120f, 150f, 180f, 210f, 240f};
     private static final float[] BUBBLE_OPEN_RIGHT_ANGLES = new float[]{60f, 30f, 0f, 330f, 300f};
+        private static final Pattern SUGGESTION_FEEDBACK_PATTERN =
+            Pattern.compile("^/(accept|dismiss|apply)\\s+([A-Za-z0-9-]+|last)$", Pattern.CASE_INSENSITIVE);
 
     private enum OverlayInteractionMode {
         CHAT_ONLY,
@@ -220,8 +243,12 @@ public class FloatingAssistantService extends Service {
     private OverlayInteractionMode overlayInteractionMode = OverlayInteractionMode.CHAT_ONLY;
     private EditText floatingInputField;
     private View floatingSendButton;
-    private TextView floatingModeText;
     private final ArrayList<Long> pendingCarryOverTaskIds = new ArrayList<>();
+    private volatile String lastSurfacedSuggestionId;
+    private volatile String pendingPlanApplyKey;
+    private volatile long pendingPlanApplyExpiresAt;
+    private long lastSuggestionSurfaceAt;
+    private long lastSuggestionSurfaceDecisionLogAt;
     private AgentOrchestrator agentOrchestrator;
     private final Runnable voiceRetryRunnable = () -> startVoiceListening(true);
     private final Runnable autoListenAfterSpeechRunnable = () -> {
@@ -396,6 +423,11 @@ public class FloatingAssistantService extends Service {
                         @Override
                         public void appendDebugTrace(String stage, String payload) {
                             FloatingAssistantService.this.appendDebugTrace(stage, payload);
+                        }
+
+                        @Override
+                        public void onToolResult(ToolResult toolResult) {
+                            FloatingAssistantService.this.handleSchedulerToolResult(toolResult);
                         }
 
                         @Override
@@ -626,13 +658,13 @@ public class FloatingAssistantService extends Service {
         safePostMain(() -> {
             switch (newState) {
                 case LISTENING:
-                    updateVoiceUiState(true, "Đang lắng nghe...");
+                    updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatListeningStatus());
                     break;
                 case THINKING:
-                    updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
+                    updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatThinkingStatus());
                     break;
                 case SPEAKING:
-                    updateVoiceUiState(false, "Trợ lý đang phản hồi...");
+                    updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatAssistantReplyingStatus());
                     break;
                 case IDLE:
                 default:
@@ -800,7 +832,7 @@ public class FloatingAssistantService extends Service {
         isVoiceListening = true;
         voiceStopRequestedByUser = false;
         updateState(AssistantState.LISTENING);
-        updateVoiceUiState(true, "Đang lắng nghe...");
+        updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatListeningStatus());
         appendDebugTrace("VOICE_READY", "SpeechRecognizer ready.");
     }
 
@@ -808,7 +840,7 @@ public class FloatingAssistantService extends Service {
         isVoiceListening = true;
         voiceStopRequestedByUser = false;
         updateState(AssistantState.LISTENING);
-        updateVoiceUiState(true, "Đang lắng nghe...");
+        updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatListeningStatus());
         appendDebugTrace("VOICE_BEGIN", "Detected beginning of speech.");
     }
 
@@ -832,7 +864,7 @@ public class FloatingAssistantService extends Service {
         releaseVoiceAudioFocus();
         restoreForegroundAfterVoiceIfNeeded();
         updateState(AssistantState.THINKING);
-        updateVoiceUiState(false, "Đã nghe xong, đang xử lý...");
+        updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatThinkingStatus());
         appendDebugTrace("VOICE_END", "End of speech captured.");
     }
 
@@ -848,7 +880,7 @@ public class FloatingAssistantService extends Service {
             autoListenAfterAssistantReply = false;
             cancelVoiceRetry();
             updateState(AssistantState.IDLE);
-            updateVoiceUiState(false, "Đã dừng nghe.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStoppedStatus());
             appendDebugTrace("VOICE_STOPPED", "Stopped by user.");
             return;
         }
@@ -860,7 +892,7 @@ public class FloatingAssistantService extends Service {
 
         if (error == SpeechRecognizer.ERROR_CLIENT && !voiceSessionRequested) {
             appendDebugTrace("VOICE_ERROR_CLIENT_IGNORED", "No active voice session requested.");
-            updateVoiceUiState(false, "Voice đã dừng.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStoppedClientIgnoredStatus());
             return;
         }
 
@@ -884,7 +916,11 @@ public class FloatingAssistantService extends Service {
         updateState(AssistantState.IDLE);
         updateVoiceUiState(false, mapSpeechErrorMessage(error));
         safePostMain(() ->
-                Toast.makeText(FloatingAssistantService.this, "Loi thu am: " + error, Toast.LENGTH_SHORT).show());
+            Toast.makeText(
+                FloatingAssistantService.this,
+                FloatingVoiceStatusFormatter.formatVoiceErrorToast(error),
+                Toast.LENGTH_SHORT
+            ).show());
     }
 
     private void handleVoiceResults(ArrayList<String> data) {
@@ -916,7 +952,7 @@ public class FloatingAssistantService extends Service {
 
         latestPartialTranscript = text;
         updateVoicePreviewText(text);
-        updateVoiceUiState(true, "Đang nghe: " + abbreviateForStatus(text));
+        updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatLiveListeningPreviewStatus(abbreviateForStatus(text)));
     }
 
     private void initFloatingBubble() {
@@ -1363,70 +1399,25 @@ public class FloatingAssistantService extends Service {
     }
 
     private void activateTemporaryVoiceSession() {
-        runWorkerSafely(() -> {
-            try {
-                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-                long previousSessionId = currentSessionId;
-
-                if (tempVoiceSessionActive && tempVoiceSessionId > 0L) {
-                    dao.deleteSessionById(tempVoiceSessionId);
-                }
-
-                long newTempSessionId = createHistorySessionSync(dao, CHAT_SOURCE_FLOATING_TEMP_VOICE, "Voice tạm thời");
-                tempVoiceSessionActive = true;
-                tempVoiceSessionId = newTempSessionId;
-                previousPersistentSessionId = (previousSessionId > 0L && previousSessionId != newTempSessionId)
-                        ? previousSessionId
-                        : -1L;
-                currentSessionId = newTempSessionId;
-
-                safePostMain(() -> {
-                    conversationMemory.clear();
-                    if (floatingChatAdapter != null) {
-                        floatingChatAdapter.clearMessages();
-                    }
-                    showAssistantMessage("Đã mở phiên voice tạm thời. Đóng popup để tự xóa phiên này.", false, false);
-                    startVoiceListening(false);
-                });
-            } catch (Exception e) {
-                Log.w(TAG, "Unable to activate temporary voice session", e);
-                safePostMain(() -> Toast.makeText(
-                        this,
-                        "Không thể bật phiên voice tạm thời lúc này.",
-                        Toast.LENGTH_SHORT
-                ).show());
-            }
+        // Voice sessions in the floating assistant are fully ephemeral — no DB writes needed.
+        tempVoiceSessionActive = true;
+        tempVoiceSessionId = -1L;
+        conversationMemory.clear();
+        safePostMain(() -> {
+            if (floatingChatAdapter != null) floatingChatAdapter.clearMessages();
+            showAssistantMessage("Đã mở phiên voice tạm thời. Đóng popup để kết thúc.", false, false);
+            startVoiceListening(false);
         });
     }
 
     private void cleanupTemporaryVoiceSessionIfNeeded() {
-        if (!tempVoiceSessionActive || tempVoiceSessionId <= 0L) {
-            return;
-        }
-
-        long deleteSessionId = tempVoiceSessionId;
-        long restoreSessionId = previousPersistentSessionId;
+        if (!tempVoiceSessionActive) return;
+        // Ephemeral voice session — just reset in-memory flags, nothing to delete from DB.
         tempVoiceSessionActive = false;
         tempVoiceSessionId = -1L;
         previousPersistentSessionId = -1L;
-        currentSessionId = restoreSessionId > 0L ? restoreSessionId : -1L;
+        currentSessionId = -1L;
         conversationMemory.clear();
-
-        runWorkerSafely(() -> {
-            try {
-                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-                dao.deleteSessionById(deleteSessionId);
-
-                if (restoreSessionId > 0L && dao.getSessionByIdSync(restoreSessionId) != null) {
-                    currentSessionId = restoreSessionId;
-                } else {
-                    ChatSession latest = dao.getLatestSessionSync();
-                    currentSessionId = latest != null ? latest.id : -1L;
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Unable to cleanup temporary voice session", e);
-            }
-        });
     }
 
     private long createHistorySessionSync(ChatHistoryDao dao, String source, String title) {
@@ -1446,6 +1437,7 @@ public class FloatingAssistantService extends Service {
         floatingChatRecyclerView = floatingChatView.findViewById(R.id.rv_floating_chat_messages);
         if (floatingChatRecyclerView != null) {
             floatingChatAdapter = new ChatAdapter();
+            floatingChatAdapter.setActionClickListener(this::handleChatMessageAction);
             LinearLayoutManager layoutManager = new LinearLayoutManager(this);
             layoutManager.setStackFromEnd(true);
             floatingChatRecyclerView.setLayoutManager(layoutManager);
@@ -1468,7 +1460,6 @@ public class FloatingAssistantService extends Service {
         EditText etInput = floatingChatView.findViewById(R.id.et_message_floating);
         View btnSend = floatingChatView.findViewById(R.id.btn_send_floating);
         View btnMic = floatingChatView.findViewById(R.id.btn_mic_floating);
-        floatingModeText = floatingChatView.findViewById(R.id.tv_floating_chat_mode);
         dailyReviewLayout = floatingChatView.findViewById(R.id.layout_daily_review_action);
         dailyReviewContent = floatingChatView.findViewById(R.id.tv_daily_review_content);
         moveUnfinishedButton = floatingChatView.findViewById(R.id.btn_move_unfinished_tasks);
@@ -1516,6 +1507,9 @@ public class FloatingAssistantService extends Service {
                     String msg = etInput.getText().toString().trim();
                     if (!msg.isEmpty()) {
                         etInput.setText("");
+                        if (tryHandleSuggestionFeedbackCommand(msg)) {
+                            return;
+                        }
                         sendToGemini(msg);
                     }
                 } catch (Exception e) {
@@ -1675,12 +1669,6 @@ public class FloatingAssistantService extends Service {
             voiceMicButton.setVisibility(voiceOnly ? View.VISIBLE : View.GONE);
         }
 
-        if (floatingModeText != null) {
-            floatingModeText.setText(overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY
-                    ? R.string.floating_chat_mode_chat
-                    : R.string.floating_chat_mode_voice);
-        }
-
         if (overlayInteractionMode == OverlayInteractionMode.CHAT_ONLY) {
             updateVoiceUiState(false, null);
         } else if (updateStatusChip) {
@@ -1724,18 +1712,18 @@ public class FloatingAssistantService extends Service {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-            updateVoiceUiState(false, "Thiếu quyền Microphone. Chuyển sang màn hình cấp quyền...");
+            updateVoiceUiState(false, FloatingVoicePermissionStatusFormatter.formatMissingPermissionDetailedStatus());
             Toast.makeText(this,
-                    "Chưa có quyền Microphone. Mình sẽ mở phần cài đặt app để bạn cấp quyền.",
+                FloatingVoicePermissionStatusFormatter.formatMissingPermissionToast(),
                     Toast.LENGTH_LONG).show();
             openAppSettings();
             return;
         }
 
         if (!ensureSpeechRecognizerReady()) {
-            updateVoiceUiState(false, "Speech recognizer chưa sẵn sàng.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatSpeechRecognizerNotReadyStatus());
             Toast.makeText(this,
-                    "Speech recognizer chưa sẵn sàng. Vui lòng thử lại.",
+                FloatingVoiceStatusFormatter.formatSpeechRecognizerNotReadyToast(),
                     Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1757,16 +1745,16 @@ public class FloatingAssistantService extends Service {
                 }
                 isVoiceListening = false;
                 updateState(AssistantState.IDLE);
-                updateVoiceUiState(false, "Đang dừng nghe...");
-                Toast.makeText(this, "Đang dừng nghe...", Toast.LENGTH_SHORT).show();
+                updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatStoppingListeningStatus());
+                Toast.makeText(this, FloatingVoiceStatusFormatter.formatStoppingListeningStatus(), Toast.LENGTH_SHORT).show();
             } else {
                 startVoiceListening(false);
             }
         } catch (Exception e) {
             isVoiceListening = false;
-            updateVoiceUiState(false, "Không thể bật voice lúc này.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceUnavailableStatus());
             Log.e(TAG, "Unable to toggle voice listening", e);
-            Toast.makeText(this, "Không thể bật voice lúc này.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, FloatingVoiceStatusFormatter.formatVoiceUnavailableStatus(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1785,13 +1773,13 @@ public class FloatingAssistantService extends Service {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-            updateVoiceUiState(false, "Thiếu quyền Microphone.");
+            updateVoiceUiState(false, FloatingVoicePermissionStatusFormatter.formatMissingPermissionShortStatus());
             cancelVoiceRetry();
             return;
         }
 
         if (!ensureSpeechRecognizerReady()) {
-            updateVoiceUiState(false, "Speech recognizer chưa sẵn sàng.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatSpeechRecognizerNotReadyStatus());
             cancelVoiceRetry();
             return;
         }
@@ -1826,10 +1814,7 @@ public class FloatingAssistantService extends Service {
             }
             isVoiceListening = true;
             updateState(AssistantState.LISTENING);
-            updateVoiceUiState(true,
-                    fromRetry
-                            ? "Đang thử nghe lại..."
-                            : "Đang lắng nghe... chạm mic lần nữa để dừng");
+                updateVoiceUiState(true, FloatingVoiceStatusFormatter.formatVoiceStartStatus(fromRetry));
             appendDebugTrace("VOICE_START", fromRetry ? "Retry start listening" : "Start listening");
         } catch (Exception e) {
             isVoiceListening = false;
@@ -1842,21 +1827,21 @@ public class FloatingAssistantService extends Service {
                 return;
             }
 
-            updateVoiceUiState(false, "Không thể khởi động nhận diện giọng nói.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStartFailureStatus());
         }
     }
 
     private void scheduleVoiceRetry(int errorCode) {
         if (voiceStopRequestedByUser || !voiceSessionRequested) {
             cancelVoiceRetry();
-            updateVoiceUiState(false, "Đã dừng nghe.");
+            updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatVoiceStoppedStatus());
             return;
         }
 
         if (voiceAutoRetryCount >= MAX_VOICE_AUTO_RETRY) {
             voiceSessionRequested = false;
             String finalMessage = errorCode == SpeechRecognizer.ERROR_NO_MATCH
-                    ? "Mình chưa nghe rõ. Bạn thử nói chậm và gần mic hơn nhé."
+                    ? FloatingVoiceStatusFormatter.formatNoMatchRetryExhaustedStatus()
                     : mapSpeechErrorMessage(errorCode);
             updateVoiceUiState(false, finalMessage);
             appendDebugTrace("VOICE_RETRY_EXHAUSTED", "error=" + errorCode);
@@ -1869,13 +1854,11 @@ public class FloatingAssistantService extends Service {
             retryDelay += 350L;
         }
         updateVoiceUiState(false,
-                "Không nghe rõ, đang thử lại ("
-                        + voiceAutoRetryCount
-                        + "/"
-                        + MAX_VOICE_AUTO_RETRY
-                        + ") sau "
-                        + String.format(Locale.getDefault(), "%.1fs", retryDelay / 1000f)
-                        + "...");
+            FloatingVoiceStatusFormatter.formatVoiceRetryStatus(
+                voiceAutoRetryCount,
+                MAX_VOICE_AUTO_RETRY,
+                retryDelay
+            ));
         appendDebugTrace("VOICE_RETRY", "error=" + errorCode + ", attempt=" + voiceAutoRetryCount + ", delayMs=" + retryDelay);
         cancelVoiceRetry();
         safePostMainDelayed(voiceRetryRunnable, retryDelay);
@@ -1942,10 +1925,7 @@ public class FloatingAssistantService extends Service {
             mainHandler.removeCallbacks(autoListenAfterSpeechRunnable);
         }
 
-        updateVoiceUiState(false,
-                fromPartial
-                        ? "Đã dùng kết quả nghe tạm thời."
-                        : "Đã nhận giọng nói.");
+        updateVoiceUiState(false, FloatingVoiceStatusFormatter.formatRecognizedVoiceAppliedStatus(fromPartial));
         updateState(AssistantState.THINKING);
         appendDebugTrace("VOICE_TEXT", text);
 
@@ -2587,8 +2567,356 @@ public class FloatingAssistantService extends Service {
         }
     }
 
+    private void maybeShowHighPrioritySuggestions() {
+        long now = System.currentTimeMillis();
+        if (now - lastSuggestionSurfaceAt < SUGGESTION_SURFACE_COOLDOWN_MIN_MS) {
+            logSuggestionSurfaceDecision("blocked", "hard-cooldown", false);
+            return;
+        }
+
+        String blockReason = getSuggestionSurfaceBlockReason();
+        if (blockReason != null) {
+            logSuggestionSurfaceDecision("blocked", blockReason, false);
+            return;
+        }
+
+        runWorkerSafely(() -> {
+            try {
+                ProactiveEngine proactiveEngine = ProactiveEngine.getExisting();
+                if (proactiveEngine == null) {
+                    proactiveEngine = ProactiveEngine.getInstance(getApplicationContext());
+                }
+
+                long adaptiveCooldown = proactiveEngine.getAdaptiveOverlayCooldownMillis();
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastSuggestionSurfaceAt < adaptiveCooldown) {
+                    logSuggestionSurfaceDecision("blocked", "adaptive-cooldown", false);
+                    return;
+                }
+
+                float adaptiveMinPriority = proactiveEngine.getAdaptiveOverlayMinPriority();
+                lastSuggestionSurfaceAt = currentTime;
+
+                List<SuggestionEntity> suggestions = proactiveEngine.getHighPriorityPendingSuggestionsSync(
+                        adaptiveMinPriority,
+                        SUGGESTION_BUBBLE_LIMIT
+                );
+                if (suggestions == null || suggestions.isEmpty()) {
+                    logSuggestionSurfaceDecision("skipped", "no-high-priority", false);
+                    return;
+                }
+
+                int surfacedCount = 0;
+                for (SuggestionEntity suggestion : suggestions) {
+                    if (suggestion == null || TextUtils.isEmpty(suggestion.id)) {
+                        continue;
+                    }
+
+                    String message = FloatingSuggestionMessageFormatter.formatHighPrioritySuggestionMessage(suggestion);
+                    if (!TextUtils.isEmpty(message)) {
+                        lastSurfacedSuggestionId = suggestion.id;
+                        showAssistantMessage(message, true, false);
+                        proactiveEngine.markSuggestionShown(suggestion.id);
+                        surfacedCount++;
+                    }
+                }
+
+                if (surfacedCount <= 0) {
+                    logSuggestionSurfaceDecision("skipped", "no-renderable-message", false);
+                    return;
+                }
+
+                logSuggestionSurfaceDecision(
+                        "surfaced",
+                        "count=" + surfacedCount + ", minPriority=" + adaptiveMinPriority
+                                + ", cooldownMs=" + adaptiveCooldown,
+                        true
+                );
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to surface high-priority suggestions", e);
+            }
+        });
+    }
+
+    private void logSuggestionSurfaceDecision(String decision, String detail, boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && now - lastSuggestionSurfaceDecisionLogAt < SUGGESTION_SURFACE_DECISION_LOG_COOLDOWN_MS) {
+            return;
+        }
+
+        lastSuggestionSurfaceDecisionLogAt = now;
+        long sinceLastSurface = Math.max(0L, now - lastSuggestionSurfaceAt);
+        Log.d(TAG, "suggestionSurface decision=" + decision
+                + ", detail=" + detail
+                + ", sinceLastSurfaceMs=" + sinceLastSurface);
+    }
+
+    private String getSuggestionSurfaceBlockReason() {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+        if (ProactiveConfig.isQuietHours(hour)) {
+            return "quiet-hours";
+        }
+        if (isDndBlockingSuggestions()) {
+            return "dnd";
+        }
+        return null;
+    }
+
+    private boolean isSuggestionSurfaceAllowedNow() {
+        return getSuggestionSurfaceBlockReason() == null;
+    }
+
+    private boolean isDndBlockingSuggestions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return false;
+        }
+
+        try {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notificationManager == null) {
+                return false;
+            }
+
+            int filter = notificationManager.getCurrentInterruptionFilter();
+            return filter != NotificationManager.INTERRUPTION_FILTER_ALL;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private boolean tryHandleSuggestionFeedbackCommand(String message) {
+        if (TextUtils.isEmpty(message)) {
+            return false;
+        }
+
+        Matcher matcher = SUGGESTION_FEEDBACK_PATTERN.matcher(message.trim());
+        if (!matcher.matches()) {
+            return false;
+        }
+
+        String feedbackType = matcher.group(1) == null
+                ? null
+                : matcher.group(1).trim().toUpperCase(Locale.ROOT);
+        String target = matcher.group(2);
+
+        String suggestionId;
+        if ("last".equalsIgnoreCase(target)) {
+            suggestionId = lastSurfacedSuggestionId;
+        } else {
+            suggestionId = target;
+        }
+
+        showUserMessage(message);
+
+        if (TextUtils.isEmpty(suggestionId)) {
+            showAssistantMessage("Chua co suggestion gan nhat de xu ly.", true, false);
+            return true;
+        }
+
+        ProactiveEngine proactiveEngine = ProactiveEngine.getExisting();
+        if (proactiveEngine == null) {
+            proactiveEngine = ProactiveEngine.getInstance(getApplicationContext());
+        }
+        proactiveEngine.recordSuggestionFeedback(suggestionId, feedbackType, "floating");
+        showAssistantMessage("Da ghi nhan feedback " + feedbackType + " cho suggestion " + suggestionId + ".", true, false);
+        return true;
+    }
+
+    private void handleSchedulerToolResult(ToolResult toolResult) {
+        if (toolResult == null) {
+            return;
+        }
+
+        if (!toolResult.isSuccess()) {
+            if (AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())
+                    && "CONFIRMATION_REQUIRED".equals(toolResult.getErrorCode())) {
+                showAssistantMessage("Bạn cần xác nhận trước khi áp dụng kế hoạch.", true, false);
+            }
+            return;
+        }
+
+        JSONObject data = toolResult.getData();
+        String renderType = data == null ? "" : data.optString("renderType", "");
+
+        if ("PLAN_PROPOSAL".equalsIgnoreCase(renderType)) {
+            renderPlanProposalMessages(data);
+            return;
+        }
+
+        if ("PLAN_APPLY_RESULT".equalsIgnoreCase(renderType)
+                || AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())) {
+            String message = data == null ? "" : data.optString("message", "");
+            if (TextUtils.isEmpty(message)) {
+                String optionId = data == null ? "" : data.optString("optionId", "");
+                int appliedTaskCount = data == null ? 0 : data.optInt("appliedTaskCount", 0);
+                message = "Đã áp dụng phương án " + optionId + " cho " + appliedTaskCount + " task.";
+            }
+            showAssistantMessage(message, true, false);
+        }
+    }
+
+    private void renderPlanProposalMessages(JSONObject data) {
+        if (data == null) {
+            return;
+        }
+
+        String proposalId = data.optString("proposalId", "");
+        String proposalType = data.optString("proposalType", "DAILY");
+        String anchorDate = data.optString("anchorDate", "");
+        JSONArray options = data.optJSONArray("options");
+
+        if (options == null || options.length() == 0) {
+            showAssistantMessage(FloatingPlanProposalEmptyStateFormatter.formatEmptyStateMessage(), true, false);
+            return;
+        }
+
+        showAssistantMessage(
+            FloatingPlanProposalHeaderFormatter.formatProposalSummaryHeader(
+                proposalType,
+                anchorDate,
+                options.length()
+            ),
+                true,
+                false
+        );
+
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject option = options.optJSONObject(i);
+            if (option == null) {
+                continue;
+            }
+
+            String optionId = option.optString("optionId", "");
+            String label = option.optString("label", "Option");
+            String description = option.optString("description", "");
+            int scheduled = option.optInt("scheduledMinutes", 0);
+            int unscheduled = option.optInt("unscheduledMinutes", 0);
+
+            String card = FloatingPlanOptionCardFormatter.formatOptionCard(
+                    optionId,
+                    label,
+                    description,
+                    scheduled,
+                    unscheduled
+            );
+
+            if (!TextUtils.isEmpty(proposalId) && !TextUtils.isEmpty(optionId)) {
+                showAssistantActionMessage(
+                        card,
+                        ACTION_APPLY_PLAN_OPTION,
+                        "Áp dụng kế hoạch này",
+                        encodeActionData(proposalId, optionId)
+                );
+            } else {
+                showAssistantMessage(card, true, false);
+            }
+        }
+    }
+
+    private void handleChatMessageAction(ChatMessage message) {
+        if (message == null) {
+            return;
+        }
+
+        if (ACTION_APPLY_PLAN_OPTION.equals(message.getActionType())) {
+            tryHandlePlanApplyAction(message.getActionData());
+        }
+    }
+
+    private void tryHandlePlanApplyAction(String actionData) {
+        String[] decoded = decodeActionData(actionData);
+        if (decoded == null || decoded.length < 2) {
+            showAssistantMessage("Không đọc được option kế hoạch cần áp dụng.", true, false);
+            return;
+        }
+
+        String proposalId = decoded[0];
+        String optionId = decoded[1];
+        if (TextUtils.isEmpty(proposalId) || TextUtils.isEmpty(optionId)) {
+            showAssistantMessage("Thiếu proposalId/optionId để áp dụng kế hoạch.", true, false);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        String actionKey = encodeActionData(proposalId, optionId);
+        boolean confirmed = actionKey.equals(pendingPlanApplyKey) && now <= pendingPlanApplyExpiresAt;
+
+        if (!confirmed) {
+            pendingPlanApplyKey = actionKey;
+            pendingPlanApplyExpiresAt = now + PLAN_APPLY_CONFIRM_WINDOW_MS;
+            showAssistantMessage(
+                    "Bạn có chắc muốn áp dụng option " + optionId
+                            + "? Nhấn lại nút \"Áp dụng kế hoạch này\" trong 10 giây để xác nhận.",
+                    true,
+                    false
+            );
+            return;
+        }
+
+        pendingPlanApplyKey = null;
+        pendingPlanApplyExpiresAt = 0L;
+        showUserMessage("Áp dụng option " + optionId, true);
+        executeApplyPlanOptionTool(proposalId, optionId);
+    }
+
+    private void executeApplyPlanOptionTool(String proposalId, String optionId) {
+        runWorkerSafely(() -> {
+            try {
+                JSONObject args = new JSONObject();
+                args.put("proposalId", proposalId);
+                args.put("optionId", optionId);
+                args.put("confirmed", true);
+
+                ToolCall call = new ToolCall(
+                        UUID.randomUUID().toString(),
+                        AgentToolNames.APPLY_PLAN_OPTION_TOOL,
+                        args,
+                        ""
+                );
+
+                ApplyPlanOptionTool tool = new ApplyPlanOptionTool();
+                ToolResult result = tool.execute(call, AgentExecutionContext.create(getApplication()));
+                safePostMain(() -> handleSchedulerToolResult(result));
+            } catch (Exception e) {
+                Log.w(TAG, "Unable to apply plan option", e);
+                safePostMain(() -> showAssistantMessage("Không thể áp dụng kế hoạch lúc này.", true, false));
+            }
+        });
+    }
+
+    private void showAssistantActionMessage(String message,
+                                            String actionType,
+                                            String actionLabel,
+                                            String actionData) {
+        rememberTurn("assistant", message);
+        persistChatMessageAsync("assistant", message);
+        safePostMain(() -> appendChatMessage(new ChatMessage(message, false, actionType, actionLabel, actionData)));
+    }
+
+    private String encodeActionData(String proposalId, String optionId) {
+        return (proposalId == null ? "" : proposalId)
+                + ACTION_DATA_SEPARATOR
+                + (optionId == null ? "" : optionId);
+    }
+
+    private String[] decodeActionData(String actionData) {
+        if (TextUtils.isEmpty(actionData)) {
+            return null;
+        }
+        String[] parts = actionData.split(Pattern.quote(ACTION_DATA_SEPARATOR), 2);
+        if (parts.length < 2) {
+            return null;
+        }
+        return parts;
+    }
+
     private void appendChatMessage(String message, boolean isUser) {
-        if (TextUtils.isEmpty(message) || !isServiceAlive) {
+        appendChatMessage(new ChatMessage(message, isUser));
+    }
+
+    private void appendChatMessage(ChatMessage message) {
+        if (message == null || TextUtils.isEmpty(message.getText()) || !isServiceAlive) {
             return;
         }
 
@@ -2597,7 +2925,7 @@ public class FloatingAssistantService extends Service {
         }
 
         try {
-            floatingChatAdapter.addMessage(new ChatMessage(message, isUser));
+            floatingChatAdapter.addMessage(message);
             if (isChatAttached()) {
                 floatingChatRecyclerView.smoothScrollToPosition(
                         Math.max(0, floatingChatAdapter.getItemCount() - 1)
@@ -2608,69 +2936,27 @@ public class FloatingAssistantService extends Service {
         }
     }
 
+    /**
+     * Floating assistant conversations are fully ephemeral — no DB reads/writes.
+     * Each time the chat panel opens it starts with a clean slate and a greeting.
+     */
     private void restoreFloatingHistory() {
-        try {
-            ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-            long sessionId = ensureHistorySessionSync(dao);
-            List<ChatHistoryMessage> rows = dao.getMessagesForSessionSync(sessionId);
-
-            if (rows == null || rows.isEmpty()) {
-                showAssistantMessage("Xin chào, mình là trợ lý nổi. Bạn có thể nói hoặc nhập lệnh tạo/hoàn thành task.", true, false);
-                return;
-            }
-
-            List<ChatMessage> restored = new ArrayList<>();
-            conversationMemory.clear();
-            for (ChatHistoryMessage row : rows) {
-                boolean isUser = "user".equalsIgnoreCase(row.role);
-                String content = row.content == null ? "" : row.content;
-                restored.add(new ChatMessage(content, isUser));
-                rememberTurn(isUser ? "user" : "assistant", content);
-            }
-
-            safePostMain(() -> {
-                if (floatingChatAdapter != null) {
-                    floatingChatAdapter.setMessages(restored);
-                    if (floatingChatRecyclerView != null && !restored.isEmpty()) {
-                        floatingChatRecyclerView.scrollToPosition(restored.size() - 1);
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Unable to restore floating chat history", e);
-        }
+        conversationMemory.clear();
+        safePostMain(() -> {
+            if (floatingChatAdapter != null) floatingChatAdapter.clearMessages();
+        });
+        showAssistantMessage(
+                "Xin chào, mình là trợ lý nổi. Bạn có thể nói hoặc nhập lệnh tạo/hoàn thành task.",
+                false, false);
     }
 
+    /**
+     * Floating assistant messages are NOT persisted — all conversations are temporary.
+     * This method is intentionally a no-op; the signature is kept so call sites
+     * that pass {@code persist = true} remain compilable.
+     */
     private void persistChatMessageAsync(String role, String message) {
-        if (TextUtils.isEmpty(message) || workerExecutor == null || workerExecutor.isShutdown()) {
-            return;
-        }
-
-        runWorkerSafely(() -> {
-            try {
-                ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
-                long sessionId = ensureHistorySessionSync(dao);
-                long now = System.currentTimeMillis();
-
-                ChatHistoryMessage row = new ChatHistoryMessage();
-                row.sessionId = sessionId;
-                row.role = role;
-                row.content = message;
-                row.source = tempVoiceSessionActive
-                    ? CHAT_SOURCE_FLOATING_TEMP_VOICE
-                    : CHAT_SOURCE_FLOATING;
-                row.createdAt = now;
-                dao.insertMessage(row);
-
-                String preview = abbreviateForPreview(message);
-                dao.updateSessionAfterMessage(sessionId, now, preview);
-                if ("user".equals(role)) {
-                    dao.updateSessionTitleIfEmpty(sessionId, preview);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Unable to persist floating message", e);
-            }
-        });
+        // Ephemeral: no database writes for the floating assistant.
     }
 
     private long ensureHistorySessionSync(ChatHistoryDao dao) {
@@ -2850,6 +3136,7 @@ public class FloatingAssistantService extends Service {
             } else if (ACTION_SHOW_BUBBLE.equals(action)) {
                 refreshOverlayTheme(false);
                 safePostMain(this::ensureBubbleVisible);
+                maybeShowHighPrioritySuggestions();
             } else if (ACTION_SHOW_DAILY_REVIEW.equals(action)) {
                 refreshOverlayTheme(false);
                 String reviewText = intent != null

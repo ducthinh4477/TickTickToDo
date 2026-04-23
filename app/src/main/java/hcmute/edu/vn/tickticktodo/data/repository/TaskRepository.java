@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import hcmute.edu.vn.tickticktodo.agent.core.AgentEvent;
+import hcmute.edu.vn.tickticktodo.agent.core.AgentEventBus;
 import hcmute.edu.vn.tickticktodo.data.dao.SubtaskDao;
 import hcmute.edu.vn.tickticktodo.data.dao.TaskDao;
 import hcmute.edu.vn.tickticktodo.data.dao.TodoListDao;
@@ -40,6 +42,8 @@ public class TaskRepository {
     private final Application application; // giữ để pass Context cho ReminderScheduler
     private final ActivityLogRepository logRepository;
     private final UserStatsManager userStatsManager;
+    private final TaskEventSideEffectPublisher taskEventSideEffectPublisher;
+    private final TaskNotificationSideEffectHelper taskNotificationSideEffectHelper;
 
     public LiveData<List<Task>> getAllCompletedTasksLog() {
         return taskDao.getAllCompletedTasksLog();
@@ -59,6 +63,10 @@ public class TaskRepository {
         this.application = application;
         this.logRepository = new ActivityLogRepository(application);
         this.userStatsManager = UserStatsManager.getInstance(application);
+        this.taskEventSideEffectPublisher =
+            new TaskEventSideEffectPublisher(AgentEventBus.getInstance());
+        this.taskNotificationSideEffectHelper =
+            new TaskNotificationSideEffectHelper(application);
     }
 
     // ─── READ ────────────────────────────────────────────────────────────────────
@@ -126,7 +134,9 @@ public class TaskRepository {
             logRepository.insertLog("TẠO MỚI", task.getTitle());
 
             // Notification if due today
-            checkAndNotifyIfToday(task);
+            taskNotificationSideEffectHelper.checkAndNotifyIfToday(task);
+
+            taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_CREATED, task);
 
             postToMain(onComplete);
         });
@@ -148,6 +158,7 @@ public class TaskRepository {
                 if (!task.isCompleted()) {
                     ReminderScheduler.scheduleReminder(application, task);
                 }
+                taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_CREATED, task);
             }
 
             logRepository.insertLog("TẠO HÀNG LOẠT", "Số lượng: " + tasks.size());
@@ -177,34 +188,12 @@ public class TaskRepository {
                 if (task != null && !task.isCompleted()) {
                     ReminderScheduler.scheduleReminder(application, task);
                 }
+                taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_RESCHEDULED, task);
             }
 
             logRepository.insertLog("DỜI CÔNG VIỆC", "Số lượng: " + taskIds.size());
             postToMain(onComplete);
         });
-    }
-
-    private void checkAndNotifyIfToday(Task task) {
-        if (task.getDueDate() == null) return;
-
-        java.util.Calendar todayStart = java.util.Calendar.getInstance();
-        todayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        todayStart.set(java.util.Calendar.MINUTE, 0);
-        todayStart.set(java.util.Calendar.SECOND, 0);
-        todayStart.set(java.util.Calendar.MILLISECOND, 0);
-
-        java.util.Calendar todayEnd = (java.util.Calendar) todayStart.clone();
-        todayEnd.add(java.util.Calendar.DAY_OF_YEAR, 1);
-
-        long due = task.getDueDate();
-        if (due >= todayStart.getTimeInMillis() && due < todayEnd.getTimeInMillis()) {
-            hcmute.edu.vn.tickticktodo.helper.NotificationHelper.showTaskNotification(
-                    application,
-                    "Bạn có công việc mới cho hôm nay",
-                    task.getTitle(),
-                    (int) task.getId()
-            );
-        }
     }
 
     public void update(Task task) {
@@ -225,6 +214,10 @@ public class TaskRepository {
             } else {
                 ReminderScheduler.scheduleReminder(application, task);
             }
+
+                taskEventSideEffectPublisher.publishTaskEvent(task.isCompleted() && !wasCompleted
+                    ? AgentEvent.TYPE_TASK_COMPLETED
+                    : AgentEvent.TYPE_TASK_UPDATED, task);
         });
     }
 
@@ -236,6 +229,7 @@ public class TaskRepository {
             logRepository.insertLog("XÓA", task.getTitle());
             
             ReminderScheduler.cancelReminder(application, task.getId()); // huỷ alarm
+            taskEventSideEffectPublisher.publishTaskEvent(AgentEvent.TYPE_TASK_DELETED, task);
         });
     }
 
@@ -308,6 +302,12 @@ public class TaskRepository {
             if (isCompleted) {
                 ReminderScheduler.cancelReminder(application, taskId); // hoàn thành → huỷ alarm
             }
+
+            Task latestTask = taskDao.getTaskByIdSync(taskId);
+                taskEventSideEffectPublisher.publishTaskEvent(
+                    isCompleted ? AgentEvent.TYPE_TASK_COMPLETED : AgentEvent.TYPE_TASK_UPDATED,
+                    latestTask
+                );
         });
     }
 
@@ -415,4 +415,5 @@ public class TaskRepository {
             new Handler(Looper.getMainLooper()).post(callback);
         }
     }
+
 }

@@ -1,30 +1,41 @@
 package hcmute.edu.vn.tickticktodo.ui.chat;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
+import android.widget.LinearLayout;
+
 import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
@@ -32,23 +43,33 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.BaseActivity;
 import hcmute.edu.vn.tickticktodo.R;
-import hcmute.edu.vn.tickticktodo.agent.AgentAction;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentAction;
+import hcmute.edu.vn.tickticktodo.agent.AgentExecutionContext;
 import hcmute.edu.vn.tickticktodo.agent.AgentPromptContract;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseEnvelope;
 import hcmute.edu.vn.tickticktodo.agent.AgentResponseParser;
+import hcmute.edu.vn.tickticktodo.ai.agent.AgentToolNames;
+import hcmute.edu.vn.tickticktodo.agent.integration.IntegrationFacade;
 import hcmute.edu.vn.tickticktodo.agent.orchestrator.AgentOrchestrator;
+import hcmute.edu.vn.tickticktodo.agent.proactive.ProactiveEngine;
+import hcmute.edu.vn.tickticktodo.agent.tools.ApplyPlanOptionTool;
+import hcmute.edu.vn.tickticktodo.core.ai.model.ToolCall;
 import hcmute.edu.vn.tickticktodo.core.ai.model.ToolResult;
 import hcmute.edu.vn.tickticktodo.data.dao.ChatHistoryDao;
 import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
+import hcmute.edu.vn.tickticktodo.data.model.SuggestionEntity;
 import hcmute.edu.vn.tickticktodo.databinding.ActivityAiAssistantBinding;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
 import hcmute.edu.vn.tickticktodo.helper.SecurePreferencesHelper;
@@ -57,6 +78,7 @@ import hcmute.edu.vn.tickticktodo.model.ChatMessage;
 import hcmute.edu.vn.tickticktodo.model.ChatSession;
 import hcmute.edu.vn.tickticktodo.model.Task;
 import hcmute.edu.vn.tickticktodo.core.background.FloatingAssistantService;
+import hcmute.edu.vn.tickticktodo.ui.debug.ProactiveDebugActivity;
 
 public class AiAssistantActivity extends BaseActivity {
 
@@ -66,10 +88,25 @@ public class AiAssistantActivity extends BaseActivity {
     private static final String PREFS_NAME = "TickTickPrefs";
     private static final String KEY_FLOATING_ASSISTANT_ENABLED = "floating_assistant_enabled";
     private static final String CHAT_SOURCE_MAIN = "ai_assistant";
+
+    /**
+     * True once a session has been created in the current process lifetime.
+     * Reset to false when the process is killed, so the next cold launch always
+     * starts with a brand-new conversation.
+     */
+    private static volatile boolean sProcessSessionCreated = false;
+    private static final String ACTION_APPLY_PLAN_OPTION = "APPLY_PLAN_OPTION";
+    private static final String ACTION_DATA_SEPARATOR = "::";
     private static final int MAX_MEMORY_LINES = 10;
-    private static final Pattern API_KEY_PATTERN = Pattern.compile("^AIza[A-Za-z0-9_-]{16,}$");
+        private static final String HEALTH_PERMISSION_READ_STEPS = "android.permission.health.READ_STEPS";
+        private static final String HEALTH_PERMISSION_READ_SLEEP = "android.permission.health.READ_SLEEP";
+        private static final String HEALTH_PERMISSION_READ_ACTIVE_CALORIES =
+            "android.permission.health.READ_ACTIVE_CALORIES_BURNED";
+    // Accepts Gemini (AIza...), OpenAI (sk-...), Anthropic (sk-ant-...), and other providers
+    private static final Pattern API_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9_\\-\\.]{10,}$");
     private static final Pattern GEMINI_MODEL_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9._/-]{3,128}$");
-    private static final ExecutorService DB_EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final Object DB_EXECUTOR_LOCK = new Object();
+    private static volatile ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
     private ActivityAiAssistantBinding binding;
     private ChatAdapter chatAdapter;
@@ -79,10 +116,21 @@ public class AiAssistantActivity extends BaseActivity {
     private Handler mainHandler;
     private final ArrayDeque<String> conversationMemory = new ArrayDeque<>();
     private final AgentResponseParser responseParser = new AgentResponseParser();
+    private final PlanPreviewMessageFormatter planPreviewMessageFormatter = new PlanPreviewMessageFormatter();
+    private final SuggestionCardMessageFormatter suggestionCardMessageFormatter =
+            new SuggestionCardMessageFormatter();
+        private final SuggestionFeedbackCommandParser suggestionFeedbackCommandParser =
+            new SuggestionFeedbackCommandParser();
+    private final HashSet<String> surfacedSuggestionIds = new HashSet<>();
+    private volatile String lastSurfacedSuggestionId;
 
     private SharedPreferences sharedPrefs;
     private ActivityResultLauncher<Intent> overlayPermissionLauncher;
+    private ActivityResultLauncher<String[]> integrationPermissionsLauncher;
     private ActivityResultLauncher<Intent> historyLauncher;
+    private LiveData<List<SuggestionEntity>> suggestionLiveData;
+    private TextView integrationPermissionStatusView;
+    private Button integrationPermissionActionButton;
 
     private volatile long currentSessionId = -1L;
     private volatile boolean destroyed;
@@ -99,6 +147,10 @@ public class AiAssistantActivity extends BaseActivity {
         overlayPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> handleOverlayPermissionResult());
+
+        integrationPermissionsLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            result -> handleIntegrationPermissionsResult());
 
         historyLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -125,6 +177,8 @@ public class AiAssistantActivity extends BaseActivity {
         setupRecyclerView();
         setupQuickPrompts();
         setupGemini();
+        updateModelNameIndicator();
+        observeProactiveSuggestions();
         ensureFloatingServiceState();
 
         if (binding.btnNavigateBack != null) {
@@ -137,6 +191,10 @@ public class AiAssistantActivity extends BaseActivity {
 
         if (binding.btnSettings != null) {
             binding.btnSettings.setOnClickListener(v -> showSettingsDialog());
+            binding.btnSettings.setOnLongClickListener(v -> {
+                openProactiveDebugScreen();
+                return true;
+            });
         }
 
         binding.btnSend.setOnClickListener(v -> {
@@ -145,6 +203,16 @@ public class AiAssistantActivity extends BaseActivity {
                 sendMessage(message);
             }
         });
+
+        if (binding.btnAttachTask != null) {
+            binding.btnAttachTask.setOnClickListener(v -> showAttachTaskPicker());
+        }
+
+        binding.messageInput.setOnFocusChangeListener((v, hasFocus) ->
+                binding.inputLayout.animate()
+                        .translationZ(hasFocus ? 8f : 4f)
+                        .setDuration(200)
+                        .start());
 
         initializeSessionFromIntent(getIntent());
     }
@@ -158,6 +226,7 @@ public class AiAssistantActivity extends BaseActivity {
 
     private void setupRecyclerView() {
         chatAdapter = new ChatAdapter();
+        chatAdapter.setActionClickListener(this::handleChatMessageAction);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         binding.chatRecyclerView.setLayoutManager(layoutManager);
@@ -165,17 +234,17 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void setupQuickPrompts() {
-        if (binding.cardQuickTodayPlan != null) {
-            binding.cardQuickTodayPlan.setOnClickListener(v -> sendMessage("Lên kế hoạch công việc hôm nay theo mức ưu tiên giúp tôi."));
+        if (binding.chipQuickTodayPlan != null) {
+            binding.chipQuickTodayPlan.setOnClickListener(v -> sendMessage("Lên kế hoạch công việc hôm nay theo mức ưu tiên giúp tôi."));
         }
-        if (binding.cardQuickPrioritize != null) {
-            binding.cardQuickPrioritize.setOnClickListener(v -> sendMessage("Hãy giúp tôi phân loại việc cần làm theo mức độ khẩn cấp và quan trọng."));
+        if (binding.chipQuickPrioritize != null) {
+            binding.chipQuickPrioritize.setOnClickListener(v -> sendMessage("Hãy giúp tôi phân loại việc cần làm theo mức độ khẩn cấp và quan trọng."));
         }
-        if (binding.cardQuickHabit != null) {
-            binding.cardQuickHabit.setOnClickListener(v -> sendMessage("Gợi ý cho tôi 3 thói quen nhỏ để duy trì năng suất trong ngày."));
+        if (binding.chipQuickHabit != null) {
+            binding.chipQuickHabit.setOnClickListener(v -> sendMessage("Gợi ý cho tôi 3 thói quen nhỏ để duy trì năng suất trong ngày."));
         }
-        if (binding.cardQuickReview != null) {
-            binding.cardQuickReview.setOnClickListener(v -> sendMessage("Tổng kết ngày hôm nay và đề xuất việc cần chuẩn bị cho ngày mai."));
+        if (binding.chipQuickReview != null) {
+            binding.chipQuickReview.setOnClickListener(v -> sendMessage("Tổng kết ngày hôm nay và đề xuất việc cần chuẩn bị cho ngày mai."));
         }
     }
 
@@ -189,9 +258,61 @@ public class AiAssistantActivity extends BaseActivity {
         }
     }
 
+    private void observeProactiveSuggestions() {
+        ProactiveEngine proactiveEngine = ProactiveEngine.getInstance(getApplicationContext());
+        suggestionLiveData = proactiveEngine.observePendingSuggestions();
+        if (suggestionLiveData == null) {
+            return;
+        }
+
+        suggestionLiveData.observe(this, suggestions -> {
+            if (suggestions == null || suggestions.isEmpty()) {
+                return;
+            }
+
+            for (SuggestionEntity suggestion : suggestions) {
+                if (suggestion == null || TextUtils.isEmpty(suggestion.id)) {
+                    continue;
+                }
+                if (surfacedSuggestionIds.contains(suggestion.id)) {
+                    continue;
+                }
+
+                surfacedSuggestionIds.add(suggestion.id);
+                renderSuggestionCard(suggestion);
+                proactiveEngine.markSuggestionShown(suggestion.id);
+            }
+        });
+    }
+
+    private void renderSuggestionCard(SuggestionEntity suggestion) {
+        if (suggestion == null) {
+            return;
+        }
+
+        lastSurfacedSuggestionId = suggestion.id;
+
+        String card = suggestionCardMessageFormatter.buildSuggestionCard(suggestion);
+        if (!TextUtils.isEmpty(card)) {
+            showAssistantMessage(card);
+        }
+    }
+
+    private void openProactiveDebugScreen() {
+        try {
+            startActivity(new Intent(this, ProactiveDebugActivity.class));
+        } catch (Exception ignored) {
+        }
+    }
+
     private void initializeSessionFromIntent(Intent intent) {
         final boolean shouldCreateNew = intent != null && intent.getBooleanExtra(EXTRA_CREATE_NEW_SESSION, false);
         final long requestedSessionId = intent != null ? intent.getLongExtra(EXTRA_SESSION_ID, -1L) : -1L;
+
+        // Detect a cold process start: the static flag is false only when the OS has
+        // killed and restarted the process (i.e. the user "reset" / force-quit the app).
+        final boolean isColdStart = !sProcessSessionCreated;
+        if (isColdStart) sProcessSessionCreated = true;
 
         if (intent != null) {
             intent.removeExtra(EXTRA_CREATE_NEW_SESSION);
@@ -202,12 +323,16 @@ public class AiAssistantActivity extends BaseActivity {
             ChatHistoryDao dao = TaskDatabase.getInstance(this).chatHistoryDao();
             long resolvedSessionId;
 
-            if (shouldCreateNew) {
+            if (shouldCreateNew || isColdStart) {
+                // Explicit "new session" request OR first launch after app restart →
+                // always begin with a fresh conversation.
                 resolvedSessionId = createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
             } else if (requestedSessionId > 0L && dao.getSessionByIdSync(requestedSessionId) != null) {
                 resolvedSessionId = requestedSessionId;
             } else {
-                ChatSession latest = dao.getLatestSessionSync();
+                // Within the same process (user navigated away and came back):
+                // resume the most recent ai_assistant session.
+                ChatSession latest = dao.getLatestSessionBySourceSync(CHAT_SOURCE_MAIN);
                 resolvedSessionId = latest != null
                         ? latest.id
                         : createNewSessionSync(dao, CHAT_SOURCE_MAIN, "");
@@ -274,8 +399,13 @@ public class AiAssistantActivity extends BaseActivity {
     }
 
     private void updateQuickPromptVisibility() {
-        if (binding.quickPromptContainer != null) {
-            binding.quickPromptContainer.setVisibility(chatAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        if (binding.quickPromptContainer == null) return;
+        if (chatAdapter.getItemCount() == 0) {
+            binding.quickPromptContainer.setVisibility(View.VISIBLE);
+        } else if (binding.quickPromptContainer.getVisibility() == View.VISIBLE) {
+            binding.quickPromptContainer.animate().alpha(0f).setDuration(300)
+                    .withEndAction(() -> binding.quickPromptContainer.setVisibility(View.GONE))
+                    .start();
         }
     }
 
@@ -285,17 +415,57 @@ public class AiAssistantActivity extends BaseActivity {
         historyLauncher.launch(intent);
     }
 
+    private void showAttachTaskPicker() {
+        runDbTask(() -> {
+            List<Task> tasks = TaskDatabase.getInstance(this).taskDao().getAllTasksSync();
+            if (tasks == null || tasks.isEmpty()) {
+                mainHandler.post(() -> Toast.makeText(this,
+                        getString(R.string.assistant_attach_no_tasks), Toast.LENGTH_SHORT).show());
+                return;
+            }
+            String[] titles = new String[tasks.size()];
+            for (int i = 0; i < tasks.size(); i++) {
+                titles[i] = tasks.get(i).getTitle();
+            }
+            mainHandler.post(() -> new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.assistant_attach_task_desc))
+                    .setItems(titles, (dialog, which) -> {
+                        String taskTitle = tasks.get(which).getTitle();
+                        String current = binding.messageInput.getText().toString();
+                        String inserted = current.isEmpty() ? "[Task: " + taskTitle + "] "
+                                : current + " [Task: " + taskTitle + "] ";
+                        binding.messageInput.setText(inserted);
+                        binding.messageInput.setSelection(inserted.length());
+                    })
+                    .show());
+        });
+    }
+
     private void showSettingsDialog() {
         BottomSheetDialog dialog = new BottomSheetDialog(this);
         View view = getLayoutInflater().inflate(R.layout.layout_ai_settings_dialog, null);
         dialog.setContentView(view);
 
         SwitchMaterial switchFloating = view.findViewById(R.id.switchFloatingAi);
+        SwitchMaterial switchIntegrationCalendar = view.findViewById(R.id.switchIntegrationCalendar);
+        SwitchMaterial switchIntegrationMoodle = view.findViewById(R.id.switchIntegrationMoodle);
+        SwitchMaterial switchIntegrationHealth = view.findViewById(R.id.switchIntegrationHealth);
+        TextView tvIntegrationPermissionsStatus = view.findViewById(R.id.tvIntegrationPermissionsStatus);
+        Button btnGrantIntegrationPermissions = view.findViewById(R.id.btnGrantIntegrationPermissions);
+        Button btnResetIntegrationSources = view.findViewById(R.id.btnResetIntegrationSources);
         TextView tvCurrentAiModelValue = view.findViewById(R.id.tvCurrentAiModelValue);
         Button btnModelDetails = view.findViewById(R.id.btnModelDetails);
         Button btnAddAiModel = view.findViewById(R.id.btnAddAiModel);
+        LinearLayout layoutModelSwitcher = view.findViewById(R.id.layoutModelSwitcher);
+        ChipGroup chipGroupModels = view.findViewById(R.id.chipGroupModels);
         if (switchFloating == null
-            || btnModelDetails == null
+            || switchIntegrationCalendar == null
+            || switchIntegrationMoodle == null
+            || switchIntegrationHealth == null
+                || tvIntegrationPermissionsStatus == null
+                || btnGrantIntegrationPermissions == null
+                || btnResetIntegrationSources == null
+                || btnModelDetails == null
                 || btnAddAiModel == null
                 || tvCurrentAiModelValue == null) {
             dialog.dismiss();
@@ -304,6 +474,35 @@ public class AiAssistantActivity extends BaseActivity {
         }
 
         tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
+
+        // Populate quick model switcher chips
+        if (chipGroupModels != null && layoutModelSwitcher != null) {
+            List<String> savedModels = securePreferencesHelper.getAiModelOptions();
+            String activeModel = securePreferencesHelper.getAiModel();
+            if (savedModels.size() > 1) {
+                layoutModelSwitcher.setVisibility(View.VISIBLE);
+                chipGroupModels.removeAllViews();
+                for (String modelName : savedModels) {
+                    Chip chip = new Chip(this);
+                    chip.setText(modelName);
+                    chip.setCheckable(true);
+                    chip.setChecked(modelName.equalsIgnoreCase(activeModel));
+                    chip.setOnCheckedChangeListener((c, checked) -> {
+                        if (checked) {
+                            securePreferencesHelper.saveAiModel(modelName);
+                            GeminiManager manager = GeminiManager.getInstance();
+                            manager.reloadConfiguration();
+                            geminiManager = manager;
+                            tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
+                            updateModelNameIndicator();
+                        }
+                    });
+                    chipGroupModels.addView(chip);
+                }
+            } else {
+                layoutModelSwitcher.setVisibility(View.GONE);
+            }
+        }
 
         boolean isEnabled = sharedPrefs.getBoolean(KEY_FLOATING_ASSISTANT_ENABLED, false);
         if (isEnabled && !hasOverlayPermission()) {
@@ -328,6 +527,57 @@ public class AiAssistantActivity extends BaseActivity {
             }
         });
 
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        final boolean[] suppressIntegrationToggleSideEffects = {true};
+        switchIntegrationCalendar.setChecked(integrationFacade.isCalendarIntegrationEnabled());
+        switchIntegrationMoodle.setChecked(integrationFacade.isMoodleIntegrationEnabled());
+        switchIntegrationHealth.setChecked(integrationFacade.isHealthIntegrationEnabled());
+        suppressIntegrationToggleSideEffects[0] = false;
+
+        switchIntegrationCalendar.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (suppressIntegrationToggleSideEffects[0]) {
+                return;
+            }
+            integrationFacade.setCalendarIntegrationEnabled(isChecked);
+            if (isChecked && !hasCalendarReadPermission()) {
+                requestMissingIntegrationPermissions();
+            }
+            refreshIntegrationPermissionUi();
+        });
+
+        switchIntegrationMoodle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (suppressIntegrationToggleSideEffects[0]) {
+                return;
+            }
+            integrationFacade.setMoodleIntegrationEnabled(isChecked);
+        });
+
+        switchIntegrationHealth.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (suppressIntegrationToggleSideEffects[0]) {
+                return;
+            }
+            integrationFacade.setHealthIntegrationEnabled(isChecked);
+        });
+
+        btnResetIntegrationSources.setOnClickListener(v -> {
+            integrationFacade.resetSourceSettingsToDefault();
+
+            suppressIntegrationToggleSideEffects[0] = true;
+            switchIntegrationCalendar.setChecked(integrationFacade.isCalendarIntegrationEnabled());
+            switchIntegrationMoodle.setChecked(integrationFacade.isMoodleIntegrationEnabled());
+            switchIntegrationHealth.setChecked(integrationFacade.isHealthIntegrationEnabled());
+            suppressIntegrationToggleSideEffects[0] = false;
+
+            refreshIntegrationPermissionUi();
+            Toast.makeText(this, R.string.assistant_integration_sources_reset_done, Toast.LENGTH_SHORT).show();
+        });
+
+        integrationPermissionStatusView = tvIntegrationPermissionsStatus;
+        integrationPermissionActionButton = btnGrantIntegrationPermissions;
+        refreshIntegrationPermissionUi();
+
+        btnGrantIntegrationPermissions.setOnClickListener(v -> requestMissingIntegrationPermissions());
+
         btnModelDetails.setOnClickListener(v -> {
             showModelDetailDialog(tvCurrentAiModelValue);
         });
@@ -336,7 +586,184 @@ public class AiAssistantActivity extends BaseActivity {
             showAddModelDialog(tvCurrentAiModelValue);
         });
 
+        dialog.setOnDismissListener(listener -> {
+            if (integrationPermissionStatusView == tvIntegrationPermissionsStatus) {
+                integrationPermissionStatusView = null;
+            }
+            if (integrationPermissionActionButton == btnGrantIntegrationPermissions) {
+                integrationPermissionActionButton = null;
+            }
+        });
+
         dialog.show();
+    }
+
+    private void requestMissingIntegrationPermissions() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        List<String> missingPermissions = new ArrayList<>();
+        if (!hasCalendarReadPermission()) {
+            missingPermissions.add(Manifest.permission.READ_CALENDAR);
+        }
+        if (isActivityRecognitionRequired() && !hasActivityRecognitionPermission()) {
+            missingPermissions.add(Manifest.permission.ACTIVITY_RECOGNITION);
+        }
+        if (integrationFacade.isHealthIntegrationEnabled() && isHealthConnectPermissionRequired()) {
+            if (!hasHealthPermission(HEALTH_PERMISSION_READ_STEPS)) {
+                missingPermissions.add(HEALTH_PERMISSION_READ_STEPS);
+            }
+            if (!hasHealthPermission(HEALTH_PERMISSION_READ_SLEEP)) {
+                missingPermissions.add(HEALTH_PERMISSION_READ_SLEEP);
+            }
+            if (!hasHealthPermission(HEALTH_PERMISSION_READ_ACTIVE_CALORIES)) {
+                missingPermissions.add(HEALTH_PERMISSION_READ_ACTIVE_CALORIES);
+            }
+        }
+
+        if (missingPermissions.isEmpty()) {
+            Toast.makeText(this, R.string.assistant_integration_permissions_already_granted, Toast.LENGTH_SHORT).show();
+            refreshIntegrationPermissionUi();
+            return;
+        }
+
+        integrationPermissionsLauncher.launch(missingPermissions.toArray(new String[0]));
+    }
+
+    private void handleIntegrationPermissionsResult() {
+        refreshIntegrationPermissionUi();
+
+        if (hasAllIntegrationPermissions()) {
+            Toast.makeText(this, R.string.assistant_integration_permissions_granted_toast, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean permanentlyDenied = isPermissionPermanentlyDenied(Manifest.permission.READ_CALENDAR)
+                || (isActivityRecognitionRequired()
+                && isPermissionPermanentlyDenied(Manifest.permission.ACTIVITY_RECOGNITION))
+                || (isHealthConnectPermissionRequired()
+                && (isPermissionPermanentlyDenied(HEALTH_PERMISSION_READ_STEPS)
+                || isPermissionPermanentlyDenied(HEALTH_PERMISSION_READ_SLEEP)
+                || isPermissionPermanentlyDenied(HEALTH_PERMISSION_READ_ACTIVE_CALORIES)));
+
+        Toast.makeText(this, R.string.assistant_integration_permissions_partial_toast, Toast.LENGTH_SHORT).show();
+        if (permanentlyDenied) {
+            showOpenIntegrationSettingsDialog();
+        }
+    }
+
+    private void refreshIntegrationPermissionUi() {
+        if (integrationPermissionStatusView == null || integrationPermissionActionButton == null) {
+            return;
+        }
+
+        integrationPermissionStatusView.setText(buildIntegrationPermissionStatusMessage());
+        integrationPermissionActionButton.setText(hasAllIntegrationPermissions()
+                ? R.string.assistant_integration_permissions_button_done
+                : R.string.assistant_integration_permissions_button_grant);
+    }
+
+    private String buildIntegrationPermissionStatusMessage() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+
+        String calendarStatus = hasCalendarReadPermission()
+                ? getString(R.string.assistant_integration_permission_granted)
+                : getString(R.string.assistant_integration_permission_missing);
+
+        String activityStatus;
+        if (!isActivityRecognitionRequired()) {
+            activityStatus = getString(R.string.assistant_integration_permission_not_required);
+        } else if (hasActivityRecognitionPermission()) {
+            activityStatus = getString(R.string.assistant_integration_permission_granted);
+        } else {
+            activityStatus = getString(R.string.assistant_integration_permission_missing);
+        }
+
+        String healthStatus;
+        if (!integrationFacade.isHealthIntegrationEnabled()) {
+            healthStatus = getString(R.string.assistant_integration_permission_disabled_by_toggle);
+        } else if (!isHealthConnectPermissionRequired()) {
+            healthStatus = getString(R.string.assistant_integration_permission_not_required);
+        } else if (hasHealthConnectReadPermissions()) {
+            healthStatus = getString(R.string.assistant_integration_permission_granted);
+        } else {
+            healthStatus = getString(R.string.assistant_integration_permission_missing);
+        }
+
+        return getString(
+                R.string.assistant_integration_permission_status_template,
+                getString(R.string.assistant_integration_permission_calendar_label),
+                calendarStatus,
+                getString(R.string.assistant_integration_permission_activity_label),
+                activityStatus,
+                getString(R.string.assistant_integration_permission_health_label),
+                healthStatus
+        );
+    }
+
+    private boolean hasAllIntegrationPermissions() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        boolean healthPermissionOk = true;
+        if (integrationFacade.isHealthIntegrationEnabled() && isHealthConnectPermissionRequired()) {
+            healthPermissionOk = hasHealthConnectReadPermissions();
+        }
+        return hasCalendarReadPermission() && hasActivityRecognitionPermission() && healthPermissionOk;
+    }
+
+    private boolean hasCalendarReadPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean hasActivityRecognitionPermission() {
+        if (!isActivityRecognitionRequired()) {
+            return true;
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean isActivityRecognitionRequired() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+    }
+
+    private boolean isHealthConnectPermissionRequired() {
+        IntegrationFacade integrationFacade = IntegrationFacade.getInstance(getApplication());
+        return integrationFacade.isHealthConnectSupported() && integrationFacade.isHealthConnectAvailable();
+    }
+
+    private boolean hasHealthConnectReadPermissions() {
+        return hasHealthPermission(HEALTH_PERMISSION_READ_STEPS)
+                && hasHealthPermission(HEALTH_PERMISSION_READ_SLEEP)
+                && hasHealthPermission(HEALTH_PERMISSION_READ_ACTIVE_CALORIES);
+    }
+
+    private boolean hasHealthPermission(String permission) {
+        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean isPermissionPermanentlyDenied(String permission) {
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return false;
+        }
+        return !shouldShowRequestPermissionRationale(permission);
+    }
+
+    private void showOpenIntegrationSettingsDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.assistant_integration_permissions_settings_title)
+                .setMessage(R.string.assistant_integration_permissions_settings_message)
+                .setPositiveButton(R.string.assistant_open_app_settings,
+                        (dialog, which) -> openAppDetailSettings())
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void openAppDetailSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        startActivity(intent);
     }
 
     private void showAddModelDialog(TextView tvCurrentAiModelValue) {
@@ -371,19 +798,46 @@ public class AiAssistantActivity extends BaseActivity {
             btnSaveAiModelPopup.setText(R.string.assistant_update_model_button);
 
             String currentModelName = securePreferencesHelper.getAiModel();
-            String currentApiKey = securePreferencesHelper.getApiKey();
+            String currentApiKey = securePreferencesHelper.getApiKeyForModel(currentModelName);
+
             if (!TextUtils.isEmpty(currentModelName)) {
                 editPopupModelName.setText(currentModelName);
                 editPopupModelName.setSelection(currentModelName.length());
             }
-            if (!TextUtils.isEmpty(currentApiKey)) {
-                editPopupApiKey.setText(currentApiKey);
-                editPopupApiKey.setSelection(currentApiKey.length());
-            }
+            editPopupApiKey.setText(currentApiKey);
+            editPopupApiKey.setSelection(currentApiKey.length());
+
         } else {
             tvModelDialogTitle.setText(R.string.assistant_add_model_popup_title);
             btnSaveAiModelPopup.setText(R.string.assistant_save_model_button);
         }
+
+        editPopupModelName.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                String resolvedApiKey = resolveStoredApiKeyForModelInput(
+                        editable == null ? "" : editable.toString());
+                if (resolvedApiKey == null) {
+                    return;
+                }
+
+                String currentApiKey = editPopupApiKey.getText() == null
+                        ? ""
+                        : editPopupApiKey.getText().toString();
+                if (!TextUtils.equals(currentApiKey, resolvedApiKey)) {
+                    editPopupApiKey.setText(resolvedApiKey);
+                    editPopupApiKey.setSelection(resolvedApiKey.length());
+                }
+            }
+        });
 
         btnSaveAiModelPopup.setOnClickListener(v -> {
             String modelName = editPopupModelName.getText() == null
@@ -413,13 +867,15 @@ public class AiAssistantActivity extends BaseActivity {
             try {
                 securePreferencesHelper.addAiModel(modelName);
                 securePreferencesHelper.saveAiModel(modelName);
-                securePreferencesHelper.saveApiKey(apiKey);
+                securePreferencesHelper.saveApiKeyForModel(modelName, apiKey);
+                
 
                 GeminiManager manager = GeminiManager.getInstance();
                 manager.reloadConfiguration();
                 geminiManager = manager;
 
                 tvCurrentAiModelValue.setText(getCurrentModelDisplayName());
+                updateModelNameIndicator();
                 Toast.makeText(this, R.string.assistant_settings_saved, Toast.LENGTH_SHORT).show();
                 popupDialog.dismiss();
             } catch (Exception exception) {
@@ -430,17 +886,52 @@ public class AiAssistantActivity extends BaseActivity {
         popupDialog.show();
     }
 
+    private String resolveStoredApiKeyForModelInput(String modelNameInput) {
+        if (securePreferencesHelper == null || TextUtils.isEmpty(modelNameInput)) {
+            return null;
+        }
+
+        String normalizedInput = modelNameInput.trim();
+        if (TextUtils.isEmpty(normalizedInput)) {
+            return null;
+        }
+
+        List<String> savedModels = securePreferencesHelper.getAiModelOptions();
+        for (String savedModel : savedModels) {
+            if (!TextUtils.isEmpty(savedModel) && savedModel.equalsIgnoreCase(normalizedInput)) {
+                return securePreferencesHelper.getApiKeyForModel(savedModel);
+            }
+        }
+
+        return null;
+    }
+
     private void sendMessage(String userText) {
+        binding.messageInput.setText("");
+
+        if (tryHandleSuggestionFeedbackCommand(userText)) {
+            return;
+        }
+
         if (geminiManager == null || !geminiManager.hasConfiguredApiKey()) {
             showAssistantMessage(getString(R.string.assistant_api_key_missing_message));
             return;
         }
 
-        binding.messageInput.setText("");
         showUserMessage(userText);
+        showTypingIndicator();
         binding.chatRecyclerView.smoothScrollToPosition(Math.max(0, chatAdapter.getItemCount() - 1));
 
         if (tryHandleQuickCreateIntent(userText)) {
+            return;
+        }
+
+        if (geminiManager != null && geminiManager.isQuotaCooldownActive()) {
+            String cooldownMessage = geminiManager.getQuotaCooldownMessage();
+            if (TextUtils.isEmpty(cooldownMessage)) {
+                cooldownMessage = "Trợ lý AI đang tạm quá tải. Bạn thử lại sau ít giây nữa nhé.";
+            }
+            showAssistantMessage(cooldownMessage);
             return;
         }
 
@@ -466,6 +957,9 @@ public class AiAssistantActivity extends BaseActivity {
                 if (shouldIgnoreAsyncResult() || fallbackTriggered[0] || toolResult == null) {
                     return;
                 }
+                if (handleSchedulerToolResult(toolResult)) {
+                    return;
+                }
                 if (!toolResult.isSuccess() && "TOOL_NOT_FOUND".equals(toolResult.getErrorCode())) {
                     fallbackTriggered[0] = true;
                     runLegacyAgentFlow(userText);
@@ -477,10 +971,257 @@ public class AiAssistantActivity extends BaseActivity {
                 if (shouldIgnoreAsyncResult() || fallbackTriggered[0]) {
                     return;
                 }
+
+                 if ((geminiManager != null && geminiManager.isQuotaCooldownActive())
+                        || shouldSkipLegacyFallback(errorMessage)) {
+                    fallbackTriggered[0] = true;
+                    showAssistantMessage(TextUtils.isEmpty(errorMessage)
+                            ? "Trợ lý AI đang bận hoặc chưa sẵn sàng. Bạn thử lại sau ít phút nhé."
+                            : errorMessage);
+                    return;
+                }
+
                 fallbackTriggered[0] = true;
                 runLegacyAgentFlow(userText);
             }
         });
+    }
+
+    private boolean shouldSkipLegacyFallback(String errorMessage) {
+        if (TextUtils.isEmpty(errorMessage)) {
+            return false;
+        }
+
+        String lowered = errorMessage.toLowerCase(Locale.ROOT);
+        return lowered.contains("429")
+                || lowered.contains("rpm")
+                || lowered.contains("rate limit")
+                || lowered.contains("resource_exhausted")
+                || lowered.contains("quota")
+                || lowered.contains("api key")
+                || lowered.contains("mô hình")
+                || lowered.contains("model")
+                || lowered.contains("không thể kết nối mạng")
+                || lowered.contains("failed to connect")
+                || lowered.contains("timeout");
+    }
+
+    private boolean tryHandleSuggestionFeedbackCommand(String userText) {
+        SuggestionFeedbackCommandParser.ParsedSuggestionFeedbackCommand parsedCommand =
+                suggestionFeedbackCommandParser.parse(userText);
+        if (parsedCommand == null) {
+            return false;
+        }
+
+        String feedbackType = parsedCommand.getFeedbackType();
+        String target = parsedCommand.getTargetToken();
+
+        String suggestionId;
+        if ("last".equalsIgnoreCase(target)) {
+            suggestionId = lastSurfacedSuggestionId;
+        } else {
+            suggestionId = target;
+        }
+
+        showUserMessage(userText);
+
+        if (TextUtils.isEmpty(suggestionId)) {
+            showAssistantMessage("Chua co goi y gan nhat de xu ly.");
+            return true;
+        }
+
+        ProactiveEngine.getInstance(getApplicationContext())
+                .recordSuggestionFeedback(suggestionId, feedbackType, "chat");
+        showAssistantMessage("Da ghi nhan feedback " + feedbackType + " cho suggestion " + suggestionId + ".");
+        return true;
+    }
+
+    private boolean handleSchedulerToolResult(ToolResult toolResult) {
+        if (toolResult == null) {
+            return false;
+        }
+
+        if (!toolResult.isSuccess()) {
+            if (AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())) {
+                String error = toolResult.getErrorMessage();
+                if (TextUtils.isEmpty(error)) {
+                    error = "Không thể áp dụng kế hoạch lúc này.";
+                }
+                showAssistantMessage(error);
+                return true;
+            }
+            return false;
+        }
+
+        JSONObject data = toolResult.getData();
+        String renderType = data == null ? "" : data.optString("renderType", "");
+
+        if ("PLAN_PROPOSAL".equalsIgnoreCase(renderType)) {
+            renderPlanProposalMessages(data);
+            return true;
+        }
+
+        if ("PLAN_APPLY_RESULT".equalsIgnoreCase(renderType)
+                || AgentToolNames.APPLY_PLAN_OPTION_TOOL.equals(toolResult.getToolName())) {
+            String message = data == null ? "" : data.optString("message", "");
+            if (TextUtils.isEmpty(message)) {
+                String optionId = data == null ? "" : data.optString("optionId", "");
+                int appliedTaskCount = data == null ? 0 : data.optInt("appliedTaskCount", 0);
+                message = "Đã áp dụng phương án " + optionId + " cho " + appliedTaskCount + " task.";
+            }
+            showAssistantMessage(message);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void renderPlanProposalMessages(JSONObject data) {
+        if (data == null) {
+            return;
+        }
+
+        String proposalId = data.optString("proposalId", "");
+        String proposalType = data.optString("proposalType", "DAILY");
+        String anchorDate = data.optString("anchorDate", "");
+        JSONArray options = data.optJSONArray("options");
+
+        if (options == null || options.length() == 0) {
+            showAssistantMessage(planPreviewMessageFormatter.buildEmptyStateMessage());
+            return;
+        }
+
+        showAssistantMessage(planPreviewMessageFormatter.buildProposalSummary(
+            proposalType,
+            anchorDate,
+            options.length()
+        ));
+
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject option = options.optJSONObject(i);
+            if (option == null) {
+                continue;
+            }
+
+            String optionId = option.optString("optionId", "");
+            String label = option.optString("label", "Option");
+            String description = option.optString("description", "");
+            int scheduled = option.optInt("scheduledMinutes", 0);
+            int unscheduled = option.optInt("unscheduledMinutes", 0);
+
+            String card = planPreviewMessageFormatter.buildOptionCard(
+                    label,
+                    optionId,
+                    description,
+                    scheduled,
+                    unscheduled
+            );
+
+            if (!TextUtils.isEmpty(proposalId) && !TextUtils.isEmpty(optionId)) {
+                showAssistantActionMessage(
+                        card,
+                        ACTION_APPLY_PLAN_OPTION,
+                        "Áp dụng kế hoạch này",
+                        encodeActionData(proposalId, optionId)
+                );
+            } else {
+                showAssistantMessage(card);
+            }
+        }
+    }
+
+    private void handleChatMessageAction(ChatMessage message) {
+        if (message == null) {
+            return;
+        }
+
+        if (!ACTION_APPLY_PLAN_OPTION.equals(message.getActionType())) {
+            return;
+        }
+
+        String[] parts = decodeActionData(message.getActionData());
+        if (parts == null || parts.length < 2) {
+            showAssistantMessage("Không đọc được option kế hoạch cần áp dụng.");
+            return;
+        }
+
+        String proposalId = parts[0];
+        String optionId = parts[1];
+        if (TextUtils.isEmpty(proposalId) || TextUtils.isEmpty(optionId)) {
+            showAssistantMessage("Thiếu proposalId/optionId để áp dụng kế hoạch.");
+            return;
+        }
+
+        confirmAndApplyPlanOption(proposalId, optionId);
+    }
+
+    private void confirmAndApplyPlanOption(String proposalId, String optionId) {
+        new AlertDialog.Builder(this)
+                .setTitle("Xác nhận áp dụng kế hoạch")
+                .setMessage("Bạn có chắc muốn áp dụng option " + optionId + " cho lịch task hiện tại?")
+                .setNegativeButton("Hủy", null)
+                .setPositiveButton("Áp dụng", (dialog, which) -> {
+                    showUserMessage("Áp dụng option " + optionId);
+                    executeApplyPlanOptionTool(proposalId, optionId);
+                })
+                .show();
+    }
+
+    private void executeApplyPlanOptionTool(String proposalId, String optionId) {
+        runDbTask(() -> {
+            try {
+                JSONObject args = new JSONObject();
+                args.put("proposalId", proposalId);
+                args.put("optionId", optionId);
+                args.put("confirmed", true);
+
+                ToolCall call = new ToolCall(
+                        UUID.randomUUID().toString(),
+                        AgentToolNames.APPLY_PLAN_OPTION_TOOL,
+                        args,
+                        ""
+                );
+
+                ApplyPlanOptionTool tool = new ApplyPlanOptionTool();
+                ToolResult result = tool.execute(call, AgentExecutionContext.create(getApplication()));
+                mainHandler.post(() -> handleSchedulerToolResult(result));
+            } catch (Exception e) {
+                showAssistantMessage("Không thể áp dụng kế hoạch lúc này.");
+            }
+        });
+    }
+
+    private void showAssistantActionMessage(String text,
+                                            String actionType,
+                                            String actionLabel,
+                                            String actionData) {
+        mainHandler.post(() -> {
+            if (TextUtils.isEmpty(text)) {
+                return;
+            }
+            chatAdapter.addMessage(new ChatMessage(text, false, actionType, actionLabel, actionData));
+            rememberTurn("assistant", text);
+            persistMessageAsync("assistant", text, CHAT_SOURCE_MAIN);
+            binding.chatRecyclerView.smoothScrollToPosition(Math.max(0, chatAdapter.getItemCount() - 1));
+            updateQuickPromptVisibility();
+        });
+    }
+
+    private String encodeActionData(String proposalId, String optionId) {
+        return (proposalId == null ? "" : proposalId)
+                + ACTION_DATA_SEPARATOR
+                + (optionId == null ? "" : optionId);
+    }
+
+    private String[] decodeActionData(String actionData) {
+        if (TextUtils.isEmpty(actionData)) {
+            return null;
+        }
+        String[] parts = actionData.split(Pattern.quote(ACTION_DATA_SEPARATOR), 2);
+        if (parts.length < 2) {
+            return null;
+        }
+        return parts;
     }
 
     private void runLegacyAgentFlow(String userText) {
@@ -742,6 +1483,21 @@ public class AiAssistantActivity extends BaseActivity {
         }
     }
 
+    private void showTypingIndicator() {
+        mainHandler.post(() -> {
+            if (binding.tvTypingIndicator == null) return;
+            binding.tvTypingIndicator.setVisibility(View.VISIBLE);
+            binding.tvTypingIndicator.animate().alpha(1f).setDuration(200).start();
+        });
+    }
+
+    private void hideTypingIndicator() {
+        if (binding.tvTypingIndicator == null) return;
+        binding.tvTypingIndicator.animate().alpha(0f).setDuration(150)
+                .withEndAction(() -> binding.tvTypingIndicator.setVisibility(View.GONE))
+                .start();
+    }
+
     private void showUserMessage(String text) {
         if (TextUtils.isEmpty(text)) {
             return;
@@ -754,6 +1510,7 @@ public class AiAssistantActivity extends BaseActivity {
 
     private void showAssistantMessage(String text) {
         mainHandler.post(() -> {
+            hideTypingIndicator();
             if (TextUtils.isEmpty(text)) {
                 return;
             }
@@ -799,7 +1556,9 @@ public class AiAssistantActivity extends BaseActivity {
             return currentSessionId;
         }
 
-        ChatSession latest = dao.getLatestSessionSync();
+        // Only look for an existing session from the same source (avoids picking up
+        // floating or voice sessions when the main assistant needs a session).
+        ChatSession latest = dao.getLatestSessionBySourceSync(source);
         if (latest != null) {
             currentSessionId = latest.id;
             return currentSessionId;
@@ -937,6 +1696,12 @@ public class AiAssistantActivity extends BaseActivity {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
     }
 
+    private void updateModelNameIndicator() {
+        if (binding != null && binding.tvModelName != null) {
+            binding.tvModelName.setText(getCurrentModelDisplayName());
+        }
+    }
+
     private String getCurrentModelDisplayName() {
         String currentModel = securePreferencesHelper.getAiModel();
         if (TextUtils.isEmpty(currentModel)) {
@@ -1000,12 +1765,27 @@ public class AiAssistantActivity extends BaseActivity {
         stopService(new Intent(this, FloatingAssistantService.class));
     }
 
+    private static ExecutorService ensureDbExecutor() {
+        synchronized (DB_EXECUTOR_LOCK) {
+            if (dbExecutor == null || dbExecutor.isShutdown() || dbExecutor.isTerminated()) {
+                dbExecutor = Executors.newSingleThreadExecutor();
+            }
+            return dbExecutor;
+        }
+    }
+
     private void runDbTask(Runnable task) {
         if (task == null) {
             return;
         }
         try {
-            DB_EXECUTOR.execute(task);
+            ensureDbExecutor().execute(task);
+        } catch (RejectedExecutionException rejectedExecutionException) {
+            // If an external shutdown slipped through, recreate and retry once.
+            try {
+                ensureDbExecutor().execute(task);
+            } catch (Exception ignored) {
+            }
         } catch (Exception ignored) {
         }
     }
@@ -1026,6 +1806,9 @@ public class AiAssistantActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         destroyed = true;
+        if (suggestionLiveData != null) {
+            suggestionLiveData.removeObservers(this);
+        }
         super.onDestroy();
     }
 }

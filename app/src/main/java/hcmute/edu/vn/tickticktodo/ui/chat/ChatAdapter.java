@@ -19,7 +19,13 @@ import hcmute.edu.vn.tickticktodo.R;
 import hcmute.edu.vn.tickticktodo.model.ChatMessage;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder> {
+
+    public interface ActionClickListener {
+        void onActionClick(ChatMessage message);
+    }
+
     private List<ChatMessage> messages = new ArrayList<>();
+    private ActionClickListener actionClickListener;
 
     public void addMessage(ChatMessage message) {
         messages.add(message);
@@ -37,6 +43,10 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     public void clearMessages() {
         messages.clear();
         notifyDataSetChanged();
+    }
+
+    public void setActionClickListener(ActionClickListener actionClickListener) {
+        this.actionClickListener = actionClickListener;
     }
 
     @NonNull
@@ -58,11 +68,26 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
             holder.tvMessage.setBackgroundResource(R.drawable.bg_chat_bubble_user);
             holder.tvMessage.setTextColor(Color.WHITE);
             params.gravity = Gravity.END;
+            holder.btnMessageAction.setVisibility(View.GONE);
+            holder.btnMessageAction.setOnClickListener(null);
         } else {
             holder.messageContainer.setGravity(Gravity.START);
             holder.tvMessage.setBackgroundResource(R.drawable.bg_chat_bubble_ai);
             holder.tvMessage.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_primary));
             params.gravity = Gravity.START;
+
+            if (message.hasAction()) {
+                holder.btnMessageAction.setVisibility(View.VISIBLE);
+                holder.btnMessageAction.setText(message.getActionLabel());
+                holder.btnMessageAction.setOnClickListener(v -> {
+                    if (actionClickListener != null) {
+                        actionClickListener.onActionClick(message);
+                    }
+                });
+            } else {
+                holder.btnMessageAction.setVisibility(View.GONE);
+                holder.btnMessageAction.setOnClickListener(null);
+            }
         }
         holder.tvMessage.setLayoutParams(params);
     }
@@ -75,11 +100,13 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     static class ChatViewHolder extends RecyclerView.ViewHolder {
         TextView tvMessage;
         LinearLayout messageContainer;
+        TextView btnMessageAction;
 
         ChatViewHolder(View itemView) {
             super(itemView);
             tvMessage = itemView.findViewById(R.id.tvMessage);
             messageContainer = itemView.findViewById(R.id.messageContainer);
+            btnMessageAction = itemView.findViewById(R.id.btnMessageAction);
         }
     }
 }

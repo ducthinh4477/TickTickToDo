@@ -59,10 +59,11 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tvModelName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="TickTick Focus Copilot"
-                android:textColor="@color/text_secondary"
+                android:text="@string/assistant_current_model_empty"
+                android:textColor="@color/ai_accent"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -104,111 +105,50 @@
             android:textColor="@color/text_secondary"
             android:textSize="15sp" />
 
-        <LinearLayout
+        <HorizontalScrollView
+            android:id="@+id/quickPromptsRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:orientation="horizontal">
+            android:scrollbars="none">
 
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardQuickTodayPlan"
-                android:layout_width="0dp"
-                android:layout_height="104dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="6dp"
-                app:cardBackgroundColor="@color/background_surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/divider"
-                app:strokeWidth="1dp">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="start|top"
-                    android:padding="12dp"
-                    android:text="@string/assistant_quick_today_plan"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipQuickTodayPlan"
+                    style="@style/Widget.Material3.Chip.Assist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/assistant_quick_today_plan" />
 
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardQuickPrioritize"
-                android:layout_width="0dp"
-                android:layout_height="104dp"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/background_surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/divider"
-                app:strokeWidth="1dp">
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipQuickPrioritize"
+                    style="@style/Widget.Material3.Chip.Assist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/assistant_quick_prioritize" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="start|top"
-                    android:padding="12dp"
-                    android:text="@string/assistant_quick_prioritize"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipQuickHabit"
+                    style="@style/Widget.Material3.Chip.Assist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/assistant_quick_habit" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardQuickHabit"
-                android:layout_width="0dp"
-                android:layout_height="104dp"
-                android:layout_marginEnd="6dp"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/background_surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/divider"
-                app:strokeWidth="1dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="start|top"
-                    android:padding="12dp"
-                    android:text="@string/assistant_quick_habit"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardQuickReview"
-                android:layout_width="0dp"
-                android:layout_height="104dp"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/background_surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/divider"
-                app:strokeWidth="1dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="start|top"
-                    android:padding="12dp"
-                    android:text="@string/assistant_quick_review"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipQuickReview"
+                    style="@style/Widget.Material3.Chip.Assist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/assistant_quick_review" />
+            </LinearLayout>
+        </HorizontalScrollView>
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -217,10 +157,25 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:padding="10dp"
-        app:layout_constraintBottom_toTopOf="@id/inputLayout"
+        app:layout_constraintBottom_toTopOf="@id/tv_typing_indicator"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/quickPromptContainer" />
+
+    <TextView
+        android:id="@+id/tv_typing_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="4dp"
+        android:text="@string/assistant_typing"
+        android:textSize="12sp"
+        android:textColor="@color/text_secondary"
+        android:textStyle="italic"
+        android:alpha="0"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/inputLayout"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <LinearLayout
         android:id="@+id/inputLayout"
@@ -240,12 +195,21 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/bg_chat_input_dark"
-            android:hint="Nhập tin nhắn..."
+            android:hint="@string/assistant_input_hint"
             android:inputType="textMultiLine"
             android:maxLines="4"
             android:padding="12dp"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary" />
+
+        <ImageButton
+            android:id="@+id/btnAttachTask"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/assistant_attach_task_desc"
+            android:src="@drawable/ic_attach_file"
+            app:tint="@color/text_secondary" />
 
         <ImageButton
             android:id="@+id/btnSend"

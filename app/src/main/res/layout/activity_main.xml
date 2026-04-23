@@ -5,300 +5,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal"
-    android:fitsSystemWindows="true"
+    android:orientation="vertical"
     tools:context=".ui.main.MainActivity">
 
-    <LinearLayout
-        android:id="@+id/nav_rail"
-        android:layout_width="72dp"
-        android:layout_height="match_parent"
-        android:background="@color/background_surface"
-        android:elevation="4dp"
-        android:orientation="vertical"
-        android:gravity="top">
-
-        <ImageButton
-            android:id="@+id/btn_hamburger"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_gravity="center_horizontal"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/menu_desc"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_menu"
-            app:tint="@color/text_primary" />
-
-
-        <LinearLayout
-            android:id="@+id/nav_item_home"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_home"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_home"
-                android:src="@drawable/ic_home"
-                app:tint="@color/accent_primary" />
-            <TextView
-                android:id="@+id/nav_label_home"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_home"
-                android:textColor="@color/accent_primary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_item_calendar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_calendar"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_calendar_desc"
-                android:src="@drawable/ic_calendar"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_calendar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_calendar_desc"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_item_focus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_focus"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_focus"
-                android:src="@drawable/ic_timer"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_focus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_focus"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_item_school"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_school"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="School"
-                android:src="@drawable/ic_study"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_school"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="School"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_item_habits"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_habits"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="Habits"
-                android:src="@drawable/ic_health"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_habits"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_habits"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-          <LinearLayout
-              android:id="@+id/nav_item_eisenhower"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:background="?attr/selectableItemBackground"
-              android:clickable="true"
-              android:focusable="true"
-              android:gravity="center"
-              android:orientation="vertical"
-              android:paddingTop="10dp"
-              android:paddingBottom="10dp">
-              <ImageView
-                  android:id="@+id/nav_icon_eisenhower"
-                  android:layout_width="26dp"
-                  android:layout_height="26dp"
-                  android:contentDescription="Matrix"
-                  android:src="@drawable/ic_matrix"
-                  app:tint="@color/text_secondary" />
-              <TextView
-                  android:id="@+id/nav_label_eisenhower"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="4dp"
-                  android:text="Ma trận"
-                  android:textColor="@color/text_secondary"
-                  android:textSize="11sp" />
-          </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_item_countdown"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-
-            <ImageView
-                android:id="@+id/nav_icon_countdown"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="Đếm ngược"
-                android:src="@drawable/ic_timer"
-                app:tint="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/nav_label_countdown"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Đếm ngược"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_item_ai_assistant"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_ai_assistant"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="AI Assistant"
-                android:src="@drawable/ic_user"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_ai_assistant"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Trợ lý AI"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-          <LinearLayout
-            android:id="@+id/nav_item_settings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-            <ImageView
-                android:id="@+id/nav_icon_settings"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:contentDescription="@string/nav_settings"
-                android:src="@drawable/ic_settings"
-                app:tint="@color/text_secondary" />
-            <TextView
-                android:id="@+id/nav_label_settings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/nav_settings"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="8dp" />
-
-    </LinearLayout>
-
-    <View
-        android:layout_width="1dp"
-        android:layout_height="match_parent"
-        android:background="@color/divider" />
-
+    <!-- ═══════════════ CONTENT ═══════════════ -->
     <FrameLayout
         android:id="@+id/content_frame"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
         android:layout_weight="1">
 
         <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -311,37 +25,67 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical">
 
+                <!-- Header -->
                 <LinearLayout
                     android:id="@+id/header"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingStart="12dp"
-                    android:paddingTop="12dp"
+                    android:paddingStart="4dp"
+                    android:paddingTop="16dp"
                     android:paddingEnd="4dp"
-                    android:paddingBottom="4dp">
+                    android:paddingBottom="8dp">
+
+                    <!-- Hamburger (home-screen only, opens slide drawer) -->
+                    <ImageButton
+                        android:id="@+id/btn_hamburger"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/menu_desc"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_menu"
+                        app:tint="@color/text_primary" />
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:paddingStart="4dp">
+                        <TextView
+                            android:id="@+id/tv_header_greeting"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/header_greeting_default"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
                         <TextView
                             android:id="@+id/tv_header_today"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
                             android:text="@string/header_today"
                             android:textColor="@color/text_primary"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="-0.01" />
                         <TextView
                             android:id="@+id/tv_header_date"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="1dp"
+                            android:layout_marginTop="2dp"
                             android:textColor="@color/text_secondary"
                             android:textSize="13sp" />
+                        <TextView
+                            android:id="@+id/tv_task_count_summary"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/header_task_summary_initial"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <ImageButton
@@ -365,29 +109,33 @@
                         app:tint="@color/text_secondary" />
                 </LinearLayout>
 
+                <!-- Quick add bar -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_quick_add"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginBottom="10dp"
                     app:cardBackgroundColor="@color/background_card"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="0dp">
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/divider"
+                    app:strokeWidth="1dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="46dp"
+                        android:layout_height="50dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingStart="14dp">
+                        android:paddingStart="14dp"
+                        android:paddingEnd="6dp">
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:contentDescription="@string/add_task_desc"
-                            android:src="@drawable/ic_search"
-                            app:tint="@color/text_hint" />
+                            android:src="@drawable/ic_add"
+                            app:tint="@color/accent_primary" />
                         <EditText
                             android:id="@+id/et_quick_add"
                             android:layout_width="0dp"
@@ -401,12 +149,22 @@
                             android:inputType="text"
                             android:maxLines="1"
                             android:textColor="@color/text_primary"
-                            android:textColorHint="@color/text_hint" />
+                            android:textColorHint="@color/text_hint"
+                            android:textSize="14sp" />
+                        <ImageButton
+                            android:id="@+id/btn_voice_add"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:layout_marginEnd="2dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/quick_add_voice_desc"
+                            android:src="@drawable/ic_mic"
+                            app:tint="@color/text_secondary" />
                         <ImageButton
                             android:id="@+id/btn_send_task"
                             android:layout_width="36dp"
                             android:layout_height="36dp"
-                            android:layout_marginEnd="6dp"
+                            android:layout_marginEnd="4dp"
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="@string/send_task_desc"
                             android:src="@drawable/ic_send"
@@ -415,9 +173,10 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Task list -->
                 <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="0dp"
+                    android:layout_height="466dp"
                     android:layout_weight="1">
 
                     <androidx.recyclerview.widget.RecyclerView
@@ -428,8 +187,9 @@
                         android:paddingStart="16dp"
                         android:paddingTop="4dp"
                         android:paddingEnd="16dp"
-                        android:paddingBottom="80dp" />
+                        android:paddingBottom="24dp" />
 
+                    <!-- Empty state -->
                     <LinearLayout
                         android:id="@+id/layout_empty"
                         android:layout_width="wrap_content"
@@ -438,25 +198,28 @@
                         android:gravity="center"
                         android:orientation="vertical"
                         android:visibility="gone">
+
                         <ImageView
-                            android:layout_width="140dp"
-                            android:layout_height="140dp"
-                            android:alpha="0.7"
+                            android:layout_width="120dp"
+                            android:layout_height="120dp"
+                            android:alpha="0.5"
                             android:contentDescription="@string/empty_title"
                             android:src="@drawable/ic_empty_tasks" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
+                            android:layout_marginTop="20dp"
                             android:gravity="center"
                             android:text="@string/empty_title"
                             android:textColor="@color/text_primary"
-                            android:textSize="16sp"
+                            android:textSize="17sp"
                             android:textStyle="bold" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
+                            android:layout_marginTop="6dp"
                             android:gravity="center"
                             android:text="@string/empty_subtitle"
                             android:textColor="@color/text_secondary"
@@ -466,21 +229,25 @@
 
             </LinearLayout>
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fab_add_task"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|center_horizontal"
-                android:layout_marginBottom="24dp"
-                android:contentDescription="@string/fab_add_desc"
-                android:src="@drawable/ic_add"
-                app:backgroundTint="@color/accent_primary"
-                app:elevation="8dp"
-                app:fabSize="normal"
-                app:tint="@color/white" />
-
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+        <!-- ─── FAB — floating over content, bottom-end ─── -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab_add_task"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            android:contentDescription="@string/fab_add_desc"
+            android:src="@drawable/ic_add"
+            app:backgroundTint="@color/accent_primary"
+            app:elevation="8dp"
+            app:fabSize="normal"
+            app:tint="@color/white"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.FAB.Rounded" />
+
+        <!-- ─── Drawer overlay ─── -->
         <FrameLayout
             android:id="@+id/menu_overlay"
             android:layout_width="match_parent"
@@ -496,41 +263,117 @@
 
             <LinearLayout
                 android:id="@+id/menuBoxContainer"
-                android:layout_width="240dp"
+                android:layout_width="248dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="start"
                 android:background="@color/background_surface"
-                android:elevation="8dp"
+                android:elevation="12dp"
                 android:orientation="vertical">
 
+                <!-- Drawer header -->
                 <LinearLayout
+                    android:id="@+id/drawer_header"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:paddingStart="20dp"
-                    android:paddingTop="32dp"
+                    android:paddingTop="36dp"
                     android:paddingEnd="20dp"
                     android:paddingBottom="16dp">
-                    <ImageView
-                        android:id="@+id/nav_avatar"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:background="@drawable/bg_avatar_circle"
-                        android:clickable="true"
-                        android:contentDescription="@string/nav_avatar_desc"
-                        android:focusable="true"
-                        android:padding="8dp"
-                        android:src="@drawable/ic_user" />
-                    <TextView
-                        android:layout_width="0dp"
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="14dp"
-                        android:layout_weight="1"
-                        android:text="@string/nav_guest_user"
-                        android:textColor="@color/text_primary"
-                        android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/nav_avatar"
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            android:background="@drawable/bg_avatar_circle"
+                            android:clickable="true"
+                            android:contentDescription="@string/nav_avatar_desc"
+                            android:focusable="true"
+                            android:padding="11dp"
+                            android:src="@drawable/ic_user" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_user_name"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/nav_guest_user"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_user_sub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/nav_tap_to_login"
+                                android:textColor="@color/accent_primary"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/header_stats"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                android:id="@+id/stat_completed"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/stat_completed_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                android:id="@+id/stat_streak"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/stat_streak_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
                 </LinearLayout>
 
                 <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
@@ -540,17 +383,20 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
+                    android:paddingBottom="4dp">
+
                     <LinearLayout android:id="@+id/panel_item_today" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_today" app:tint="@color/accent_primary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_today" app:tint="@color/accent_primary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/header_today" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
+
                     <LinearLayout android:id="@+id/panel_item_next7days" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_calendar" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_calendar" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_next_7_days" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
+
                     <LinearLayout android:id="@+id/panel_item_inbox" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_all_tasks" app:tint="@color/accent_primary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_all_tasks" app:tint="@color/accent_primary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/panel_inbox" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -560,26 +406,28 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:paddingTop="4dp">
                     <LinearLayout android:id="@+id/panel_item_completed" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_completed" app:tint="@color/tag_study" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_completed" app:tint="@color/tag_study" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_completed" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
                     <LinearLayout android:id="@+id/panel_item_trash" android:layout_width="match_parent" android:layout_height="48dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_delete" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_delete" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/menu_trash" android:textColor="@color/text_primary" android:textSize="15sp" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" />
 
+                <!-- Lists section -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="20dp"
-                    android:paddingTop="12dp"
+                    android:paddingTop="14dp"
                     android:paddingEnd="12dp"
                     android:paddingBottom="4dp">
                     <TextView
@@ -616,20 +464,406 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingTop="4dp">
+                    android:paddingTop="4dp"
+                    android:paddingBottom="8dp">
+                    <LinearLayout android:id="@+id/panel_item_settings" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_settings" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_settings" android:textColor="@color/text_secondary" android:textSize="14sp" />
+                    </LinearLayout>
                     <LinearLayout android:id="@+id/panel_item_notifications" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_notifications" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_notifications" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_notifications" android:textColor="@color/text_secondary" android:textSize="14sp" />
                     </LinearLayout>
                     <LinearLayout android:id="@+id/panel_item_help" android:layout_width="match_parent" android:layout_height="44dp" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="20dp">
-                        <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/ic_help" app:tint="@color/text_secondary" android:contentDescription="@null" />
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_help" app:tint="@color/text_secondary" android:contentDescription="@null" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="@string/nav_help" android:textColor="@color/text_secondary" android:textSize="14sp" />
                     </LinearLayout>
                 </LinearLayout>
 
             </LinearLayout>
+        </FrameLayout>
+
+        <!-- ─── "Thêm nữa" slide-up popup overlay ─── -->
+        <FrameLayout
+            android:id="@+id/more_nav_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <!-- Scrim -->
+            <View
+                android:id="@+id/more_nav_backdrop"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0"
+                android:background="#88000000"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- Rounded popup card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/more_nav_popup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/background_surface"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="20dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingTop="20dp"
+                    android:paddingBottom="20dp">
+
+                    <!-- Label -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="24dp"
+                        android:layout_marginBottom="12dp"
+                        android:text="Tính năng khác"
+                        android:textSize="11sp"
+                        android:letterSpacing="0.08"
+                        android:textAllCaps="true"
+                        android:textColor="@color/text_secondary" />
+
+                    <!-- Row 1: School + Habits -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <!-- School -->
+                        <LinearLayout
+                            android:id="@+id/nav_more_school"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingTop="12dp"
+                            android:paddingBottom="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="52dp"
+                                android:layout_height="52dp"
+                                android:gravity="center"
+                                android:background="@drawable/bg_avatar_circle"
+                                android:backgroundTint="#1A7B61FF">
+                                <ImageView
+                                    android:layout_width="26dp"
+                                    android:layout_height="26dp"
+                                    android:src="@drawable/ic_study"
+                                    app:tint="@color/accent_primary" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/nav_school"
+                                android:textSize="13sp"
+                                android:textColor="?attr/colorOnSurface" />
+                        </LinearLayout>
+
+                        <!-- Habits -->
+                        <LinearLayout
+                            android:id="@+id/nav_more_habits"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingTop="12dp"
+                            android:paddingBottom="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="52dp"
+                                android:layout_height="52dp"
+                                android:gravity="center"
+                                android:background="@drawable/bg_avatar_circle"
+                                android:backgroundTint="#1AE91E6F">
+                                <ImageView
+                                    android:layout_width="26dp"
+                                    android:layout_height="26dp"
+                                    android:src="@drawable/ic_health"
+                                    app:tint="#E91E63" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/nav_habits"
+                                android:textSize="13sp"
+                                android:textColor="?attr/colorOnSurface" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Row 2: Matrix + Countdown -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <!-- Eisenhower Matrix -->
+                        <LinearLayout
+                            android:id="@+id/nav_more_matrix"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingTop="12dp"
+                            android:paddingBottom="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="52dp"
+                                android:layout_height="52dp"
+                                android:gravity="center"
+                                android:background="@drawable/bg_avatar_circle"
+                                android:backgroundTint="#1AFF9800">
+                                <ImageView
+                                    android:layout_width="26dp"
+                                    android:layout_height="26dp"
+                                    android:src="@drawable/ic_matrix"
+                                    app:tint="#FF9800" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/nav_matrix"
+                                android:textSize="13sp"
+                                android:textColor="?attr/colorOnSurface" />
+                        </LinearLayout>
+
+                        <!-- Countdown -->
+                        <LinearLayout
+                            android:id="@+id/nav_more_countdown"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingTop="12dp"
+                            android:paddingBottom="12dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?attr/selectableItemBackground">
+
+                            <LinearLayout
+                                android:layout_width="52dp"
+                                android:layout_height="52dp"
+                                android:gravity="center"
+                                android:background="@drawable/bg_avatar_circle"
+                                android:backgroundTint="#1A2196F3">
+                                <ImageView
+                                    android:layout_width="26dp"
+                                    android:layout_height="26dp"
+                                    android:src="@drawable/ic_timer"
+                                    app:tint="#2196F3" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/nav_countdown"
+                                android:textSize="13sp"
+                                android:textColor="?attr/colorOnSurface" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
         </FrameLayout>
+
+    </FrameLayout>
+
+    <!-- ═══════════════ BOTTOM NAV CONTAINER ═══════════════ -->
+    <FrameLayout
+        android:id="@+id/bottom_nav_container"
+        android:layout_width="match_parent"
+        android:layout_height="80dp">
+
+        <!-- Navigation bar surface -->
+        <LinearLayout
+            android:id="@+id/bottom_nav_bar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/background_navmain"
+            android:elevation="8dp"
+            android:orientation="horizontal">
+
+            <!-- Trang chủ -->
+
+            <!-- Lịch -->
+            <LinearLayout
+                android:id="@+id/nav_item_home"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@null"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/nav_icon_home"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
+                    android:contentDescription="@string/nav_home"
+                    android:src="@drawable/ic_home"
+                    app:tint="@color/accent_primary" />
+
+                <TextView
+                    android:id="@+id/nav_label_home"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nav_home"
+                    android:textColor="@color/accent_primary"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/nav_item_calendar"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@null"
+                android:gravity="center"
+                android:orientation="vertical">
+                <ImageView
+                    android:id="@+id/nav_icon_calendar"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
+                    android:src="@drawable/ic_calendar"
+                    app:tint="@color/text_secondary"
+                    android:contentDescription="@string/nav_calendar_desc" />
+                <TextView
+                    android:id="@+id/nav_label_calendar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nav_calendar_desc"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Trợ lý AI -->
+            <LinearLayout
+                android:id="@+id/nav_item_ai_assistant"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@null"
+                android:gravity="center"
+                android:orientation="vertical">
+                <ImageView
+                    android:id="@+id/nav_icon_ai_assistant"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
+                    android:src="@drawable/ic_ai_spark"
+                    app:tint="@color/text_secondary"
+                    android:contentDescription="Trợ lý AI" />
+                <TextView
+                    android:id="@+id/nav_label_ai_assistant"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Trợ lý"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Tập trung -->
+            <LinearLayout
+                android:id="@+id/nav_item_focus"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@null"
+                android:gravity="center"
+                android:orientation="vertical">
+                <ImageView
+                    android:id="@+id/nav_icon_focus"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
+                    android:src="@drawable/ic_timer"
+                    app:tint="@color/text_secondary"
+                    android:contentDescription="@string/nav_focus" />
+                <TextView
+                    android:id="@+id/nav_label_focus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nav_focus"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Thêm nữa -->
+            <LinearLayout
+                android:id="@+id/nav_item_more"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@null"
+                android:gravity="center"
+                android:orientation="vertical">
+                <ImageView
+                    android:id="@+id/nav_icon_more"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginBottom="4dp"
+                    android:src="@drawable/ic_more_horiz"
+                    app:tint="@color/text_secondary"
+                    android:contentDescription="@string/nav_more" />
+                <TextView
+                    android:id="@+id/nav_label_more"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nav_more"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+        </LinearLayout>
 
     </FrameLayout>
 

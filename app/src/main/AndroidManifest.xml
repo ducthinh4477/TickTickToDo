@@ -19,6 +19,12 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
     <!-- Truy cập chính sách Không làm phiền (DND) để thông báo từ app luôn hiển thị -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
@@ -32,21 +38,21 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TickTickToDo">
-        <!-- ══ Splash / Welcome screen — Launcher Activity ══ -->
         <activity
             android:name=".ui.SplashActivity"
-            android:exported="true"
+            android:exported="false"
             android:theme="@style/Theme.TickTickToDo"
-            android:noHistory="true">
+            android:noHistory="true" />
+
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TickTickToDo.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".ui.main.MainActivity"
-            android:exported="false" />
             
         <activity
             android:name=".ui.activitylog.ActivityLogActivity"
@@ -92,6 +98,16 @@
             android:name=".ui.task.NotificationActionReceiver"
             android:exported="false" />
 
+        <!-- HabitReminderReceiver: nhận Intent từ AlarmManager → hiển thị nhắc nhở thói quen -->
+        <receiver
+            android:name=".ui.habit.HabitReminderReceiver"
+            android:exported="false" />
+
+        <!-- HabitCheckInActionReceiver: xử lý nút "Tích hôm nay" từ notification thói quen -->
+        <receiver
+            android:name=".ui.habit.HabitCheckInActionReceiver"
+            android:exported="false" />
+
         <activity android:name=".ui.SchoolLoginActivity" android:exported="false"/>
         
         <activity android:name=".ui.MoodleActivity" android:exported="false"/>  
@@ -101,6 +117,11 @@
         <activity
             android:name=".ui.chat.ChatHistoryActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ui.debug.ProactiveDebugActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TickTickToDo" />
 
         <activity
             android:name=".ui.VoicePromptActivity"
@@ -166,23 +187,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <service
-            android:name=".widget.TodoWidgetService"
-            android:exported="false"
-            android:permission="android.permission.BIND_REMOTEVIEWS" />
-
-        <receiver
-            android:name=".widget.TodoWidgetProvider"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/todo_widget_info" />
-        </receiver>
 
     </application>
 

@@ -19,9 +19,18 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import hcmute.edu.vn.tickticktodo.core.ai.LlmProvider;
 
@@ -43,10 +52,16 @@ public class GeminiManager implements LlmProvider {
             "Không thể kết nối mạng tới Model. Hãy kiểm tra Internet và thử lại.";
     private static final String GENERIC_ERROR_MESSAGE =
             "Không thể kết nối Model lúc này. Vui lòng thử lại.";
-    private static final String QUOTA_ERROR_MESSAGE =
-            "API Key đã vượt hạn mức hoặc chưa có quota cho model hiện tại. Vui lòng kiểm tra quota/billing trên Google AI Studio.";
+        private static final String QUOTA_ERROR_MESSAGE =
+            "Đang chạm giới hạn tốc độ tạm thời (429) của model. Vui lòng thử lại sau ít phút.";
         private static final String MODEL_NOT_FOUND_ERROR_MESSAGE =
             "Model bạn nhập không tồn tại hoặc chưa hỗ trợ generateContent. Vui lòng kiểm tra lại tên model trong Cài đặt Trợ lý AI.";
+        private static final long DEFAULT_QUOTA_COOLDOWN_MILLIS = 00_000L;
+        private static final long MIN_QUOTA_COOLDOWN_MILLIS = 00_000L;
+        private static final Pattern RETRY_AFTER_SECONDS_PATTERN =
+            Pattern.compile("retry\\s+in\\s+([0-9]+(?:\\.[0-9]+)?)s", Pattern.CASE_INSENSITIVE);
+
+    public enum ProviderType { GEMINI, OPENAI, ANTHROPIC, GROQ }
 
     private static volatile GeminiManager instance;
     private static volatile Context appContext;
@@ -54,8 +69,12 @@ public class GeminiManager implements LlmProvider {
     private final ExecutorService workerExecutor;
     private final Handler mainHandler;
     private final Object modelLock = new Object();
+    private final Object quotaCooldownLock = new Object();
     private volatile GenerativeModelFutures modelFutures;
     private volatile String activeModelName = DEFAULT_MODEL_NAME;
+    private volatile long quotaCooldownUntilMillis = 0L;
+    private volatile ProviderType currentProviderType = ProviderType.GEMINI;
+    private volatile String currentApiKey = "";
 
     private GeminiManager() {
         workerExecutor = Executors.newSingleThreadExecutor();
@@ -81,7 +100,35 @@ public class GeminiManager implements LlmProvider {
     }
 
     public boolean hasConfiguredApiKey() {
+        if (currentProviderType != ProviderType.GEMINI) {
+            return !TextUtils.isEmpty(currentApiKey) && !TextUtils.isEmpty(activeModelName);
+        }
         return modelFutures != null;
+    }
+
+    public ProviderType getCurrentProviderType() {
+        return currentProviderType;
+    }
+
+    public static ProviderType detectProvider(String apiKey) {
+        if (TextUtils.isEmpty(apiKey)) return ProviderType.GEMINI;
+        String trimmed = apiKey.trim();
+        if (trimmed.startsWith("sk-ant-")) return ProviderType.ANTHROPIC;
+        if (trimmed.startsWith("gsk_")) return ProviderType.GROQ;
+        if (trimmed.startsWith("sk-")) return ProviderType.OPENAI;
+        return ProviderType.GEMINI;
+    }
+
+    public boolean isQuotaCooldownActive() {
+        return getQuotaCooldownRemainingMillis() > 0L;
+    }
+
+    public String getQuotaCooldownMessage() {
+        long remainingMillis = getQuotaCooldownRemainingMillis();
+        if (remainingMillis <= 0L) {
+            return "";
+        }
+        return buildQuotaErrorMessage(remainingMillis);
     }
 
     public static String getConfigErrorMessage() {
@@ -96,9 +143,37 @@ public class GeminiManager implements LlmProvider {
     private void generateResponseStreamInternal(String prompt,
                                                 LlmProvider.StreamResponseCallback callback) {
         if (callback == null) return;
+
+        if (currentProviderType != ProviderType.GEMINI) {
+            String key = currentApiKey;
+            String model = activeModelName;
+            if (TextUtils.isEmpty(key) || TextUtils.isEmpty(model)) {
+                mainHandler.post(() -> callback.onError(CONFIG_ERROR_MESSAGE));
+                return;
+            }
+            workerExecutor.execute(() -> {
+                try {
+                    String response = callHttpProvider(key, model, prompt, currentProviderType);
+                    mainHandler.post(() -> {
+                        callback.onNext(response);
+                        callback.onComplete();
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "HTTP provider stream failed", e);
+                    mainHandler.post(() -> callback.onError(mapHttpError(e)));
+                }
+            });
+            return;
+        }
+
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             mainHandler.post(() -> callback.onError(CONFIG_ERROR_MESSAGE));
+            return;
+        }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            mainHandler.post(() -> callback.onError(buildQuotaErrorMessage(quotaCooldownRemainingMillis)));
             return;
         }
         if (prompt == null || prompt.trim().isEmpty()) {
@@ -158,9 +233,38 @@ public class GeminiManager implements LlmProvider {
         if (callback == null) {
             return;
         }
+
+        if (currentProviderType != ProviderType.GEMINI) {
+            String key = currentApiKey;
+            String model = activeModelName;
+            if (TextUtils.isEmpty(key) || TextUtils.isEmpty(model)) {
+                postError(callback, CONFIG_ERROR_MESSAGE);
+                return;
+            }
+            if (prompt == null || prompt.trim().isEmpty()) {
+                postError(callback, "Tin nhắn không hợp lệ. Vui lòng thử lại.");
+                return;
+            }
+            workerExecutor.execute(() -> {
+                try {
+                    String response = callHttpProvider(key, model, prompt, currentProviderType);
+                    postSuccess(callback, response);
+                } catch (Exception e) {
+                    Log.e(TAG, "HTTP provider request failed", e);
+                    postError(callback, mapHttpError(e));
+                }
+            });
+            return;
+        }
+
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             postError(callback, CONFIG_ERROR_MESSAGE);
+            return;
+        }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            postError(callback, buildQuotaErrorMessage(quotaCooldownRemainingMillis));
             return;
         }
         if (prompt == null || prompt.trim().isEmpty()) {
@@ -208,6 +312,11 @@ public class GeminiManager implements LlmProvider {
             postError(callback, CONFIG_ERROR_MESSAGE);
             return;
         }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            postError(callback, buildQuotaErrorMessage(quotaCooldownRemainingMillis));
+            return;
+        }
         if (bitmap == null) {
             postError(callback, "Ảnh đầu vào không hợp lệ.");
             return;
@@ -250,9 +359,25 @@ public class GeminiManager implements LlmProvider {
 
     private String generateResponseBlockingInternal(String prompt,
                                                     long timeoutMillis) throws Exception {
+        if (currentProviderType != ProviderType.GEMINI) {
+            String key = currentApiKey;
+            String model = activeModelName;
+            if (TextUtils.isEmpty(key) || TextUtils.isEmpty(model)) {
+                throw new IllegalStateException(CONFIG_ERROR_MESSAGE);
+            }
+            if (prompt == null || prompt.trim().isEmpty()) {
+                throw new IllegalArgumentException("Prompt rỗng.");
+            }
+            return callHttpProvider(key, model, prompt, currentProviderType);
+        }
+
         GenerativeModelFutures currentModel = modelFutures;
         if (currentModel == null) {
             throw new IllegalStateException(CONFIG_ERROR_MESSAGE);
+        }
+        long quotaCooldownRemainingMillis = getQuotaCooldownRemainingMillis();
+        if (quotaCooldownRemainingMillis > 0L) {
+            throw new IllegalStateException(buildQuotaErrorMessage(quotaCooldownRemainingMillis));
         }
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new IllegalArgumentException("Prompt rỗng.");
@@ -277,26 +402,219 @@ public class GeminiManager implements LlmProvider {
         return activeModelName;
     }
 
+    // ── HTTP provider calls (OpenAI / Anthropic) ──────────────────────────────────
+
+    private String callHttpProvider(String apiKey, String modelName,
+                                    String prompt, ProviderType provider) throws Exception {
+        if (provider == ProviderType.OPENAI) {
+            return callOpenAi(apiKey, modelName, prompt);
+        } else if (provider == ProviderType.ANTHROPIC) {
+            return callAnthropic(apiKey, modelName, prompt);
+        } else if (provider == ProviderType.GROQ) {
+            return callGroq(apiKey, modelName, prompt);
+        }
+        throw new IllegalArgumentException("Unsupported provider: " + provider);
+    }
+
+    private String callOpenAi(String apiKey, String modelName, String prompt) throws Exception {
+        URL url = new URL("https://api.openai.com/v1/chat/completions");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30_000);
+            conn.setReadTimeout(60_000);
+
+            JSONObject body = new JSONObject();
+            body.put("model", modelName);
+            body.put("max_tokens", 2048);
+            JSONArray messages = new JSONArray();
+            JSONObject msg = new JSONObject();
+            msg.put("role", "user");
+            msg.put("content", prompt);
+            messages.put(msg);
+            body.put("messages", messages);
+
+            byte[] input = body.toString().getBytes("UTF-8");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(input);
+            }
+
+            int code = conn.getResponseCode();
+            InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String responseStr = readStream(is);
+
+            if (code >= 400) {
+                throw new java.io.IOException("OpenAI API error " + code + ": " + responseStr);
+            }
+
+            JSONObject response = new JSONObject(responseStr);
+            return response.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content")
+                    .trim();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private String callAnthropic(String apiKey, String modelName, String prompt) throws Exception {
+        URL url = new URL("https://api.anthropic.com/v1/messages");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("x-api-key", apiKey);
+            conn.setRequestProperty("anthropic-version", "2023-06-01");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30_000);
+            conn.setReadTimeout(60_000);
+
+            JSONObject body = new JSONObject();
+            body.put("model", modelName);
+            body.put("max_tokens", 2048);
+            JSONArray messages = new JSONArray();
+            JSONObject msg = new JSONObject();
+            msg.put("role", "user");
+            msg.put("content", prompt);
+            messages.put(msg);
+            body.put("messages", messages);
+
+            byte[] input = body.toString().getBytes("UTF-8");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(input);
+            }
+
+            int code = conn.getResponseCode();
+            InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String responseStr = readStream(is);
+
+            if (code >= 400) {
+                throw new java.io.IOException("Anthropic API error " + code + ": " + responseStr);
+            }
+
+            JSONObject response = new JSONObject(responseStr);
+            return response.getJSONArray("content")
+                    .getJSONObject(0)
+                    .getString("text")
+                    .trim();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private String callGroq(String apiKey, String modelName, String prompt) throws Exception {
+        URL url = new URL("https://api.groq.com/openai/v1/chat/completions");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30_000);
+            conn.setReadTimeout(60_000);
+
+            JSONObject body = new JSONObject();
+            body.put("model", modelName);
+            body.put("max_tokens", 2048);
+            JSONArray messages = new JSONArray();
+            JSONObject msg = new JSONObject();
+            msg.put("role", "user");
+            msg.put("content", prompt);
+            messages.put(msg);
+            body.put("messages", messages);
+
+            byte[] input = body.toString().getBytes("UTF-8");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(input);
+            }
+
+            int code = conn.getResponseCode();
+            InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            String responseStr = readStream(is);
+
+            if (code >= 400) {
+                // If it's a 400/404/etc, the error body often contains more detail than just the HTTP code
+                throw new java.io.IOException("Groq API error " + code + ": " + responseStr);
+            }
+
+            JSONObject response = new JSONObject(responseStr);
+            return response.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content")
+                    .trim();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private String readStream(InputStream is) throws java.io.IOException {
+        if (is == null) return "";
+        StringBuilder sb = new StringBuilder();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = is.read(buf)) != -1) {
+            sb.append(new String(buf, 0, n, "UTF-8"));
+        }
+        is.close();
+        return sb.toString();
+    }
+
+    private String mapHttpError(Exception e) {
+        if (e == null) return GENERIC_ERROR_MESSAGE;
+        String msg = e.getMessage();
+        if (msg == null) return GENERIC_ERROR_MESSAGE;
+        String lower = msg.toLowerCase();
+
+        // Specific handling for common LLM API errors to give better feedback
+        if (lower.contains("model_decommissioned")) {
+            return "Mô hình này đã bị Groq ngừng hỗ trợ (decommissioned). Vui lòng đổi sang Llama-3.3-70b-versatile hoặc mô hình mới hơn.";
+        }
+        if (lower.contains("model_not_found")) {
+            return "Không tìm thấy mô hình. Vui lòng kiểm tra lại ID mô hình trong cài đặt.";
+        }
+
+        if (lower.contains("401") || lower.contains("403") || lower.contains("unauthorized")
+                || lower.contains("invalid api") || lower.contains("authentication")) {
+            return CONFIG_ERROR_MESSAGE;
+        }
+        if (lower.contains("429") || lower.contains("rate limit") || lower.contains("quota")) {
+            return QUOTA_ERROR_MESSAGE;
+        }
+        if (lower.contains("timeout") || lower.contains("connect") || lower.contains("network")
+                || lower.contains("unable to resolve")) {
+            return NETWORK_ERROR_MESSAGE;
+        }
+        return GENERIC_ERROR_MESSAGE;
+    }
+
     private String mapErrorMessage(Throwable t) {
-        if (t == null || t.getMessage() == null) {
+        if (t == null) {
             return GENERIC_ERROR_MESSAGE;
         }
 
         if (isQuotaExceeded(t)) {
-            return QUOTA_ERROR_MESSAGE;
+            long retryAfterMillis = resolveQuotaRetryAfterMillis(t);
+            applyQuotaCooldown(retryAfterMillis);
+            return buildQuotaErrorMessage(retryAfterMillis);
         }
 
         if (isModelNotFound(t)) {
             return MODEL_NOT_FOUND_ERROR_MESSAGE;
         }
 
-        String message = t.getMessage().toLowerCase();
-        if (containsAny(message,
+        String message = t.getMessage();
+        String loweredMessage = message == null ? "" : message.toLowerCase();
+        if (containsAny(loweredMessage,
                 "api key", "invalid", "unauthenticated", "permission_denied", "forbidden", "401", "403")) {
             return CONFIG_ERROR_MESSAGE;
         }
 
-        if (containsAny(message,
+        if (containsAny(loweredMessage,
                 "timeout", "timed out", "unable to resolve host", "failed to connect", "network", "connection")) {
             return NETWORK_ERROR_MESSAGE;
         }
@@ -305,21 +623,44 @@ public class GeminiManager implements LlmProvider {
     }
 
     private void reloadConfigurationInternal() {
-        String apiKey = resolveApiKey();
-        String modelName = resolveModelName();
+        Context context = appContext;
+        if (context == null) {
+            synchronized (modelLock) {
+                modelFutures = null;
+                currentApiKey = "";
+                activeModelName = DEFAULT_MODEL_NAME;
+                currentProviderType = ProviderType.GEMINI;
+                quotaCooldownUntilMillis = 0L;
+            }
+            return;
+        }
+
+        SecurePreferencesHelper prefs = SecurePreferencesHelper.getInstance(context);
+        String selectedModel = prefs.getAiModel();
+        String apiKey = prefs.getApiKeyForModel(selectedModel);
 
         synchronized (modelLock) {
-            activeModelName = modelName;
-            if (TextUtils.isEmpty(apiKey) || TextUtils.isEmpty(modelName)) {
+            activeModelName = TextUtils.isEmpty(selectedModel) ? DEFAULT_MODEL_NAME : selectedModel;
+            currentApiKey = TextUtils.isEmpty(apiKey) ? "" : apiKey.trim();
+            quotaCooldownUntilMillis = 0L;
+
+            if (TextUtils.isEmpty(currentApiKey) || TextUtils.isEmpty(activeModelName)) {
                 modelFutures = null;
+                currentProviderType = ProviderType.GEMINI;
                 return;
             }
 
-            try {
-                GenerativeModel model = new GenerativeModel(modelName, apiKey);
-                modelFutures = GenerativeModelFutures.from(model);
-            } catch (Exception exception) {
-                Log.e(TAG, "Failed to initialize Gemini model", exception);
+            currentProviderType = detectProvider(currentApiKey);
+
+            if (currentProviderType == ProviderType.GEMINI) {
+                try {
+                    GenerativeModel model = new GenerativeModel(activeModelName, currentApiKey);
+                    modelFutures = GenerativeModelFutures.from(model);
+                } catch (Exception exception) {
+                    Log.e(TAG, "Failed to initialize Gemini model", exception);
+                    modelFutures = null;
+                }
+            } else {
                 modelFutures = null;
             }
         }
@@ -418,6 +759,59 @@ public class GeminiManager implements LlmProvider {
             cursor = cursor.getCause();
         }
         return false;
+    }
+
+    private long getQuotaCooldownRemainingMillis() {
+        long remaining = quotaCooldownUntilMillis - System.currentTimeMillis();
+        return Math.max(0L, remaining);
+    }
+
+    private void applyQuotaCooldown(long retryAfterMillis) {
+        long normalizedRetryAfterMillis = Math.max(MIN_QUOTA_COOLDOWN_MILLIS, retryAfterMillis);
+        long targetUntil = System.currentTimeMillis() + normalizedRetryAfterMillis;
+        synchronized (quotaCooldownLock) {
+            if (targetUntil > quotaCooldownUntilMillis) {
+                quotaCooldownUntilMillis = targetUntil;
+            }
+        }
+    }
+
+    private long resolveQuotaRetryAfterMillis(Throwable throwable) {
+        Throwable cursor = throwable;
+        while (cursor != null) {
+            long parsed = parseRetryAfterMillis(cursor.getMessage());
+            if (parsed > 0L) {
+                return parsed;
+            }
+            cursor = cursor.getCause();
+        }
+        return DEFAULT_QUOTA_COOLDOWN_MILLIS;
+    }
+
+    private long parseRetryAfterMillis(String message) {
+        if (TextUtils.isEmpty(message)) {
+            return -1L;
+        }
+
+        Matcher matcher = RETRY_AFTER_SECONDS_PATTERN.matcher(message);
+        if (!matcher.find()) {
+            return -1L;
+        }
+
+        try {
+            double seconds = Double.parseDouble(matcher.group(1));
+            return Math.max(MIN_QUOTA_COOLDOWN_MILLIS, (long) Math.ceil(seconds * 1000.0d));
+        } catch (Exception ignored) {
+            return -1L;
+        }
+    }
+
+    private String buildQuotaErrorMessage(long retryAfterMillis) {
+        long safeRetryAfterMillis = Math.max(MIN_QUOTA_COOLDOWN_MILLIS, retryAfterMillis);
+        long seconds = Math.max(1L, (long) Math.ceil(safeRetryAfterMillis / 1000.0d));
+        return "Đang chạm giới hạn theo phút (RPM) của model. Vui lòng thử lại sau khoảng "
+                + seconds
+                + " giây. Nếu bạn dùng key trả phí, hãy kiểm tra key đang trỏ đúng project và đúng model.";
     }
 
     private String normalizeModelName(String modelName) {

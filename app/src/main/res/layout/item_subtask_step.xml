@@ -1,54 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- item_subtask_step.xml — Một bước subtask trong Task Detail -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="6dp"
-    android:background="@drawable/bg_dialog_rounded"
+    android:layout_marginTop="2dp"
+    android:background="?attr/colorSurface"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="10dp">
+    android:paddingStart="12dp"
+    android:paddingEnd="10dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
 
+    <!-- Checkbox vuông -->
     <CheckBox
         android:id="@+id/cb_subtask_done"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:button="@null"
         android:background="@drawable/checkbox_square_selector"
         android:contentDescription="@string/subtask_toggle_complete_desc" />
 
+    <!-- Tiêu đề subtask -->
     <TextView
         android:id="@+id/tv_subtask_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="12dp"
         android:layout_weight="1"
         android:maxLines="3"
         android:textColor="@color/text_primary"
-        android:textSize="13sp"
-        android:textStyle="bold" />
+        android:textSize="14sp" />
 
+    <!-- Nút đổi ưu tiên -->
     <ImageButton
         android:id="@+id/btn_subtask_priority"
-        android:layout_width="34dp"
-        android:layout_height="34dp"
-        android:layout_marginStart="6dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="4dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/subtask_change_priority_desc"
         android:src="@drawable/ic_flag"
         app:tint="@color/priority_none" />
 
+    <!-- Nút "Phê duyệt" -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_subtask_approve"
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="wrap_content"
-        android:layout_height="32dp"
+        android:layout_height="34dp"
         android:layout_marginStart="6dp"
         android:minWidth="0dp"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
         android:text="@string/subtask_approve"
         android:textAllCaps="false"
-        android:textSize="11sp" />
+        android:textSize="12sp"
+        android:textColor="@color/priority_low"
+        app:strokeColor="@color/priority_low"
+        app:cornerRadius="17dp" />
 
 </LinearLayout>

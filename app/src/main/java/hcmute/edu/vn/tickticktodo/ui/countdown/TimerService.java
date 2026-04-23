@@ -416,26 +416,31 @@ public class TimerService extends Service {
 
     private void playAlarmSound() {
         try {
-            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (alarmUri == null) {
-                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            // Use notification sound (gentler than alarm) at reduced volume
+            Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            if (soundUri == null) {
+                soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
             }
             releaseMediaPlayer();
             mediaPlayer = new MediaPlayer();
             mediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build());
-            mediaPlayer.setDataSource(this, alarmUri);
+            mediaPlayer.setDataSource(this, soundUri);
+            // ~45 % volume — noticeable but not jarring
+            mediaPlayer.setVolume(0.45f, 0.45f);
             mediaPlayer.prepare();
             mediaPlayer.start();
 
-            // Tự dừng sau 3 giây
+            // Auto-stop after 3.5 seconds
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                    mediaPlayer.stop();
-                }
-            }, 3000);
+                try {
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        mediaPlayer.stop();
+                    }
+                } catch (Exception ignored) {}
+            }, 3500);
         } catch (Exception e) {
             e.printStackTrace();
         }

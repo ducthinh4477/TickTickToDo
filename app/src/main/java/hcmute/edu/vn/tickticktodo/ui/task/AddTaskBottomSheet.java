@@ -36,6 +36,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
+
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -72,7 +74,9 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private ImageButton btnPriority;
     private ImageButton btnMoreOptions;
     private MaterialButton btnSave;
+    private View dividerDetails;
     private View layoutExtraOptions;
+    private View layoutExpandedDetails;
     private View btnAddImage;
     private View btnAddAudio;
     private View btnAddFile;
@@ -106,6 +110,8 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private final Calendar selectedDate = Calendar.getInstance(); // mặc định = today
     private int selectedPriority = 0; // 0 = None
     private boolean hasTimeSelected = false;
+    private boolean hasDateSelected = false;
+    private boolean isExpandedMode = false;
     private final SimpleDateFormat dateFormat =
             new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
     private final SimpleDateFormat timeFormat =
@@ -199,6 +205,8 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         btnPriority = view.findViewById(R.id.btn_priority);
         btnMoreOptions = view.findViewById(R.id.btn_more_options);
         btnSave = view.findViewById(R.id.btn_save_task);
+        dividerDetails = view.findViewById(R.id.divider_details);
+        layoutExpandedDetails = view.findViewById(R.id.layout_expanded_details);
         layoutExtraOptions = view.findViewById(R.id.layout_extra_options);
         btnAddImage = view.findViewById(R.id.btn_add_image);
         btnAddAudio = view.findViewById(R.id.btn_add_audio);
@@ -244,7 +252,15 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                btnSave.setEnabled(!s.toString().trim().isEmpty());
+                boolean wasEnabled = btnSave.isEnabled();
+                boolean nowEnabled = !s.toString().trim().isEmpty();
+                btnSave.setEnabled(nowEnabled);
+                if (!wasEnabled && nowEnabled) {
+                    btnSave.animate().scaleX(1.08f).scaleY(1.08f).setDuration(140)
+                            .withEndAction(() -> btnSave.animate()
+                                    .scaleX(1f).scaleY(1f).setDuration(140).start())
+                            .start();
+                }
             }
 
             @Override
@@ -265,6 +281,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
                     selectedDate.set(Calendar.YEAR, year);
                     selectedDate.set(Calendar.MONTH, month);
                     selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+                    hasDateSelected = true;
                     // Tự động mở TimePicker ngay sau khi chọn ngày
                     showTimePicker();
                 },
@@ -326,6 +343,13 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             dateText += " " + timeFormat.format(selectedDate.getTime());
         }
         chipDueDate.setText(dateText);
+        if (hasDateSelected || hasTimeSelected) {
+            chipDueDate.setChipBackgroundColorResource(R.color.accent_primary);
+            chipDueDate.setTextColor(0xFFFFFFFF);
+        } else {
+            chipDueDate.setChipBackgroundColorResource(R.color.surface_2);
+            chipDueDate.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+        }
     }
 
     // ─── Priority button (cycle through 0 → 1 → 2 → 3 → 0) ─────────────────────
@@ -537,11 +561,8 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
     private void setupMoreOptions() {
         btnMoreOptions.setOnClickListener(v -> {
-            if (layoutExtraOptions.getVisibility() == View.GONE) {
-                layoutExtraOptions.setVisibility(View.VISIBLE);
-            } else {
-                layoutExtraOptions.setVisibility(View.GONE);
-            }
+            isExpandedMode = !isExpandedMode;
+            updateExpandedModeUi();
         });
 
         btnAddImage.setOnClickListener(v -> imagePickerLauncher.launch(new String[]{"image/*"}));
@@ -552,6 +573,47 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
         if (btnScanFromCamera != null) {
             btnScanFromCamera.setOnClickListener(v -> launchCameraCapture());
+        }
+
+        updateExpandedModeUi();
+    }
+
+    private void updateExpandedModeUi() {
+        if (btnMoreOptions != null) {
+            float targetRotation = isExpandedMode ? 180f : 0f;
+            btnMoreOptions.animate()
+                    .rotation(targetRotation)
+                    .setDuration(250)
+                    .setInterpolator(new FastOutSlowInInterpolator())
+                    .start();
+        }
+        if (etDescription != null) {
+            etDescription.setVisibility(isExpandedMode ? View.VISIBLE : View.GONE);
+        }
+        if (dividerDetails != null) {
+            dividerDetails.setVisibility(isExpandedMode ? View.VISIBLE : View.GONE);
+        }
+        if (layoutExpandedDetails != null) {
+            if (isExpandedMode) {
+                layoutExpandedDetails.setAlpha(0f);
+                layoutExpandedDetails.setVisibility(View.VISIBLE);
+                layoutExpandedDetails.animate().alpha(1f).setDuration(220).start();
+            } else {
+                layoutExpandedDetails.animate().alpha(0f).setDuration(180)
+                        .withEndAction(() -> layoutExpandedDetails.setVisibility(View.GONE))
+                        .start();
+            }
+        }
+        if (layoutExtraOptions != null) {
+            if (isExpandedMode) {
+                layoutExtraOptions.setAlpha(0f);
+                layoutExtraOptions.setVisibility(View.VISIBLE);
+                layoutExtraOptions.animate().alpha(1f).setDuration(220).start();
+            } else {
+                layoutExtraOptions.animate().alpha(0f).setDuration(180)
+                        .withEndAction(() -> layoutExtraOptions.setVisibility(View.GONE))
+                        .start();
+            }
         }
     }
 
