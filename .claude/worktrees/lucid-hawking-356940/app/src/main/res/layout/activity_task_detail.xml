@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  activity_task_detail.xml — Task Detail / Edit screen.
+  Material3 redesign:
+    - Root + Toolbar: ?attr/colorSurface (dark mode compatible)
+    - Toolbar: proper elevation
+    - Title area: marginTop=20dp
+    - Description: minLines=4
+    - AI Breakdown: accent_primary stroke + text color
+    - Subtasks label: pill chip style (bold, background_primary, 6dp corners)
+    - Due date chip: ?attr/colorSurfaceVariant background
+    - Priority buttons: 52dp height, 8dp colored dot above label
+    - ScrollView content: paddingBottom=32dp
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:orientation="vertical"
+    tools:context=".ui.task.TaskDetailActivity">
+
+    <!-- ══════ Toolbar: Back (close) + Save ══════ -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorSurface"
+        android:elevation="2dp"
+        app:navigationIcon="@drawable/ic_close"
+        app:navigationContentDescription="@string/detail_back_desc">
+
+        <ImageButton
+            android:id="@+id/btn_save"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/detail_save_desc"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_save"
+            app:tint="@color/priority_low" />
+
+    </androidx.appcompat.widget.Toolbar>
+
+    <!-- Đường kẻ dưới Toolbar -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
+    <!-- ══════ Nội dung chính (scrollable) ══════ -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="32dp">
+
+            <!-- ── Hàng 1: Checkbox lớn + EditText Title ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:layout_marginTop="20dp"
+                android:orientation="horizontal">
+
+                <CheckBox
+                    android:id="@+id/cb_completed"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:button="@drawable/checkbox_circle_selector"
+                    android:layout_marginEnd="12dp" />
+
+                <EditText
+                    android:id="@+id/et_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="@string/hint_task_title"
+                    android:imeOptions="actionNext"
+                    android:inputType="textCapSentences"
+                    android:maxLines="4"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <!-- ── Đường kẻ mỏng ── -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:background="@color/divider" />
+
+            <!-- ── EditText Description (minLines=4) ── -->
+            <EditText
+                android:id="@+id/et_description"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:gravity="top"
+                android:hint="@string/hint_task_description"
+                android:imeOptions="actionDone"
+                android:inputType="textCapSentences|textMultiLine"
+                android:minLines="4"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:textSize="15sp" />
+
+            <!-- ── AI Breakdown button (accent_primary stroke + text) ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_ai_breakdown"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ai_breakdown_button"
+                    android:textAllCaps="false"
+                    android:textColor="@color/accent_primary"
+                    app:icon="@drawable/ic_ai_spark"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:strokeColor="@color/accent_primary" />
+
+                <ProgressBar
+                    android:id="@+id/progress_ai_breakdown"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="12dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- ── Subtasks section label (pill chip: bold, bg_primary, 6dp) ── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="6dp"
+                android:textAllCaps="true"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:background="@color/background_primary" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_subtasks"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                tools:listitem="@layout/item_subtask_step" />
+
+            <TextView
+                android:id="@+id/tv_subtasks_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/detail_subtasks_empty"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <!-- ── Attachments section (gone by default) ── -->
+            <LinearLayout
+                android:id="@+id/ll_attachments"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/detail_label_attachments"
+                    android:textAllCaps="true"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <ImageView
+                    android:id="@+id/iv_attachment_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/detail_attachment_image_desc"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chip_group_attachments"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:chipSpacingHorizontal="8dp"
+                    app:chipSpacingVertical="8dp"
+                    app:singleLine="false" />
+
+            </LinearLayout>
+
+            <!-- ── Đường kẻ mỏng ── -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:background="@color/divider" />
+
+            <!-- ── Due Date label + Chip ── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/detail_label_date"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textAllCaps="true" />
+
+            <!-- Due date chip: ?attr/colorSurfaceVariant for dark mode compat -->
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_due_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_no_date"
+                android:textColor="@color/priority_low"
+                android:textSize="13sp"
+                style="@style/Widget.Material3.Chip.Filter"
+                app:chipIcon="@drawable/ic_calendar"
+                app:chipIconTint="@color/priority_low"
+                app:chipBackgroundColor="?attr/colorSurfaceVariant"
+                app:chipStrokeColor="#C5D8FF"
+                app:chipStrokeWidth="1dp" />
+
+            <!-- ── Đường kẻ mỏng ── -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="@color/divider" />
+
+            <!-- ── Priority selector label ── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="@string/detail_label_priority"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textAllCaps="true" />
+
+            <!-- ── Priority buttons: 52dp height, colored dot above label ── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="4">
+
+                <!-- None -->
+                <LinearLayout
+                    android:id="@+id/btn_priority_none"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_priority_selector_none"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <!-- Colored dot indicator -->
+                    <View
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="@color/priority_none" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/priority_none_label"
+                        android:textColor="@color/priority_none"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <!-- Low -->
+                <LinearLayout
+                    android:id="@+id/btn_priority_low"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_priority_selector_low"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <!-- Colored dot indicator -->
+                    <View
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="@color/priority_low" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/priority_low_label"
+                        android:textColor="@color/priority_low"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <!-- Medium -->
+                <LinearLayout
+                    android:id="@+id/btn_priority_medium"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_priority_selector_medium"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <!-- Colored dot indicator -->
+                    <View
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="@color/priority_medium" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/priority_medium_label"
+                        android:textColor="@color/priority_medium"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <!-- High -->
+                <LinearLayout
+                    android:id="@+id/btn_priority_high"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_priority_selector_high"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <!-- Colored dot indicator -->
+                    <View
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="@color/priority_high" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/priority_high_label"
+                        android:textColor="@color/priority_high"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

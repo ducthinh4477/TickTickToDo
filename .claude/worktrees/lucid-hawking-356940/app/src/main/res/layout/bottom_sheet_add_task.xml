@@ -1,0 +1,543 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet"
+    android:orientation="vertical"
+    android:paddingBottom="8dp">
+
+    <!-- Drag handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_drag_handle" />
+
+    <!-- Step 1: Title input -->
+    <EditText
+        android:id="@+id/et_task_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="20dp"
+        android:background="@android:color/transparent"
+        android:hint="@string/hint_task_title"
+        android:inputType="textCapSentences"
+        android:maxLines="2"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Step 2 (expanded): Note / description -->
+    <EditText
+        android:id="@+id/et_task_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="20dp"
+        android:background="@android:color/transparent"
+        android:hint="@string/hint_task_description"
+        android:inputType="textCapSentences|textMultiLine"
+        android:maxLines="4"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/divider_details"
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="20dp"
+        android:background="@color/divider"
+        android:visibility="gone" />
+
+    <!-- Step 2 (expanded): Detail rows -->
+    <LinearLayout
+        android:id="@+id/layout_expanded_details"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:visibility="gone">
+
+        <!-- Date row -->
+        <LinearLayout
+            android:id="@+id/row_due_date"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_calendar"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:text="Ngày"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tv_row_due_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hôm nay"
+                android:textColor="@color/accent_primary"
+                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:src="@drawable/ic_expand_more"
+                app:tint="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- Time row -->
+        <LinearLayout
+            android:id="@+id/row_due_time"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_timer"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:text="Giờ"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tv_row_due_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chưa đặt"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:src="@drawable/ic_expand_more"
+                app:tint="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- Repeat row -->
+        <LinearLayout
+            android:id="@+id/row_repeat"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_repeat"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:text="Lặp lại"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tv_row_repeat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Không"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:src="@drawable/ic_expand_more"
+                app:tint="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- Priority row -->
+        <LinearLayout
+            android:id="@+id/row_priority"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_flag"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:text="Độ ưu tiên"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tv_row_priority"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Không"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:src="@drawable/ic_expand_more"
+                app:tint="@color/text_secondary" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="4dp"
+            android:background="@color/divider" />
+
+        <!-- Subtasks row header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="12dp">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_list"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:text="Subtasks"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add_subtask"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="+ Thêm"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Step 1: Quick toolbar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chip_due_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/accent_primary"
+            android:textSize="13sp"
+            app:chipBackgroundColor="#0A8875FF"
+            app:chipCornerRadius="8dp"
+            app:chipIcon="@drawable/ic_calendar"
+            app:chipIconSize="18dp"
+            app:chipIconTint="@color/accent_primary"
+            app:chipMinHeight="32dp"
+            app:chipStrokeColor="@color/accent_primary"
+            app:chipStrokeWidth="0.5dp"
+            tools:text="Hôm nay" />
+
+        <ImageButton
+            android:id="@+id/btn_priority"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/priority_flag_desc"
+            android:src="@drawable/ic_flag"
+            app:tint="@color/priority_none" />
+
+        <ImageButton
+            android:id="@+id/btn_more_options"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/task_expand_details_desc"
+            android:src="@drawable/ic_expand_more"
+            app:tint="@color/text_secondary" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_save_task"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:enabled="false"
+            android:text="@string/btn_save"
+            android:textSize="13sp"
+            app:cornerRadius="8dp"
+            app:icon="@drawable/ic_send"
+            app:iconSize="16dp" />
+
+    </LinearLayout>
+
+    <!-- Attachments (shown when task has attachments) -->
+    <LinearLayout
+        android:id="@+id/ll_attachments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginTop="8dp">
+
+        <ImageView
+            android:id="@+id/iv_attachment_image"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:id="@+id/ll_voice_player"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone"
+            android:background="@drawable/bg_dialog_rounded"
+            android:padding="8dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:id="@+id/iv_play_pause"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_play"
+                app:tint="@color/text_primary" />
+
+            <SeekBar
+                android:id="@+id/sb_voice_progress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tv_voice_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_attachment_file"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:padding="12dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_dialog_rounded"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="8dp" />
+    </LinearLayout>
+
+    <!-- Extra options: camera / image / audio / file -->
+    <LinearLayout
+        android:id="@+id/layout_extra_options"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/btn_scan_camera"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="8dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_camera"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/scan_camera_action"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/btn_add_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="8dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_image"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Hình ảnh"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/btn_add_audio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="8dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_audio"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Âm thanh"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/btn_add_file"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="8dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_attach_file"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Tệp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Scan progress indicator -->
+    <LinearLayout
+        android:id="@+id/layout_scan_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:background="@drawable/bg_dialog_rounded"
+        android:visibility="gone">
+        <ProgressBar
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:indeterminate="true" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="@string/scan_camera_loading"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+</LinearLayout>

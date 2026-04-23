@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/bg_bottom_sheet">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Thêm nhiệm vụ mới"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText
+        android:id="@+id/et_eisenhower_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Tiêu đề"
+        android:background="#1AFFFFFF"
+        android:padding="12dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_hint"
+        android:layout_marginBottom="12dp"/>
+
+    <EditText
+        android:id="@+id/et_eisenhower_desc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Mô tả"
+        android:background="#1AFFFFFF"
+        android:padding="12dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_hint"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chọn phân khu:"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="8dp"/>
+
+    <Spinner
+        android:id="@+id/spinner_eisenhower_quadrant"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#1AFFFFFF"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/btn_eisenhower_cancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Hủy"
+            style="?android:attr/borderlessButtonStyle"
+            android:textColor="@color/text_secondary" />
+            
+        <Button
+            android:id="@+id/btn_eisenhower_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Lưu"
+            android:textColor="#EF5350"
+            style="?android:attr/borderlessButtonStyle"/>
+    </LinearLayout>
+
+</LinearLayout>

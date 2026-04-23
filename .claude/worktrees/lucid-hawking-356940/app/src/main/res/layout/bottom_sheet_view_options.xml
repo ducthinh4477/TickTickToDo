@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- bottom_sheet_view_options.xml — Sort / View options bottom sheet. Material3 redesign. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet"
+    android:orientation="vertical"
+    android:paddingBottom="24dp">
+
+    <!-- Drag handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_drag_handle" />
+
+    <!-- Sheet title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="8dp"
+        android:text="Tùy chọn hiển thị"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- ══ View Mode Toggle ══ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="14dp">
+
+        <!-- List View -->
+        <LinearLayout
+            android:id="@+id/btn_view_list"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_view_mode_selected"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
+
+            <ImageView
+                android:id="@+id/icon_view_list"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_view_list"
+                android:contentDescription="@string/view_mode_list"
+                tools:tint="@color/accent_primary" />
+
+            <TextView
+                android:id="@+id/label_view_list"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/view_mode_list"
+                android:textColor="@color/accent_primary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <View android:layout_width="10dp" android:layout_height="0dp" />
+
+        <!-- Kanban View -->
+        <LinearLayout
+            android:id="@+id/btn_view_kanban"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
+
+            <ImageView
+                android:id="@+id/icon_view_kanban"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_view_kanban"
+                android:contentDescription="@string/view_mode_kanban"
+                tools:tint="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/label_view_kanban"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/view_mode_kanban"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@color/divider" />
+
+    <!-- ══ Menu Items ══ -->
+
+    <!-- Ẩn đã hoàn thành -->
+    <LinearLayout
+        android:id="@+id/item_hide_completed"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_hide_completed"
+            android:contentDescription="@null"
+            app:tint="@color/text_secondary" />
+
+        <TextView
+            android:id="@+id/tv_hide_completed"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:text="@string/option_hide_completed"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+
+        <!-- Active indicator (shown when option is enabled) -->
+        <ImageView
+            android:id="@+id/ic_hide_completed_check"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_completed"
+            android:visibility="gone"
+            app:tint="@color/accent_primary" />
+    </LinearLayout>
+
+    <!-- Hiển thị chi tiết -->
+    <LinearLayout
+        android:id="@+id/item_show_details"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_show_details"
+            android:contentDescription="@null"
+            app:tint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:text="@string/option_show_details"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <!-- Tùy chọn sắp xếp -->
+    <LinearLayout
+        android:id="@+id/item_view_options"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_view_options"
+            android:contentDescription="@null"
+            app:tint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:text="@string/option_view_options"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="@color/text_secondary" />
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@color/divider" />
+
+    <!-- Section label -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"
+        android:text="Cài đặt danh sách"
+        android:textSize="11sp"
+        android:textAllCaps="true"
+        android:letterSpacing="0.1"
+        android:textColor="@color/text_secondary" />
+
+    <!-- Thêm phần -->
+    <LinearLayout
+        android:id="@+id/item_add_section"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_add_section"
+            android:contentDescription="@null"
+            app:tint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:text="@string/option_add_section"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <!-- Lịch sử hoạt động -->
+    <LinearLayout
+        android:id="@+id/item_list_activities"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp">
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_list_activities"
+            android:contentDescription="@null"
+            app:tint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:text="@string/option_list_activities"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+</LinearLayout>

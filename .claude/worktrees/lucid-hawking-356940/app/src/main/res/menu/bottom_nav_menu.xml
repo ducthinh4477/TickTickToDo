@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="@string/nav_home" />
+    <item
+        android:id="@+id/nav_calendar"
+        android:icon="@drawable/ic_calendar"
+        android:title="@string/nav_calendar_desc" />
+    <item
+        android:id="@+id/nav_focus"
+        android:icon="@drawable/ic_timer"
+        android:title="@string/nav_focus" />
+    <item
+        android:id="@+id/nav_moodle"
+        android:icon="@drawable/ic_school"
+        android:title="Moodle" />
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/ic_user"
+        android:title="@string/nav_profile" />
+</menu>
+

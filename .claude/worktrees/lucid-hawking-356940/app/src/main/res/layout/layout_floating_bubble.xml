@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/iv_action_chat"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_chat_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_chat_bubble"
+        app:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_voice"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_voice_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_mic"
+        app:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_camera"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_camera_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_camera"
+        app:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_task"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_task_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_add"
+        app:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <ImageView
+        android:id="@+id/iv_action_home"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_action_bubble"
+        android:contentDescription="@string/floating_action_home_desc"
+        android:elevation="9dp"
+        android:padding="10dp"
+        android:src="@drawable/ic_home"
+        app:tint="@android:color/white"
+        android:visibility="invisible" />
+
+    <View
+        android:layout_width="74dp"
+        android:layout_height="74dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_bubble_glow" />
+
+    <View
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_bubble_ring" />
+
+    <View
+        android:id="@+id/voice_long_press_glow"
+        android:layout_width="66dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_voice_long_press_glow"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/iv_floating_bubble"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_floating_bubble_circle"
+        android:contentDescription="@string/floating_action_center_desc"
+        android:elevation="10dp"
+        android:padding="15dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_ai_spark"
+        app:tint="@android:color/white"
+        />
+
+    <TextView
+        android:id="@+id/bubble_badge"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="center"
+        android:layout_marginStart="34dp"
+        android:layout_marginTop="-34dp"
+        android:background="@drawable/bg_bubble_badge"
+        android:gravity="center"
+        android:text="0"
+        android:textColor="@android:color/white"
+        android:textSize="10sp"
+        android:visibility="gone" />
+</FrameLayout>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_calendar_cell.xml — Ô ngày trong Calendar Month Grid.
+  Material3 redesign:
+    - Height: 90dp
+    - Border via bg_calendar_cell foreground (right+bottom 1dp)
+    - Day number: 28×28dp circle, 13sp
+    - Event chips: 3dp rounded pills via layout_marginBottom on each chip
+    - 4dp internal padding
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cell_root"
+    android:layout_width="match_parent"
+    android:layout_height="90dp"
+    android:orientation="vertical"
+    android:padding="4dp"
+    android:background="@drawable/bg_calendar_cell"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!--
+      Hàng số ngày: day number circle 28×28dp.
+      Adapter sets the background of tv_day_number:
+        • bg_today_circle   → today (white text)
+        • bg_selected_day   → selected (accent text)
+        • null              → normal
+    -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:id="@+id/tv_day_number"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center_horizontal|top"
+            android:layout_marginTop="2dp"
+            android:gravity="center"
+            android:textSize="13sp"
+            android:textColor="@color/text_primary"
+            android:includeFontPadding="false" />
+
+    </FrameLayout>
+
+    <!--
+      Khoảng trống sự kiện: chiếm phần còn lại.
+      Adapter addView() các event-chip TextView vào đây (tối đa 3).
+      Each chip should use 3dp corner radius for pill appearance.
+    -->
+    <LinearLayout
+        android:id="@+id/layout_events"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp"
+        android:paddingBottom="2dp"
+        android:clipChildren="false" />
+
+</LinearLayout>

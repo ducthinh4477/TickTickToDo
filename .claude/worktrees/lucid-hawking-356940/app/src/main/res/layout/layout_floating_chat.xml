@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="12dp"
+    android:background="@drawable/bg_floating_chat_container"
+    android:elevation="20dp"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <RelativeLayout
+        android:id="@+id/floating_chat_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/btn_toggle_debug_panel"
+            android:layout_width="53dp"
+            android:layout_height="33dp"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="7dp"
+            android:layout_marginEnd="215dp"
+            android:layout_toStartOf="@id/btn_chat_settings"
+            android:background="@drawable/bg_floating_header_chip"
+            android:paddingLeft="10dp"
+            android:paddingTop="5dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="5dp"
+            android:text="Trace"
+            android:textColor="@color/floating_chat_chip_text"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btn_chat_settings"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="6dp"
+            android:layout_toStartOf="@id/btn_close_chat"
+            android:background="@drawable/bg_floating_icon_button"
+            android:contentDescription="@string/floating_chat_settings_desc"
+            android:src="@drawable/ic_settings"
+            app:tint="@color/floating_chat_close_tint" />
+
+        <ImageButton
+            android:id="@+id/btn_close_chat"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_alignParentEnd="true"
+            android:background="@drawable/bg_floating_icon_button"
+            android:contentDescription="Close"
+            android:src="@drawable/ic_close"
+            app:tint="@color/floating_chat_close_tint" />
+    </RelativeLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/bg_floating_divider" />
+
+    <LinearLayout
+        android:id="@+id/layout_agent_debug_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/bg_debug_terminal"
+        android:orientation="vertical"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Agent Tool Trace"
+                android:textColor="@color/floating_chat_debug_title"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_clear_debug_trace"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_debug_clear_chip"
+                android:paddingLeft="8dp"
+                android:paddingTop="3dp"
+                android:paddingRight="8dp"
+                android:paddingBottom="3dp"
+                android:text="Clear"
+                android:textColor="@color/floating_chat_debug_clear_text"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/sv_agent_debug_trace"
+            android:layout_width="match_parent"
+            android:layout_height="118dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_debug_trace_inner"
+            android:fillViewport="true"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/tv_agent_debug_trace"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="1dp"
+                android:text="Chưa có trace."
+                android:textColor="@color/floating_chat_debug_text"
+                android:textIsSelectable="true"
+                android:textSize="11sp" />
+        </ScrollView>
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_floating_chat_messages"
+        android:layout_width="match_parent"
+        android:layout_height="228dp"
+        android:background="@drawable/bg_chat_messages_surface"
+        android:clipToPadding="false"
+        android:padding="8dp" />
+
+    <LinearLayout
+        android:id="@+id/layout_daily_review_action"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_daily_review_card"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_daily_review_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/floating_chat_daily_text"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_move_unfinished_tasks"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_daily_review_button"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:text="Chuyển việc dang dở sang ngày mai"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_chat_input_shell"
+        android:orientation="vertical"
+        android:padding="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/et_message_floating"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chat_input_pill"
+                android:hint="@string/floating_chat_input_hint_chat"
+                android:imeOptions="actionSend"
+                android:paddingLeft="14dp"
+                android:paddingTop="10dp"
+                android:paddingRight="14dp"
+                android:paddingBottom="10dp"
+                android:singleLine="true"
+                android:textColor="@color/floating_chat_input_text"
+                android:textColorHint="@color/floating_chat_input_hint" />
+
+            <FrameLayout
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp">
+
+                <View
+                    android:id="@+id/voice_pulse_indicator"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_voice_pulse_indicator"
+                    android:visibility="gone" />
+
+                <ImageButton
+                    android:id="@+id/btn_mic_floating"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_chat_mic_button_idle"
+                    android:contentDescription="Voice"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_mic"
+                    app:tint="@color/floating_chat_action_tint" />
+            </FrameLayout>
+
+            <ImageButton
+                android:id="@+id/btn_send_floating"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_chat_send_button"
+                android:contentDescription="Send"
+                android:padding="10dp"
+                android:src="@drawable/ic_send"
+                app:tint="#FFFFFF" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_voice_status_floating"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_voice_status_chip"
+            android:paddingLeft="10dp"
+            android:paddingTop="4dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="4dp"
+            android:text="Đang lắng nghe..."
+            android:textColor="@color/floating_chat_status_text"
+            android:textSize="11sp"
+            android:visibility="gone" />
+    </LinearLayout>
+</LinearLayout>

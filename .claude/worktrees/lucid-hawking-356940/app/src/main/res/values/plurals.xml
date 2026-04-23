@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Tiếng Việt không thay đổi dạng số nhiều, nhưng ta vẫn dùng plurals API
+        để Android chọn đúng chuỗi; "other" bao phủ mọi trường hợp.
+        %d = số lượng task, được format bởi getQuantityString(R.plurals.xxx, count, count)
+    -->
+    <plurals name="calendar_task_count_plural">
+        <item quantity="one">1 công việc</item>
+        <item quantity="other">%d công việc</item>
+    </plurals>
+</resources>
+

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ═══════════════════════════════════════════════════════
+         UpTodo LIGHT Theme Color Palette
+         Bộ màu sáng — sử dụng khi chế độ DayNight ở trạng thái Light.
+         Bộ màu tối nằm trong values-night/colors.xml
+         ═══════════════════════════════════════════════════════ -->
+
+    <!-- Core backgrounds -->
+    <color name="background_primary">#FFF5F5F5</color>
+    <color name="background_surface">#FFFFFFFF</color>
+    <color name="background_navmain">#00FFFFFF</color>
+    <color name="background_card">#FFE8E8E8</color>
+    <color name="background_elevated">#FFFAFAFA</color>
+    <color name="background_input">#FFF0F0F0</color>
+
+    <!-- Surface elevation tokens (light) -->
+    <color name="surface_0">#FFFFFFFF</color>
+    <color name="surface_1">#FFF8F8FA</color>
+    <color name="surface_2">#FFF2F2F5</color>
+    <color name="surface_3">#FFEAEAEE</color>
+
+    <!-- Accent (giữ nguyên để nhất quán thương hiệu) -->
+    <color name="accent_primary">#FF7B61FF</color>
+    <color name="accent_secondary">#FF6C6DD4</color>
+
+    <!-- AI accent riêng (tránh dùng accent_primary cho cả app) -->
+    <color name="ai_accent">#FF6C63FF</color>
+    <color name="ai_accent_light">#FFEEF0FF</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FF1C1C1E</color>
+    <color name="text_secondary">#FF6E6E73</color>
+    <color name="text_hint">#FFAEAEB2</color>
+    <color name="text_completed">#FFC7C7CC</color>
+
+    <!-- Divider -->
+    <color name="divider">#1A000000</color>
+
+    <!-- Priority / category tag colors -->
+    <color name="priority_none">#FF8E8E93</color>
+    <color name="priority_low">#FF7B61FF</color>
+    <color name="priority_medium">#FFFF9500</color>
+    <color name="priority_high">#FFFF3B30</color>
+
+    <!-- Category tag colors -->
+    <color name="tag_work">#FFFF9500</color>
+    <color name="tag_study">#FF34C759</color>
+    <color name="tag_home">#FFFF2D55</color>
+    <color name="tag_health">#FF5AC8FA</color>
+
+    <!-- Checkbox -->
+    <color name="checkbox_unchecked">#FFAEAEB2</color>
+    <color name="checkbox_checked">#FF7B61FF</color>
+
+    <!-- Swipe to delete -->
+    <color name="swipe_delete_bg">#FFFF3B30</color>
+
+    <!-- Bottom Nav -->
+    <color name="bottom_nav_bg">#FFFFFFFF</color>
+    <color name="bottom_nav_active">#FF7B61FF</color>
+    <color name="bottom_nav_inactive">#FF8E8E93</color>
+
+    <!-- Compat -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="nav_rail_bg">#FFFFFFFF</color>
+    <color name="panel_selected">#1A7B61FF</color>
+    <color name="habit_heatmap_active">#2E7D32</color>
+    <color name="habit_heatmap_inactive">#FFD9D9D9</color>
+
+    <!-- Floating assistant (light mode) -->
+    <color name="floating_chat_title">#0F213D</color>
+    <color name="floating_chat_subtitle">#6D7C91</color>
+    <color name="floating_chat_chip_text">#1A4D8C</color>
+    <color name="floating_chat_close_tint">#5F6E82</color>
+    <color name="floating_chat_debug_title">#1B4A78</color>
+    <color name="floating_chat_debug_text">#264567</color>
+    <color name="floating_chat_debug_clear_text">#1A5A4A</color>
+    <color name="floating_chat_daily_text">#1F3048</color>
+    <color name="floating_chat_input_text">#12213A</color>
+    <color name="floating_chat_input_hint">#7C8BA1</color>
+    <color name="floating_chat_action_tint">#3767D7</color>
+    <color name="floating_chat_status_text">#1C5ED1</color>
+
+    <color name="floating_chat_container_start">#F7FFFFFF</color>
+    <color name="floating_chat_container_end">#ECF5FF</color>
+    <color name="floating_chat_container_stroke">#4CB7CCE2</color>
+    <color name="floating_chat_divider_center">#66A5B7CC</color>
+
+    <color name="floating_chat_header_chip_start">#EAF4FF</color>
+    <color name="floating_chat_header_chip_end">#DDEEFF</color>
+    <color name="floating_chat_header_chip_stroke">#66A7C6EA</color>
+
+    <color name="floating_chat_messages_surface">#F8FBFF</color>
+    <color name="floating_chat_messages_stroke">#4CA8BCD6</color>
+
+    <color name="floating_chat_input_shell">#F4F8FF</color>
+    <color name="floating_chat_input_shell_stroke">#73AFC3DC</color>
+    <color name="floating_chat_input_pill">#FFFFFFFF</color>
+    <color name="floating_chat_input_pill_stroke">#59C9D9EA</color>
+
+    <color name="floating_chat_daily_start">#EEF6FF</color>
+    <color name="floating_chat_daily_end">#E4EEFF</color>
+    <color name="floating_chat_daily_stroke">#73AFC8E6</color>
+
+    <color name="floating_chat_debug_terminal_start">#EDF3FA</color>
+    <color name="floating_chat_debug_terminal_end">#E3EDF8</color>
+    <color name="floating_chat_debug_terminal_stroke">#88AEC3D9</color>
+    <color name="floating_chat_debug_chip">#DCE7F4</color>
+    <color name="floating_chat_debug_chip_pressed">#CEDDEF</color>
+    <color name="floating_chat_debug_chip_stroke">#9DB9D6</color>
+    <color name="floating_chat_debug_chip_pressed_stroke">#8FAECC</color>
+    <color name="floating_chat_debug_inner">#F6FAFF</color>
+    <color name="floating_chat_debug_inner_stroke">#8FAFCD</color>
+    <color name="floating_chat_mic_idle_bg">#EEF5FF</color>
+    <color name="floating_chat_mic_idle_stroke">#94BCD9</color>
+    <color name="floating_chat_mic_idle_pressed_bg">#D8E7FF</color>
+    <color name="floating_chat_mic_idle_pressed_stroke">#8CAED9</color>
+    <color name="floating_chat_voice_status_bg">#E8F1FF</color>
+    <color name="floating_chat_voice_status_stroke">#90B4DF</color>
+</resources>
