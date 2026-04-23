@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TickTickToDo</string>
+    <string name="app_name">DoinBot</string>
     <string name="splash_tagline">Organize your day, one tick at a time.</string>
     <string name="priority_flag_desc">Priority flag</string>
     <string name="quick_add_hint">Thêm task nhanh...</string>
@@ -57,7 +57,6 @@
     <string name="ai_breakdown_title_empty">Hãy nhập tên công việc trước khi phân tích.</string>
     <string name="ai_breakdown_parse_error">AI trả về dữ liệu chưa đúng định dạng. Vui lòng thử lại.</string>
     <string name="ai_breakdown_success">Đã cập nhật các bước AI. Bước đã duyệt sẽ được giữ lại.</string>
-    <string name="detail_label_subtasks">Các bước con</string>
     <string name="detail_subtasks_empty">Chưa có bước con. Hãy dùng AI để phân tích thành nhiều bước.</string>
     <string name="subtask_raw_suffix">(raw)</string>
     <string name="subtask_approve">Duyệt</string>
@@ -267,7 +266,7 @@
 
     <!-- School Sync -->
     <string name="school_calendar_sync">School Calendar Sync</string>
-    <string name="sync_school_calendar_desc">Sync your school schedule with TickTickToDo</string>
+    <string name="sync_school_calendar_desc">Sync your school schedule with doinbot</string>
 
     <!-- Quick Settings Voice Add -->
     <string name="qs_voice_tile_label">Thêm việc bằng giọng nói</string>

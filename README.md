@@ -1,4 +1,8 @@
-# 📝 TickTickToDo
+# DoinBot
+
+<p align="center">
+  <img src="logo/doinbot_wordmark.svg" alt="DoinBot logo" width="360"/>
+</p>
 
 > An AI-powered task management application for Android, developed at HCMUTE.
 
@@ -16,13 +20,13 @@
 
 ## 2. Abstract
 
-TickTickToDo is an AI-augmented task management application for the Android platform, designed to address the productivity challenges faced by university students and professionals through intelligent scheduling, habit formation, and contextual task prioritization. The application integrates a large language model (LLM) agent — backed by Google Gemini or Groq — with a structured tool registry of twenty domain-specific operations, enabling natural-language task creation, bulk rescheduling, Eisenhower Matrix classification, and Pomodoro session management from a conversational interface. A purpose-built context assembler resolves Vietnamese relative temporal expressions (e.g., "chiều nay", "sáng thứ 2 tuần tới") into absolute timestamps before each LLM invocation, ensuring reliable date inference without fine-tuning. This project was developed as an academic software engineering exercise at Ho Chi Minh City University of Technology and Education (HCMUTE), applying the MVVM architectural pattern with a clean Repository data layer.
+doinbot is an AI-augmented task management application for the Android platform, designed to address the productivity challenges faced by university students and professionals through intelligent scheduling, habit formation, and contextual task prioritization. The application integrates a large language model (LLM) agent — backed by Google Gemini or Groq — with a structured tool registry of twenty domain-specific operations, enabling natural-language task creation, bulk rescheduling, Eisenhower Matrix classification, and Pomodoro session management from a conversational interface. A purpose-built context assembler resolves Vietnamese relative temporal expressions (e.g., "chiều nay", "sáng thứ 2 tuần tới") into absolute timestamps before each LLM invocation, ensuring reliable date inference without fine-tuning. This project was developed as an academic software engineering exercise at Ho Chi Minh City University of Technology and Education (HCMUTE), applying the MVVM architectural pattern with a clean Repository data layer.
 
 ---
 
 ## 3. Table of Contents
 
-1. [Title & Badges](#-tickticktodo)
+1. [Title & Badges](#-doinbot)
 2. [Abstract](#2-abstract)
 3. [Table of Contents](#3-table-of-contents)
 4. [Features](#4-features)
@@ -104,7 +108,7 @@ TickTickToDo is an AI-augmented task management application for the Android plat
 
 ### 5.1 Architectural Pattern
 
-TickTickToDo adheres to the **MVVM (Model-View-ViewModel)** architectural pattern recommended by the Android Jetpack guidelines, augmented by a **Repository Pattern** data layer. Each feature module owns a dedicated `ViewModel` that exposes `LiveData` streams to its corresponding `Activity` or `Fragment`; no direct database access occurs in the UI layer. Repositories mediate between ViewModels and Room DAOs, and additionally dispatch side-effects to `WorkManager`, `AlarmManager`, or `LocalBroadcastManager` where needed. The AI subsystem is decoupled from the standard MVVM stack: an `AgentContextAssembler` composes the prompt context, an `AgentToolRegistry` maps tool names to executor implementations, and each executor delegates persistence operations back through the existing Repository layer, preserving a single source of truth.
+doinbot adheres to the **MVVM (Model-View-ViewModel)** architectural pattern recommended by the Android Jetpack guidelines, augmented by a **Repository Pattern** data layer. Each feature module owns a dedicated `ViewModel` that exposes `LiveData` streams to its corresponding `Activity` or `Fragment`; no direct database access occurs in the UI layer. Repositories mediate between ViewModels and Room DAOs, and additionally dispatch side-effects to `WorkManager`, `AlarmManager`, or `LocalBroadcastManager` where needed. The AI subsystem is decoupled from the standard MVVM stack: an `AgentContextAssembler` composes the prompt context, an `AgentToolRegistry` maps tool names to executor implementations, and each executor delegates persistence operations back through the existing Repository layer, preserving a single source of truth.
 
 ---
 
@@ -212,7 +216,7 @@ graph TD
     style BG fill:#FBE9E7,stroke:#BF360C
 ```
 
-The diagram above illustrates the complete dependency graph of TickTickToDo. The UI layer communicates exclusively with ViewModels, which in turn delegate persistence to typed Repositories; no layer skipping is permitted. The AI subsystem operates as a parallel concern — it reads context through `AgentContextAssembler` and writes state through the same Repository layer used by the rest of the application, ensuring consistency. External services (Gemini, Groq, Firebase, Moodle) are accessed only from the AI subsystem or specific feature repositories, keeping I/O boundaries explicit.
+The diagram above illustrates the complete dependency graph of doinbot. The UI layer communicates exclusively with ViewModels, which in turn delegate persistence to typed Repositories; no layer skipping is permitted. The AI subsystem operates as a parallel concern — it reads context through `AgentContextAssembler` and writes state through the same Repository layer used by the rest of the application, ensuring consistency. External services (Gemini, Groq, Firebase, Moodle) are accessed only from the AI subsystem or specific feature repositories, keeping I/O boundaries explicit.
 
 ---
 
@@ -354,7 +358,7 @@ The `AgentToolNames` enumeration defines the complete contract between the LLM a
 ## 8. Module Structure
 
 ```
-hcmute.edu.vn.tickticktodo/
+hcmute.edu.vn.doinbot/
 │
 ├── model/                          # Domain entities (pure data classes)
 │   ├── Task.java
@@ -462,8 +466,8 @@ hcmute.edu.vn.tickticktodo/
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/ducthinh4477/TickTickToDo.git
-cd TickTickToDo
+git clone https://github.com/ducthinh4477/doinbot.git
+cd doinbot
 ```
 
 2. **Open in Android Studio**
@@ -490,7 +494,7 @@ cd TickTickToDo
 
 ### 9.3 API Key Configuration
 
-TickTickToDo does **not** require API keys to be embedded in source code or `local.properties`. Keys are entered at runtime through the in-app Settings UI and stored securely using **`EncryptedSharedPreferences`** (backed by `androidx.security:security-crypto`), which wraps the Android Keystore for AES-256-GCM encryption at rest.
+doinbot does **not** require API keys to be embedded in source code or `local.properties`. Keys are entered at runtime through the in-app Settings UI and stored securely using **`EncryptedSharedPreferences`** (backed by `androidx.security:security-crypto`), which wraps the Android Keystore for AES-256-GCM encryption at rest.
 
 **Steps:**
 1. Launch the application.
@@ -612,7 +616,7 @@ git checkout -b feat/your-feature-name
 ```
 MIT License
 
-Copyright (c) 2024 HCMUTE — TickTickToDo Contributors
+Copyright (c) 2024 HCMUTE — doinbot Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -652,6 +656,6 @@ SOFTWARE.
 
 Made with ☕ and 🤖 at HCMUTE · Ho Chi Minh City, Vietnam
 
-[⬆ Back to top](#-tickticktodo)
+[⬆ Back to top](#-doinbot)
 
 </div>
