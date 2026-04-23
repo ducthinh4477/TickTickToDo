@@ -1,46 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Ô ngày trong Calendar Month Grid.
-  Chiều cao cố định 88dp – đủ để hiển thị số ngày + tối đa 3 dòng event nhỏ.
-  Chiều rộng do GridLayoutManager(spanCount=7) tự chia đều theo màn hình.
+  item_calendar_cell.xml — Ô ngày trong Calendar Month Grid.
+  Material3 redesign:
+    - Height: 90dp
+    - Border via bg_calendar_cell foreground (right+bottom 1dp)
+    - Day number: 28×28dp circle, 13sp
+    - Event chips: 3dp rounded pills via layout_marginBottom on each chip
+    - 4dp internal padding
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/cell_root"
     android:layout_width="match_parent"
-    android:layout_height="88dp"
+    android:layout_height="90dp"
     android:orientation="vertical"
+    android:padding="4dp"
     android:background="@drawable/bg_calendar_cell"
     android:foreground="?android:attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true">
 
     <!--
-      Hàng trên: Số ngày, được bọc trong FrameLayout 26×26dp.
-      Adapter sẽ set background của TextView này:
-        • bg_today_circle   → nếu là "Hôm nay"  (chữ trắng)
-        • bg_selected_day   → nếu đang được chọn (chữ accent)
-        • null              → bình thường
+      Hàng số ngày: day number circle 28×28dp.
+      Adapter sets the background of tv_day_number:
+        • bg_today_circle   → today (white text)
+        • bg_selected_day   → selected (accent text)
+        • null              → normal
     -->
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="28dp"
-        android:paddingTop="4dp">
+        android:layout_height="32dp"
+        android:gravity="center_horizontal">
 
         <TextView
             android:id="@+id/tv_day_number"
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:layout_gravity="center_horizontal"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center_horizontal|top"
+            android:layout_marginTop="2dp"
             android:gravity="center"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textColor="@color/text_primary"
             android:includeFontPadding="false" />
 
     </FrameLayout>
 
     <!--
-      Khoảng trống sự kiện: chiếm phần còn lại của ô vuông.
-      CalendarAdapter sẽ addView() các TextView event chip vào đây (tối đa 3).
+      Khoảng trống sự kiện: chiếm phần còn lại.
+      Adapter addView() các event-chip TextView vào đây (tối đa 3).
+      Each chip should use 3dp corner radius for pill appearance.
     -->
     <LinearLayout
         android:id="@+id/layout_events"
@@ -48,8 +55,8 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:paddingLeft="2dp"
-        android:paddingRight="2dp"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp"
         android:paddingBottom="2dp"
         android:clipChildren="false" />
 

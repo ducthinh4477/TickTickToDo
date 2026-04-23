@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   activity_calendar.xml — Màn hình Lịch tháng (Month Grid View).
-  Thiết kế theo phong cách Google Calendar web:
-    1. Toolbar điều hướng back
-    2. Header: nút "<" / Tháng X năm YYYY / nút ">" / Hôm nay
-    3. Hàng tiêu đề thứ trong tuần: T2 T3 T4 T5 T6 T7 CN
-    4. RecyclerView GridLayoutManager(span=7) — 42 ô ngày (6 tuần)
-    5. FloatingActionButton thêm sự kiện mới
+  Material3 redesign:
+    1. Edge-to-edge via fitsSystemWindows
+    2. Month navigation header: pill MaterialCardView, elevation=2dp, 60dp height
+    3. Day headers: 36dp, letterSpacing, Saturday=accent_primary, Sunday=priority_high
+    4. RecyclerView grid 6×7
+    5. ExtendedFloatingActionButton "Thêm"
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -14,6 +14,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     android:background="@color/background_primary"
     tools:context=".ui.calendar.CalendarActivity">
 
@@ -33,78 +34,79 @@
             app:navigationIcon="@drawable/ic_back"
             app:navigationContentDescription="@string/calendar_back_desc" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider" />
-
-        <!-- ── Header điều hướng tháng ── -->
-        <LinearLayout
+        <!-- ── Header điều hướng tháng (pill card, 60dp, elevation=2dp) ── -->
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/layout_month_header"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:background="@color/background_surface">
+            android:layout_height="60dp"
+            app:cardBackgroundColor="@color/background_surface"
+            app:cardCornerRadius="0dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
 
-            <!-- Nút tháng trước "<" -->
-            <ImageButton
-                android:id="@+id/btn_prev_month"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:src="@drawable/ic_chevron_left"
-                android:contentDescription="@string/cal_prev_month_desc"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="@color/text_secondary" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp">
 
-            <!-- Tiêu đề "Tháng X năm YYYY" -->
-            <TextView
-                android:id="@+id/tv_month_title"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                tools:text="Tháng 3 năm 2025" />
+                <!-- Nút tháng trước "<" -->
+                <ImageButton
+                    android:id="@+id/btn_prev_month"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@drawable/ic_chevron_left"
+                    android:contentDescription="@string/cal_prev_month_desc"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="@color/text_secondary" />
 
-            <!-- Nút tháng sau ">" -->
-            <ImageButton
-                android:id="@+id/btn_next_month"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:src="@drawable/ic_chevron_right"
-                android:contentDescription="@string/cal_next_month_desc"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="@color/text_secondary" />
+                <!-- Tiêu đề "Tháng X năm YYYY" in pill shape -->
+                <TextView
+                    android:id="@+id/tv_month_title"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:background="@drawable/bg_dialog_rounded"
+                    android:includeFontPadding="false"
+                    tools:text="Tháng 3 năm 2025" />
 
-            <!-- Nút "Hôm nay" -->
-            <Button
-                android:id="@+id/btn_today"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/cal_today"
-                android:textSize="13sp"
-                android:textColor="@color/accent_primary"
-                android:minWidth="0dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp" />
+                <!-- Nút tháng sau ">" -->
+                <ImageButton
+                    android:id="@+id/btn_next_month"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@drawable/ic_chevron_right"
+                    android:contentDescription="@string/cal_next_month_desc"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="@color/text_secondary" />
 
-        </LinearLayout>
+                <!-- Nút "Hôm nay" -->
+                <Button
+                    android:id="@+id/btn_today"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/cal_today"
+                    android:textSize="13sp"
+                    android:textColor="@color/accent_primary"
+                    android:minWidth="0dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider" />
+            </LinearLayout>
 
-        <!-- ── Hàng tiêu đề thứ trong tuần ── -->
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ── Hàng tiêu đề thứ trong tuần (36dp, letterSpacing) ── -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="30dp"
+            android:layout_height="36dp"
             android:orientation="horizontal"
             android:background="@color/background_surface">
 
@@ -116,6 +118,7 @@
                 android:text="@string/cal_day_mon"
                 android:textSize="11sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.05"
                 android:textColor="@color/text_secondary" />
             <TextView
                 android:layout_width="0dp"
@@ -125,6 +128,7 @@
                 android:text="@string/cal_day_tue"
                 android:textSize="11sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.05"
                 android:textColor="@color/text_secondary" />
             <TextView
                 android:layout_width="0dp"
@@ -134,6 +138,7 @@
                 android:text="@string/cal_day_wed"
                 android:textSize="11sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.05"
                 android:textColor="@color/text_secondary" />
             <TextView
                 android:layout_width="0dp"
@@ -143,6 +148,7 @@
                 android:text="@string/cal_day_thu"
                 android:textSize="11sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.05"
                 android:textColor="@color/text_secondary" />
             <TextView
                 android:layout_width="0dp"
@@ -152,7 +158,9 @@
                 android:text="@string/cal_day_fri"
                 android:textSize="11sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.05"
                 android:textColor="@color/text_secondary" />
+            <!-- Saturday: accent_primary -->
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
@@ -161,7 +169,9 @@
                 android:text="@string/cal_day_sat"
                 android:textSize="11sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.05"
                 android:textColor="@color/accent_primary" />
+            <!-- Sunday: priority_high -->
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
@@ -170,10 +180,12 @@
                 android:text="@string/cal_day_sun"
                 android:textSize="11sp"
                 android:textStyle="bold"
+                android:letterSpacing="0.05"
                 android:textColor="@color/priority_high" />
 
         </LinearLayout>
 
+        <!-- Subtle bottom shadow under weekday header -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
@@ -186,21 +198,23 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:clipToPadding="false"
-            android:paddingBottom="80dp"
             tools:listitem="@layout/item_calendar_cell" />
 
     </LinearLayout>
 
-    <!-- ─── FAB: Thêm sự kiện mới ────────────────────────────────────────── -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <!-- ─── ExtendedFAB: Thêm sự kiện mới ──────────────────────────────── -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fab_add_event"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="20dp"
         android:contentDescription="@string/cal_add_event_desc"
-        android:src="@drawable/ic_add"
+        android:text="Thêm"
+        android:textColor="@color/white"
+        app:icon="@drawable/ic_add"
+        app:iconTint="@color/white"
         app:backgroundTint="@color/accent_primary"
-        app:tint="@color/white" />
+        app:elevation="4dp" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

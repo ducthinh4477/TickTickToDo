@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  activity_countdown.xml — Focus Timer screen (Countdown + Stopwatch).
+  Material3 redesign:
+    - Background: @color/background_primary (was ?attr/colorSurface)
+    - Header: proper wrap_content height with actionBarSize top padding
+    - Mode toggle: 44dp buttons, accent_primary stroke, 8dp top padding
+    - Session label: tv_session_label above the ring (13sp, text_secondary)
+    - Lap list wrapped in MaterialCardView (cornerRadius=16dp, stroke=divider)
+    - Primary buttons: 60dp height, cornerRadius=28dp pill
+    - Button containers: paddingBottom=24dp
+-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@color/background_primary"
     android:gravity="center_horizontal"
     android:orientation="vertical"
     android:paddingStart="24dp"
@@ -16,8 +27,8 @@
     <RelativeLayout
         android:id="@+id/countdown_header"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:paddingTop="32dp">
+        android:layout_height="wrap_content"
+        android:paddingTop="?attr/actionBarSize">
 
         <ImageButton
             android:id="@+id/btn_countdown_back"
@@ -71,29 +82,33 @@
 
     </RelativeLayout>
 
-    <!-- ── Mode Toggle ─────────────────────────────────────────────────── -->
+    <!-- ── Mode Toggle (44dp buttons, accent stroke, 8dp top padding) ── -->
     <com.google.android.material.button.MaterialButtonToggleGroup
         android:id="@+id/toggle_timer_mode"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
+        android:paddingTop="8dp"
         app:checkedButton="@+id/btn_mode_countdown"
         app:selectionRequired="true"
-        app:singleSelection="true">
+        app:singleSelection="true"
+        app:strokeColor="@color/accent_primary">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_mode_countdown"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Đếm ngược" />
+            android:layout_height="44dp"
+            android:text="Đếm ngược"
+            app:strokeColor="@color/accent_primary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_mode_stopwatch"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Bấm giờ" />
+            android:layout_height="44dp"
+            android:text="Bấm giờ"
+            app:strokeColor="@color/accent_primary" />
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -102,6 +117,18 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
+
+    <!-- ── Session mode label above ring (13sp, text_secondary) ──────── -->
+    <TextView
+        android:id="@+id/tv_session_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textSize="13sp"
+        android:textColor="@color/text_secondary"
+        android:letterSpacing="0.04"
+        android:text="Pomodoro"
+        android:textAllCaps="true" />
 
     <!-- ── Timer ring ───────────────────────────────────────────────────── -->
     <FrameLayout
@@ -179,17 +206,27 @@
 
     </FrameLayout>
 
-    <!-- ── Lap list (STOPWATCH mode only) ──────────────────────────────── -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_laps"
+    <!-- ── Lap list wrapped in MaterialCardView (STOPWATCH mode only) ── -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.8"
         android:layout_marginTop="12dp"
-        android:clipToPadding="false"
         android:visibility="gone"
-        tools:visibility="visible"
-        tools:listitem="@layout/item_lap" />
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/divider"
+        app:strokeWidth="1dp"
+        tools:visibility="visible">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_laps"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            tools:listitem="@layout/item_lap" />
+
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- ── Flex space below ring ────────────────────────────────────────── -->
     <View
@@ -204,23 +241,23 @@
         android:id="@+id/container_countdown_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="40dp">
+        android:paddingBottom="24dp">
 
-        <!-- IDLE: single full-width Start button -->
+        <!-- IDLE: single full-width Start button (60dp height) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_countdown_start"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="60dp"
             android:text="@string/countdown_btn_start"
             android:textSize="15sp"
             android:textStyle="bold"
             app:cornerRadius="28dp" />
 
-        <!-- RUNNING / PAUSED: Reset  +  Pause|Resume -->
+        <!-- RUNNING / PAUSED: Reset  +  Pause|Resume (60dp height) -->
         <LinearLayout
             android:id="@+id/ll_countdown_dual"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="60dp"
             android:orientation="horizontal"
             android:visibility="gone">
 
@@ -264,14 +301,14 @@
         android:id="@+id/container_sw_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="40dp"
+        android:paddingBottom="24dp"
         android:visibility="gone">
 
-        <!-- IDLE: single full-width Start button -->
+        <!-- IDLE: single full-width Start button (60dp height) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_sw_start"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="60dp"
             android:text="@string/countdown_btn_start"
             android:textSize="15sp"
             android:textStyle="bold"
@@ -280,11 +317,11 @@
             app:iconGravity="textStart"
             app:iconSize="18dp" />
 
-        <!-- RUNNING / STOPPED: Flag  |  Stop-or-Resume  |  Reset -->
+        <!-- RUNNING / STOPPED: Flag  |  Stop-or-Resume  |  Reset (60dp) -->
         <LinearLayout
             android:id="@+id/ll_sw_active"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="60dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:visibility="gone">

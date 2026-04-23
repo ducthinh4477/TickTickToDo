@@ -82,6 +82,11 @@ public class HabitTrackerFragment extends Fragment {
                 viewModel.checkInHabit(habit.getId());
                 Toast.makeText(requireContext(), R.string.habit_checkin_success, Toast.LENGTH_SHORT).show();
             }
+
+            @Override
+            public void onHabitEdit(Habit habit) {
+                showEditReminderDialog(habit);
+            }
         });
 
         rvHabits.setLayoutManager(new LinearLayoutManager(requireContext(), RecyclerView.HORIZONTAL, false));
@@ -159,6 +164,52 @@ public class HabitTrackerFragment extends Fragment {
                     int reminderHour = cbReminder.isChecked() ? pickedHour[0] : -1;
                     int reminderMinute = cbReminder.isChecked() ? pickedMinute[0] : 0;
                     viewModel.addHabit(name, "ic_health", reminderHour, reminderMinute);
+                })
+                .show();
+    }
+
+    /** Shown when user long-presses a habit chip — lets them change or clear the daily reminder. */
+    private void showEditReminderDialog(Habit habit) {
+        int dp16 = (int) (16 * requireContext().getResources().getDisplayMetrics().density);
+
+        LinearLayout container = new LinearLayout(requireContext());
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dp16, dp16, dp16, dp16);
+
+        CheckBox cbReminder = new CheckBox(requireContext());
+        cbReminder.setText("Nhắc nhở hàng ngày");
+        cbReminder.setTextSize(14f);
+        cbReminder.setChecked(habit.getReminderHour() >= 0);
+        container.addView(cbReminder);
+
+        final int[] pickedHour   = {habit.getReminderHour() >= 0 ? habit.getReminderHour() : 7};
+        final int[] pickedMinute = {habit.getReminderMinute()};
+
+        TextView tvTime = new TextView(requireContext());
+        tvTime.setText(String.format(Locale.getDefault(), "⏰ %02d:%02d", pickedHour[0], pickedMinute[0]));
+        tvTime.setTextSize(15f);
+        tvTime.setVisibility(habit.getReminderHour() >= 0 ? View.VISIBLE : View.GONE);
+        tvTime.setPadding(0, dp16 / 2, 0, 0);
+        tvTime.setOnClickListener(v -> new android.app.TimePickerDialog(
+                requireContext(), (picker, h, m) -> {
+                    pickedHour[0]   = h;
+                    pickedMinute[0] = m;
+                    tvTime.setText(String.format(Locale.getDefault(), "⏰ %02d:%02d", h, m));
+                }, pickedHour[0], pickedMinute[0], true).show());
+        container.addView(tvTime);
+
+        cbReminder.setOnCheckedChangeListener((btn, checked) ->
+                tvTime.setVisibility(checked ? View.VISIBLE : View.GONE));
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Chỉnh nhắc nhở: " + habit.getName())
+                .setView(container)
+                .setNegativeButton(R.string.add_list_btn_cancel, null)
+                .setPositiveButton("Lưu", (dialog, which) -> {
+                    int hour   = cbReminder.isChecked() ? pickedHour[0]   : -1;
+                    int minute = cbReminder.isChecked() ? pickedMinute[0] : 0;
+                    viewModel.updateHabitReminder(habit.getId(), hour, minute);
+                    Toast.makeText(requireContext(), "Đã cập nhật nhắc nhở", Toast.LENGTH_SHORT).show();
                 })
                 .show();
     }

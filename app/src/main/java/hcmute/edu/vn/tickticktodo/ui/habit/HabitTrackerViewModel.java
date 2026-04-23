@@ -17,8 +17,11 @@ import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
+import hcmute.edu.vn.tickticktodo.data.database.TaskDatabase;
 import hcmute.edu.vn.tickticktodo.helper.GeminiManager;
+import hcmute.edu.vn.tickticktodo.helper.HabitAlarmManager;
 import hcmute.edu.vn.tickticktodo.model.Habit;
 import hcmute.edu.vn.tickticktodo.model.HabitHeatmapCell;
 import hcmute.edu.vn.tickticktodo.model.HabitLog;
@@ -96,6 +99,27 @@ public class HabitTrackerViewModel extends AndroidViewModel {
                 habit.setId(insertedId);
                 hcmute.edu.vn.tickticktodo.helper.HabitAlarmManager
                         .scheduleHabitReminder(getApplication(), habit);
+            }
+        });
+    }
+
+    /** Update reminder time for an existing habit and reschedule (or cancel) its alarm. */
+    public void updateHabitReminder(long habitId, int reminderHour, int reminderMinute) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            List<Habit> all = TaskDatabase.getInstance(getApplication())
+                    .habitDao().getAllHabitsSync();
+            Habit target = null;
+            for (Habit h : all) {
+                if (h.getId() == habitId) { target = h; break; }
+            }
+            if (target == null) return;
+            target.setReminderHour(reminderHour);
+            target.setReminderMinute(reminderMinute);
+            repository.updateHabit(target);
+            if (reminderHour >= 0) {
+                HabitAlarmManager.scheduleHabitReminder(getApplication(), target);
+            } else {
+                HabitAlarmManager.cancelHabitReminder(getApplication(), target);
             }
         });
     }
