@@ -385,7 +385,7 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
                 ImageButton btnSubtaskPriority = row.findViewById(R.id.btn_subtask_priority);
                 MaterialButton btnSubtaskApprove = row.findViewById(R.id.btn_subtask_approve);
 
-                String title = "|- [" + (i + 1) + "] " + (subtask.getTitle() == null ? "" : subtask.getTitle());
+                String title = "(" + (i + 1) + ") " + (subtask.getTitle() == null ? "" : subtask.getTitle());
                 if (!subtask.isApproved()) {
                     title += " " + itemView.getContext().getString(R.string.subtask_raw_suffix);
                 }
