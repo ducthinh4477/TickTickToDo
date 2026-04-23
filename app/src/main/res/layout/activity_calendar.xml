@@ -202,18 +202,16 @@
 
     </LinearLayout>
 
-    <!-- ─── ExtendedFAB: Thêm sự kiện mới ──────────────────────────────── -->
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+    <!-- ─── FAB: Thêm sự kiện mới ─────────────────────────────────────── -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_event"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="20dp"
         android:contentDescription="@string/cal_add_event_desc"
-        android:text="Thêm"
-        android:textColor="@color/white"
-        app:icon="@drawable/ic_add"
-        app:iconTint="@color/white"
+        android:src="@drawable/ic_add"
+        app:tint="@color/white"
         app:backgroundTint="@color/accent_primary"
         app:elevation="4dp" />
 
