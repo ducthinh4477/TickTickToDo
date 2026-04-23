@@ -27,6 +27,7 @@
     <string name="detail_saved">Đã lưu thay đổi</string>
     <string name="detail_label_date">Ngày đến hạn</string>
     <string name="detail_label_priority">Độ ưu tiên</string>
+    <string name="detail_label_subtasks">Các bước con</string>
     <string name="label_no_date">Chọn ngày</string>
     <string name="error_title_empty">Tiêu đề không được để trống</string>
     <string name="priority_none_label">Không</string>

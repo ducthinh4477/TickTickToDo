@@ -43,6 +43,7 @@
     <string name="detail_saved">Changes saved</string>
     <string name="detail_label_date">Due date</string>
     <string name="detail_label_priority">Priority</string>
+    <string name="detail_label_subtasks">Subtasks</string>
     <string name="detail_label_attachments">Attachments</string>
     <string name="detail_attachment_image_desc">Attached image preview</string>
     <string name="detail_attachment_audio_label">Audio: %1$s</string>
