@@ -52,15 +52,6 @@
                 android:textColor="@color/text_primary"
                 android:layout_marginStart="8dp" />
 
-            <ImageButton
-                android:id="@+id/btn_more"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:src="@drawable/ic_more_vert"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="More options"
-                app:tint="@color/text_primary" />
-
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -73,7 +64,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="▲  QUAN TRỌNG"
         android:textSize="10sp"
         android:textAllCaps="true"
         android:letterSpacing="0.12"
@@ -101,35 +91,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
-
-    <!-- ══════ Axis label: center — KHẨN CẤP ══════ -->
-    <TextView
-        android:id="@+id/tv_axis_left"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="KHẨN CẤP"
-        android:textSize="9sp"
-        android:textAllCaps="true"
-        android:letterSpacing="0.08"
-        android:textColor="@color/text_secondary"
-        app:layout_constraintTop_toTopOf="@id/guideline_h_50"
-        app:layout_constraintBottom_toBottomOf="@id/guideline_h_50"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/guideline_v_50" />
-
-    <TextView
-        android:id="@+id/tv_axis_right"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="KHÔNG KHẨN CẤP"
-        android:textSize="9sp"
-        android:textAllCaps="true"
-        android:letterSpacing="0.08"
-        android:textColor="@color/text_secondary"
-        app:layout_constraintTop_toTopOf="@id/guideline_h_50"
-        app:layout_constraintBottom_toBottomOf="@id/guideline_h_50"
-        app:layout_constraintStart_toEndOf="@id/guideline_v_50"
-        app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ══════════════════════════════════════════
          Q1: Khẩn cấp & Quan trọng — red tint
@@ -180,23 +141,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Khẩn cấp và Quan trọng"
+                    android:text="Khẩn cấp và quan trọng"
                     android:textColor="#EF5350"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="DO FIRST"
-                android:textSize="9sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.1"
-                android:textColor="#EF5350"
-                android:alpha="0.7" />
 
             <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
@@ -282,17 +232,6 @@
                     android:layout_marginStart="8dp" />
             </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="SCHEDULE"
-                android:textSize="9sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.1"
-                android:textColor="#FFCA28"
-                android:alpha="0.7" />
-
             <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -370,23 +309,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Khẩn cấp nhưng ko q.trọng"
+                    android:text="Khẩn cấp nhưng không quan trọng"
                     android:textColor="#5C6BC0"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="DELEGATE"
-                android:textSize="9sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.1"
-                android:textColor="#5C6BC0"
-                android:alpha="0.7" />
 
             <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
@@ -465,23 +393,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Không cấp bách và ko q.trọng"
+                    android:text="Không cấp bách và không quan trọng"
                     android:textColor="#26A69A"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="ELIMINATE"
-                android:textSize="9sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.1"
-                android:textColor="#26A69A"
-                android:alpha="0.7" />
 
             <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
@@ -526,6 +443,7 @@
         app:backgroundTint="@color/accent_primary"
         app:elevation="6dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.FAB.Rounded"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
