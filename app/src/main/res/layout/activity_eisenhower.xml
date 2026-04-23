@@ -515,15 +515,14 @@
     <!-- ══════════════════════════════════════════
          Extended FAB — bottom-right
          ══════════════════════════════════════════ -->
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_eisenhower"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="20dp"
-        android:text="Thêm task"
-        android:textColor="@android:color/white"
-        app:icon="@drawable/ic_add"
-        app:iconTint="@android:color/white"
+        android:contentDescription="Thêm task"
+        android:src="@drawable/ic_add"
+        app:tint="@android:color/white"
         app:backgroundTint="@color/accent_primary"
         app:elevation="6dp"
         app:layout_constraintBottom_toBottomOf="parent"
